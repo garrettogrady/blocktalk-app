@@ -1,0 +1,64 @@
+name: BlockTalk
+
+options:
+  bundleIdPrefix: com.blocktalk
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+packages:
+  supabase-swift:
+    url: https://github.com/supabase/supabase-swift.git
+    from: "2.0.0"
+
+targets:
+  BlockTalk:
+    type: application
+    platform: iOS
+    sources:
+      - path: BlockTalk
+        excludes:
+          - "Info.plist"
+    info:
+      path: BlockTalk/Info.plist
+      properties:
+        CFBundleName: BlockTalk
+        CFBundleDisplayName: BlockTalk
+        CFBundleIdentifier: com.blocktalk.mattb.app
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleIconName: AppIcon
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIAppFonts:
+          - SpaceGrotesk-Bold.ttf
+          - SpaceGrotesk-Medium.ttf
+          - Inter-Regular.ttf
+          - Inter-Medium.ttf
+          - Inter-SemiBold.ttf
+          - Inter-Bold.ttf
+          - JetBrainsMono-Medium.ttf
+          - JetBrainsMono-Bold.ttf
+        NSLocationWhenInUseUsageDescription: "BlockTalk uses your location to confirm you're in your neighborhood when you post or reply. Viewing and voting work from anywhere. Your exact location is never shown to anyone."
+        NSCameraUsageDescription: "BlockTalk needs camera access so you can take photos for your posts."
+        NSPhotoLibraryUsageDescription: "BlockTalk needs photo library access so you can add images to your posts."
+    entitlements:
+      path: BlockTalk/BlockTalk.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
+    dependencies:
+      - package: supabase-swift
+        product: Supabase
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blocktalk.mattb.app
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_FILE: BlockTalk/Info.plist
+        CODE_SIGN_ENTITLEMENTS: BlockTalk/BlockTalk.entitlements
