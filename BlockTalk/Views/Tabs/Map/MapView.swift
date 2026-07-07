@@ -299,13 +299,25 @@ struct MapTabView: View {
         return false
     }
 
-    /// The polygon the user is currently in (drives the pin-drop geofence)
+    /// Meters of slack on the geofence — absorbs the simplified-polygon border
+    /// error + GPS jitter so standing on the edge still counts as in-range.
+    private let geofenceToleranceMeters: Double = 150
+
+    /// The polygon the user is currently in (drives the pin-drop geofence).
+    /// Prefer the bundled polygon the user's GPS actually sits in, so the
+    /// "which hood" test and the reticle test use the SAME shape; fall back to
+    /// name-matching the resolved neighborhood.
     private var activePolygon: NeighborhoodPolygon? {
-        polygons.first { isCurrentNeighborhood($0.name) }
+        if let loc = locationService.currentLocation,
+           let inside = polygons.first(where: { $0.contains(loc) }) {
+            return inside
+        }
+        return polygons.first { isCurrentNeighborhood($0.name) }
     }
 
     private var dropInRange: Bool {
-        activePolygon?.contains(mapCenter) ?? true
+        guard let polygon = activePolygon else { return true }
+        return polygon.distanceToEdge(mapCenter) <= geofenceToleranceMeters
     }
 
     private func snappedCorner(_ coord: CLLocationCoordinate2D) -> String? {
