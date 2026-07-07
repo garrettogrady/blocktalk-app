@@ -68,29 +68,58 @@ struct YouView: View {
         Button {
             showNotifications = true
         } label: {
-            HStack(spacing: BTSpacing.md) {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 16))
+            VStack(alignment: .leading, spacing: BTSpacing.md) {
+                HStack(spacing: BTSpacing.sm) {
+                    Text("📬 NOTIFICATIONS")
+                        .font(BTFont.monoBold(size: 10))
+                        .tracking(1)
+                        .foregroundStyle(Color.btText3)
+                    if BTNotification.unreadCount > 0 {
+                        Text("\(BTNotification.unreadCount) NEW")
+                            .font(BTFont.monoBold(size: 9))
+                            .foregroundStyle(Color.btOnAccent)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color.btPink).clipShape(Capsule())
+                    }
+                    Spacer()
+                }
+
+                ForEach(BTNotification.samples.prefix(2)) { notif in
+                    HStack(alignment: .top, spacing: BTSpacing.sm) {
+                        Circle()
+                            .fill(notif.unread ? Color.btLime : Color.clear)
+                            .frame(width: 6, height: 6)
+                            .padding(.top, 5)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(notif.title)
+                                .font(BTFont.bodySemibold(size: 13))
+                                .foregroundStyle(Color.btText)
+                                .lineLimit(1)
+                            if let p = notif.preview {
+                                Text(p)
+                                    .font(BTFont.body(size: 12))
+                                    .foregroundStyle(Color.btText2)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+
+                Text("VIEW ALL (\(BTNotification.samples.count)) →")
+                    .font(BTFont.bodySemibold(size: 12))
                     .foregroundStyle(Color.btLime)
-
-                Text("Notifications")
-                    .font(BTFont.bodyMedium(size: 15))
-                    .foregroundStyle(Color.btText)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.btText3)
             }
             .padding(BTSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.btSurface)
-            .cornerRadius(BTRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: BTRadius.md)
                     .stroke(Color.btLine, lineWidth: 1)
             )
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Footer Actions

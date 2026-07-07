@@ -21,6 +21,7 @@ struct MainTabView: View {
             Tab("You", systemImage: "person.fill", value: 3) {
                 YouView()
             }
+            .badge(BTNotification.unreadCount)
         }
         .tint(Color.btLime)
         .toolbarBackground(Color.btBg, for: .tabBar)

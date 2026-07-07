@@ -41,6 +41,9 @@ struct NotificationsView: View {
                     .foregroundStyle(Color.btLime)
                 }
             }
+            .onAppear {
+                if notifications.isEmpty { notifications = BTNotification.samples }
+            }
         }
     }
 
