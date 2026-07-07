@@ -299,25 +299,15 @@ struct MapTabView: View {
         return false
     }
 
-    /// Meters of slack on the geofence — absorbs the simplified-polygon border
-    /// error + GPS jitter so standing on the edge still counts as in-range.
-    private let geofenceToleranceMeters: Double = 150
-
-    /// The polygon the user is currently in (drives the pin-drop geofence).
-    /// Prefer the bundled polygon the user's GPS actually sits in, so the
-    /// "which hood" test and the reticle test use the SAME shape; fall back to
-    /// name-matching the resolved neighborhood.
-    private var activePolygon: NeighborhoodPolygon? {
-        if let loc = locationService.currentLocation,
-           let inside = polygons.first(where: { $0.contains(loc) }) {
-            return inside
-        }
-        return polygons.first { isCurrentNeighborhood($0.name) }
-    }
-
+    /// Exact geofence: in-range iff the reticle is inside the SAME polygon(s)
+    /// drawn green (the highlighted neighborhood). WYSIWYG — inside the green
+    /// outline you can post, outside you can't. If nothing is highlighted we
+    /// don't block. Precision is only as good as the bundled polygon shape
+    /// (see HANDOFF — swap in the exact NTA polygons to tighten the outline).
     private var dropInRange: Bool {
-        guard let polygon = activePolygon else { return true }
-        return polygon.distanceToEdge(mapCenter) <= geofenceToleranceMeters
+        let highlighted = polygons.filter { isCurrentNeighborhood($0.name) }
+        guard !highlighted.isEmpty else { return true }
+        return highlighted.contains { $0.contains(mapCenter) }
     }
 
     private func snappedCorner(_ coord: CLLocationCoordinate2D) -> String? {

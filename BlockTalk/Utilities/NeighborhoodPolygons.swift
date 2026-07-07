@@ -42,38 +42,6 @@ struct NeighborhoodPolygon: Identifiable {
         }
         return inside
     }
-
-    /// Meters from `coord` to the nearest polygon edge; 0 when inside. Used to
-    /// add a tolerance buffer to the pin-drop geofence, since the bundled
-    /// polygons are simplified and a hard inside/outside test is brittle at
-    /// borders (a point truly inside LES can fall just outside the simplified
-    /// outline). Planar approximation — fine at neighborhood scale.
-    func distanceToEdge(_ coord: CLLocationCoordinate2D) -> Double {
-        if contains(coord) { return 0 }
-        let latM = 111_320.0
-        let lngM = 111_320.0 * cos(coord.latitude * .pi / 180)
-        func toXY(_ c: CLLocationCoordinate2D) -> (Double, Double) {
-            ((c.longitude - coord.longitude) * lngM, (c.latitude - coord.latitude) * latM)
-        }
-        var best = Double.greatestFiniteMagnitude
-        for ring in rings where ring.count > 1 {
-            for i in 0..<ring.count {
-                let a = toXY(ring[i])
-                let b = toXY(ring[(i + 1) % ring.count])
-                best = min(best, Self.pointSegmentDistance((0, 0), a, b))
-            }
-        }
-        return best
-    }
-
-    private static func pointSegmentDistance(_ p: (Double, Double), _ a: (Double, Double), _ b: (Double, Double)) -> Double {
-        let dx = b.0 - a.0, dy = b.1 - a.1
-        let len2 = dx * dx + dy * dy
-        if len2 == 0 { return hypot(p.0 - a.0, p.1 - a.1) }
-        var t = ((p.0 - a.0) * dx + (p.1 - a.1) * dy) / len2
-        t = max(0, min(1, t))
-        return hypot(p.0 - (a.0 + t * dx), p.1 - (a.1 + t * dy))
-    }
 }
 
 enum NeighborhoodPolygonLoader {

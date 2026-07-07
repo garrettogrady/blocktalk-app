@@ -14,7 +14,7 @@
 4. **Storage bucket** — create `post-images` (public) + policies (upload to own folder, public read, 5MB, image/* only). See the commented block at the end of `00001_initial_schema.sql`. Needed for real image uploads in Compose.
 5. **Schema additions needed for full parity:**
    - `posts.link_preview JSONB` — for the link-preview cards on sample posts 17 & 25 (§8). Currently no column, so link previews aren't seeded/rendered.
-5. **Neighborhood polygons are simplified.** `Resources/neighborhood-polygons.json` is a hand-compacted, low-vertex shape set (not the RN `nyc-ntas-manhattan.json` NTA source). Because of that, the Map's pin-drop geofence uses a **150m tolerance buffer** (`geofenceToleranceMeters` in MapView) so border points still count as in-range. To make the geofence precise, bundle the real NTA GeoJSON and drop/reduce the tolerance. Same simplified set also drives the Map neighborhood highlight.
+5. **Neighborhood polygons are simplified.** `Resources/neighborhood-polygons.json` is a hand-compacted, low-vertex shape set (not the RN `nyc-ntas-manhattan.json` NTA source). The Map's pin-drop geofence is now **exact** — in-range iff the reticle is inside the polygon drawn green (WYSIWYG), no tolerance. So the geofence is only as accurate as this shape: if the green outline doesn't match the real neighborhood boundary, the geofence won't either. **Bundle the precise NTA GeoJSON** to fix both the drawn outline and the geofence at once. Same set drives the Map highlight.
 
 ## B. Swift wiring gaps (backend-dependent — flagged as built)
 
