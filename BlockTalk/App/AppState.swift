@@ -23,6 +23,12 @@ final class AppState {
     /// Selected tab index for cross-tab navigation
     var selectedTab = 0
 
+    /// In-progress compose text, stashed so it survives the compose→map→compose
+    /// pin-placement round-trip (§13)
+    var composeDraft = ""
+    /// Signal the Map to auto-enter drop mode (set when compose switches to pin mode)
+    var pendingPinPlacement = false
+
     func advanceTo(_ stage: AppStage) {
         withAnimation {
             self.stage = stage

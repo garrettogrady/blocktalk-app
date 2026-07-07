@@ -273,6 +273,13 @@ struct MapTabView: View {
                 .presentationDragIndicator(.visible)
             }
         }
+        .onChange(of: appState.pendingPinPlacement) { _, pending in
+            // Compose switched to pin mode → auto-enter drop mode
+            if pending {
+                viewModel.enterDropMode()
+                appState.pendingPinPlacement = false
+            }
+        }
         .task {
             polygons = NeighborhoodPolygonLoader.load()
             await viewModel.loadNeighborhoods()

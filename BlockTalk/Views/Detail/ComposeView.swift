@@ -11,7 +11,13 @@ struct ComposeView: View {
     @State private var showAttachDialog = false
     @State private var showCamera = false
     @State private var showLibrary = false
+    @State private var pinCleared = false
     @FocusState private var textFocused: Bool
+
+    /// Pin can be toggled off locally (the ≡ footer button) without closing
+    private var effectivePin: CLLocationCoordinate2D? { pinCleared ? nil : pinDropLocation }
+    /// Daily-prompt / NYC-wide compose locks its scope — no feed↔pin toggle
+    private var canToggleMode: Bool { !nycWide }
 
     /// The neighborhood this post will be submitted to
     var postingNeighborhood: Neighborhood?
@@ -102,8 +108,11 @@ struct ComposeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.btText2)
+                    Button("Cancel") {
+                        appState.composeDraft = ""
+                        dismiss()
+                    }
+                    .foregroundStyle(Color.btText2)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Post") { submitPost() }
@@ -137,7 +146,14 @@ struct ComposeView: View {
                 }
                 .ignoresSafeArea()
             }
-            .onAppear { textFocused = true }
+            .onAppear {
+                // Rehydrate a stashed draft after the compose→map→compose round-trip
+                if viewModel.text.isEmpty { viewModel.text = appState.composeDraft }
+                textFocused = true
+            }
+            .onChange(of: viewModel.text) { _, newValue in
+                appState.composeDraft = newValue
+            }
         }
     }
 
@@ -167,7 +183,7 @@ struct ComposeView: View {
 
     private var scopeLabel: some View {
         let base = Text("Posting to ").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
-        if let coord = pinDropLocation {
+        if let coord = effectivePin {
             let latlng = String(format: "%.4f, %.4f", coord.latitude, coord.longitude)
             return base
                 + Text("📍 DROPPED PIN").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
@@ -184,7 +200,7 @@ struct ComposeView: View {
     }
 
     private var statusText: String? {
-        if pinDropLocation != nil { return nil }   // "change" affordance + roundtrip deferred (see HANDOFF)
+        if effectivePin != nil { return nil }
         return nycWide ? "▲ IN NYC" : "▲ IN-RANGE"
     }
 
@@ -192,24 +208,18 @@ struct ComposeView: View {
 
     private var bottomBar: some View {
         HStack(spacing: BTSpacing.md) {
-            Button {
-                showAttachDialog = true
-            } label: {
-                Image(systemName: "camera")
-                    .font(.system(size: 14))
-                    .foregroundStyle(viewModel.selectedImage != nil ? Color.btLime : Color.btText2)
-                    .frame(width: 32, height: 32)
-                    .background(viewModel.selectedImage != nil ? Color.btLime.opacity(0.1) : Color.btSurface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9)
-                            .stroke(viewModel.selectedImage != nil ? Color.btLime.opacity(0.3) : Color.btLine, lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 9))
-            }
-            .buttonStyle(.plain)
+            footerIcon("camera", active: viewModel.selectedImage != nil) { showAttachDialog = true }
 
-            // NOTE (§13): the [📍]/[≡] feed↔pin mode toggle + compose↔map draft
-            // round-trip is a cross-surface system — built with the Map chunk.
+            // Feed ↔ pin-drop mode toggle (hidden in daily-prompt / NYC-wide)
+            if canToggleMode {
+                if effectivePin != nil {
+                    // ≡ — clear the pin, back to feed mode (no map round-trip)
+                    footerIcon("line.3.horizontal") { pinCleared = true }
+                } else {
+                    // 📍 — stash draft, open Map in drop mode, reopen with the pin
+                    footerIcon("mappin") { switchToPinMode() }
+                }
+            }
 
             Spacer()
 
@@ -220,6 +230,22 @@ struct ComposeView: View {
         }
         .padding(.horizontal, BTSpacing.lg)
         .padding(.vertical, BTSpacing.md)
+    }
+
+    private func footerIcon(_ systemName: String, active: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14))
+                .foregroundStyle(active ? Color.btLime : Color.btText2)
+                .frame(width: 32, height: 32)
+                .background(active ? Color.btLime.opacity(0.1) : Color.btSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9)
+                        .stroke(active ? Color.btLime.opacity(0.3) : Color.btLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
     }
 
     private var counterColor: Color {
@@ -258,7 +284,7 @@ struct ComposeView: View {
             return
         }
         Task {
-            if let pinLocation = pinDropLocation {
+            if let pinLocation = effectivePin {
                 let pinService = PinService()
                 do {
                     let pin = try await pinService.createPin(
@@ -285,11 +311,19 @@ struct ComposeView: View {
     /// Post-submit routing follows the post type: pin → Map, feed → Feed,
     /// NYC-wide prompt answers skip routing.
     private func routeAfterPost() {
-        if pinDropLocation != nil {
+        appState.composeDraft = ""
+        if effectivePin != nil {
             appState.selectedTab = 1
         } else if !nycWide {
             appState.selectedTab = 0
         }
+        dismiss()
+    }
+
+    private func switchToPinMode() {
+        appState.composeDraft = viewModel.text   // stash the draft
+        appState.pendingPinPlacement = true       // Map will auto-enter drop mode
+        appState.selectedTab = 1
         dismiss()
     }
 }
