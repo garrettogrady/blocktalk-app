@@ -23,6 +23,7 @@
 - **Compose → Map draft round-trip** (§13 mode toggle `[📷][📍]`↔`[📷][≡]`) is NOT built — it's a cross-surface system (shared compose draft + Map "enter drop mode" signal). Scheduled with the §10 Map chunk. Until then, Compose has no pin/list toggle and the pin scope's "change" link is absent.
 - **Daily-prompt posts**: NYC-wide compose currently inserts a normal post — it doesn't set `is_daily_prompt` / `daily_prompt_id`. Wire the active prompt id through when the prompt-feed data is seeded.
 - **Camera permission denied** isn't custom-handled in Compose — iOS shows its own prompt on first use; a previously-denied camera just fails silently. RN showed a "denied → open Settings" alert. Add if desired.
+- **Moderation model mismatch**: the RN mock's moderation is session-scoped client state (phantom report seeds on posts 15/16, a demo state machine, reporter-only hide). The Swift schema instead has a **server-side** report trigger (`check_report_threshold` auto-hides at 3 reports for everyone). When wiring the moderation state chunk, decide per-behavior which is mock-demo (client, session) vs. real (server): the reporter-only "hide for me" + Show-anyway is client/session; the 3-report public auto-hide already exists server-side. The You-tab 🧪 MODERATION DEMO (simulate State 1/2/3 on `me-1`) is pure client demo mechanics.
 
 ## C. Verify-on-device checklist (once A is applied)
 

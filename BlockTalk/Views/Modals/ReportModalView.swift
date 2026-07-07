@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ReportModalView: View {
     let postId: UUID
+    /// Called on successful submit with the reason's short string, so the
+    /// presenting card can flash the "reported for {short} · we'll review" toast.
+    var onReported: ((String) -> Void)?
 
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
@@ -27,10 +30,15 @@ struct ReportModalView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
-                    Text("Why are you reporting this post?")
-                        .font(BTFont.bodySemibold(size: 17))
-                        .foregroundStyle(Color.btText)
-                        .padding(.top, BTSpacing.xxl)
+                    VStack(alignment: .leading, spacing: BTSpacing.sm) {
+                        Text("Why are you reporting this post?")
+                            .font(BTFont.bodySemibold(size: 17))
+                            .foregroundStyle(Color.btText)
+                        Text("Only report content that is hateful, racist, or personally identifies someone.")
+                            .font(BTFont.body(size: 13))
+                            .foregroundStyle(Color.btText2)
+                    }
+                    .padding(.top, BTSpacing.xxl)
 
                     // 6 reason picker
                     VStack(spacing: BTSpacing.sm) {
@@ -185,6 +193,7 @@ struct ReportModalView: View {
                     reason: reason.rawValue,
                     freeText: reason == .other ? freeText : nil
                 )
+                onReported?(reason.short)
                 dismiss()
             } catch {
                 self.error = error.localizedDescription

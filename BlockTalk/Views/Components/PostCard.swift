@@ -12,6 +12,7 @@ struct PostCard: View {
     @State private var showReport = false
     @State private var enrolled = false
     @State private var toastMessage = ""
+    @State private var toastIcon = "bell.fill"
     @State private var toastVisible = false
 
     // Prefer the embedded author from the fetch; fall back to passed params
@@ -81,7 +82,9 @@ struct PostCard: View {
             }
         }
         .sheet(isPresented: $showReport) {
-            ReportModalView(postId: post.id)
+            ReportModalView(postId: post.id) { short in
+                showToast("reported for \(short) · we'll review", icon: "flag.fill")
+            }
         }
     }
 
@@ -177,9 +180,16 @@ struct PostCard: View {
     private func toggleBell() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         enrolled.toggle()
-        toastMessage = enrolled
-            ? "you're in — we'll ping you when something moves"
-            : "you're out — we'll leave this one alone"
+        showToast(
+            enrolled ? "you're in — we'll ping you when something moves"
+                     : "you're out — we'll leave this one alone",
+            icon: enrolled ? "bell.fill" : "bell.slash"
+        )
+    }
+
+    private func showToast(_ message: String, icon: String) {
+        toastMessage = message
+        toastIcon = icon
         withAnimation { toastVisible = true }
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -191,7 +201,7 @@ struct PostCard: View {
 
     private var enrollmentToast: some View {
         HStack(spacing: BTSpacing.xs) {
-            Image(systemName: enrolled ? "bell.fill" : "bell.slash")
+            Image(systemName: toastIcon)
                 .font(.system(size: 11))
                 .foregroundStyle(Color.btLime)
             Text(toastMessage)
