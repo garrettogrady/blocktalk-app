@@ -28,7 +28,7 @@ struct BlockTalkApp: App {
             .environment(offline)
             .preferredColorScheme(.dark)
             .task {
-                await restoreSession()
+                bootstrapMock()
             }
             .onChange(of: scenePhase) { _, phase in
                 // Recheck permission on foreground so flipping the toggle in
@@ -38,25 +38,14 @@ struct BlockTalkApp: App {
         }
     }
 
-    private func restoreSession() async {
-        do {
-            let session = try await supabase.auth.session
-            appState.session = session
-
-            // Check if user profile exists
-            let users: [BlockTalkUser] = try await supabase.from("users")
-                .select()
-                .eq("id", value: session.user.id.uuidString)
-                .execute()
-                .value
-
-            if let user = users.first {
-                appState.currentUser = user
-                appState.advanceTo(.app)
-            }
-            // If no profile yet, stay on splash — user will sign in and go through onboarding
-        } catch {
-            // No existing session — stay on splash
+    /// Bundled-mock boot: no auth/backend — drop straight into a populated app
+    /// with the sample user + LES. (Onboarding is still reachable via Sign Out.)
+    private func bootstrapMock() {
+        if appState.currentUser == nil {
+            appState.currentUser = .sample
+            appState.viewingNeighborhood = .les
+            appState.hasResolvedInitialNeighborhood = true
+            appState.stage = .app
         }
     }
 }

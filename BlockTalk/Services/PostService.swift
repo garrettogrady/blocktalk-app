@@ -6,24 +6,15 @@ struct PostService {
     static let postSelect = "*, author:users(username, user_number, home:neighborhoods(short_code))"
 
     func fetchPosts(neighborhoodId: UUID, sort: PostSort = .newest, limit: Int = 50) async throws -> [Post] {
-        var query = supabase.from("posts")
-            .select(Self.postSelect)
-            .eq("neighborhood_id", value: neighborhoodId.uuidString)
-            .eq("status", value: "live")
-            .limit(limit)
-
+        // Bundled mock data (no backend). All sample content is LES, shown for
+        // any viewing neighborhood — matches the mock's LES-only data limitation.
+        let posts = Post.sampleFeed
         switch sort {
-        case .newest:
-            query = query.order("created_at", ascending: false)
-        case .oldest:
-            query = query.order("created_at", ascending: true)
-        case .mostLiked:
-            query = query.order("score", ascending: false)
-        case .mostDisliked:
-            query = query.order("score", ascending: true)
+        case .newest:      return posts.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        case .oldest:      return posts.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
+        case .mostLiked:   return posts.sorted { $0.score > $1.score }
+        case .mostDisliked: return posts.sorted { $0.score < $1.score }
         }
-
-        return try await query.execute().value
     }
 
     func fetchPostForPin(_ pinId: UUID) async throws -> Post? {
@@ -107,16 +98,8 @@ enum PostSort: String, CaseIterable {
 struct DailyPromptService {
     /// The currently-active prompt (now within [active_from, active_until]).
     func fetchActivePrompt() async throws -> DailyPrompt? {
-        let nowISO = ISO8601DateFormatter().string(from: Date())
-        let prompts: [DailyPrompt] = try await supabase.from("daily_prompts")
-            .select()
-            .lte("active_from", value: nowISO)
-            .gte("active_until", value: nowISO)
-            .order("active_from", ascending: false)
-            .limit(1)
-            .execute()
-            .value
-        return prompts.first
+        // Bundled mock data (no backend)
+        DailyPrompt.sampleActive
     }
 }
 

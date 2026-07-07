@@ -19,6 +19,14 @@ struct DailyPrompt: Codable, Identifiable, Sendable {
         return now >= activeFrom && now <= activeUntil
     }
 
+    /// The bundled mock's active prompt
+    static let sampleActive = DailyPrompt(
+        id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
+        question: "What's the craziest thing you've ever seen in NYC?",
+        activeFrom: Date().addingTimeInterval(-2 * 3600),
+        activeUntil: Date().addingTimeInterval(22 * 3600)
+    )
+
     var timeRemaining: String {
         let now = Date()
         guard activeUntil > now else { return "expired" }

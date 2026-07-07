@@ -53,6 +53,8 @@ struct ToneRulesView: View {
 
             // CTA — the tap is the acknowledgment record
             Button {
+                // Bundled-mock: ensure a user exists when entering via onboarding
+                if appState.currentUser == nil { appState.currentUser = .sample }
                 appState.advanceTo(.app)
             } label: {
                 Text("I get it →")

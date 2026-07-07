@@ -16,4 +16,14 @@ struct BlockTalkUser: Codable, Identifiable, Sendable {
         case homeChangedAt = "home_changed_at"
         case createdAt = "created_at"
     }
+
+    /// The bundled mock's current user (sampleMe: @BlockTalker #4,827, home LES)
+    static let sample = BlockTalkUser(
+        id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+        username: "BlockTalker",
+        userNumber: 4827,
+        homeNeighborhoodId: Post.lesNeighborhoodId,
+        homeChangedAt: nil,
+        createdAt: Date()
+    )
 }

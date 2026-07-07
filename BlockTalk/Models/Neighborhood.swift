@@ -19,6 +19,14 @@ struct Neighborhood: Codable, Identifiable, Hashable, Sendable {
         case shortCode = "short_code"
         case borough
     }
+
+    /// Local LES neighborhood for the bundled mock (id shared with sample posts)
+    static let les = Neighborhood(
+        id: Post.lesNeighborhoodId,
+        name: "Lower East Side",
+        shortCode: "LES",
+        borough: "Manhattan"
+    )
 }
 
 enum NeighborhoodDirectory {
