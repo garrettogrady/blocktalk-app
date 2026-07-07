@@ -4,47 +4,52 @@ struct TrendingCard: View {
     let post: Post
 
     var body: some View {
-        VStack(alignment: .leading, spacing: BTSpacing.md) {
+        VStack(alignment: .leading, spacing: BTSpacing.sm) {
             // TOP TRENDING chip
-            Text("TOP TRENDING")
-                .font(BTFont.monoBold(size: 10))
-                .foregroundStyle(Color.btBg)
-                .padding(.horizontal, BTSpacing.sm)
-                .padding(.vertical, BTSpacing.xs)
-                .background(Color.btBg.opacity(0.2))
-                .cornerRadius(BTRadius.sm)
+            HStack(spacing: BTSpacing.xs) {
+                Image(systemName: "trophy.fill").font(.system(size: 10))
+                Text("TOP TRENDING").font(BTFont.monoBold(size: 10)).tracking(1)
+            }
+            .foregroundStyle(Color.btLime)
 
-            // Post text
+            // Meta row
+            HStack(spacing: 6) {
+                if let a = post.author {
+                    Text("@\(a.username ?? "user")")
+                        .font(BTFont.bodySemibold(size: 11))
+                        .foregroundStyle(Color.btText)
+                    Text("#\((a.userNumber ?? 0).formatted(.number))")
+                        .font(BTFont.monoBold(size: 11))
+                        .foregroundStyle(Color.btLime)
+                    if let home = a.home?.shortCode {
+                        HomeBadge(shortCode: home)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+
+            // Body
             Text(post.text)
-                .font(BTFont.bodySemibold(size: 16))
-                .foregroundStyle(Color.btBg)
+                .font(BTFont.body(size: 14))
+                .foregroundStyle(Color.btText)
                 .lineSpacing(4)
-                .lineLimit(3)
+                .lineLimit(4)
+                .multilineTextAlignment(.leading)
 
-            // Stats row
-            HStack(spacing: BTSpacing.lg) {
-                HStack(spacing: BTSpacing.xs) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("\(post.score)")
-                        .font(BTFont.mono(size: 12))
-                }
-                .foregroundStyle(Color.btBg.opacity(0.7))
-
-                HStack(spacing: BTSpacing.xs) {
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 11))
-                    Text("\(post.replyCount)")
-                        .font(BTFont.mono(size: 12))
-                }
-                .foregroundStyle(Color.btBg.opacity(0.7))
-
+            // Vote pills + reply count
+            HStack(spacing: BTSpacing.sm) {
+                VotePills(score: post.score, onUpvote: {}, onDownvote: {})
                 Spacer()
+                (Text("\(post.replyCount)").foregroundStyle(Color.btText)
+                 + Text(" replies").foregroundStyle(Color.btText2))
+                    .font(BTFont.monoBold(size: 11))
             }
         }
         .padding(BTSpacing.lg)
-        .background(Color.btLime)
-        .cornerRadius(BTRadius.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.btLime.opacity(0.04))
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.3), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
     }
 }
 
@@ -53,17 +58,14 @@ struct TrendingCard: View {
         Color.btBg.ignoresSafeArea()
         TrendingCard(
             post: Post(
-                id: UUID(),
-                userId: UUID(),
-                neighborhoodId: UUID(),
+                id: UUID(), userId: UUID(), neighborhoodId: UUID(),
                 text: "the bodega cat on 7th just stole someone's breakfast sandwich right off the counter. no regrets.",
-                isDailyPrompt: false,
-                score: 142,
-                replyCount: 38,
-                reportCount: 0,
-                status: .live
+                isDailyPrompt: false, score: 142, replyCount: 38, reportCount: 0, status: .live,
+                author: PostAuthor(username: "streetrat", userNumber: 4827, home: .init(shortCode: "LES"))
             )
         )
+        .environment(AppState())
+        .environment(ModerationStore())
         .padding()
     }
 }
