@@ -14,7 +14,7 @@ struct YouView: View {
                 VStack(spacing: BTSpacing.xxl) {
                     // Identity strip
                     if let user = appState.currentUser {
-                        IdentityStrip(user: user)
+                        IdentityStrip(user: user, postCount: 38, replyCount: 142, totalScore: 1847)
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.md)
                     }
