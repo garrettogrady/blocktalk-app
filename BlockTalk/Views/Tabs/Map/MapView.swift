@@ -320,26 +320,30 @@ struct MapTabView: View {
     private var dropModePill: some View {
         let corner = snappedCorner(mapCenter)
         let inRange = dropInRange
-        return VStack(spacing: 2) {
+        return VStack(spacing: 3) {
             Text(inRange ? "📍 SELECT A LOCATION" : "📍 OUT OF RANGE")
-                .font(BTFont.monoBold(size: 11))
-                .tracking(0.6)
+                .font(BTFont.monoBold(size: 11.5))
+                .tracking(0.8)
                 .foregroundStyle(inRange ? Color.btText : Color.btWarn)
             Text(inRange
                  ? (corner ?? "drag the map to position the pin")
                  : "you can only drop pins in your current neighborhood")
-                .font(BTFont.body(size: 10.5))
-                .foregroundStyle(inRange && corner != nil ? Color.btLime : Color.btText2)
+                .font(inRange && corner != nil ? BTFont.monoBold(size: 11) : BTFont.body(size: 11))
+                .foregroundStyle(inRange && corner != nil ? Color.btLime : (inRange ? Color.btText2 : Color.btWarn.opacity(0.85)))
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, BTSpacing.lg)
         .padding(.vertical, BTSpacing.sm)
-        .background((inRange ? Color.btSurface : Color.btWarn.opacity(0.15)).opacity(0.95))
+        // Solid dark pill so it stays legible over the map; the orange text +
+        // border carry the out-of-range warning.
+        .background(Color.btSurface.opacity(0.96))
         .overlay(
             RoundedRectangle(cornerRadius: BTRadius.lg)
-                .stroke(inRange ? Color.clear : Color.btWarn.opacity(0.5), lineWidth: 1)
+                .stroke(inRange ? Color.btLine : Color.btWarn, lineWidth: inRange ? 1 : 1.5)
         )
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
     }
 
     private func openPinDetail(_ pin: Pin) {
