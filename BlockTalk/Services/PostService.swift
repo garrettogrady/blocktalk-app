@@ -1,9 +1,13 @@
 import Foundation
 
 struct PostService {
+    /// Embeds the author (username / number / home short code) so cards render
+    /// real identity instead of the placeholder default.
+    private static let postSelect = "*, author:users(username, user_number, home:neighborhoods(short_code))"
+
     func fetchPosts(neighborhoodId: UUID, sort: PostSort = .newest, limit: Int = 50) async throws -> [Post] {
         var query = supabase.from("posts")
-            .select()
+            .select(Self.postSelect)
             .eq("neighborhood_id", value: neighborhoodId.uuidString)
             .eq("status", value: "live")
             .limit(limit)
@@ -24,7 +28,7 @@ struct PostService {
 
     func fetchPostForPin(_ pinId: UUID) async throws -> Post? {
         let posts: [Post] = try await supabase.from("posts")
-            .select()
+            .select(Self.postSelect)
             .eq("pin_id", value: pinId.uuidString)
             .limit(1)
             .execute()

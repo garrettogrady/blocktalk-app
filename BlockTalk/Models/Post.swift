@@ -14,6 +14,9 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
     var reportCount: Int
     var status: PostStatus
     var createdAt: Date?
+    /// Embedded author (username / number / home short code) when the fetch
+    /// joins `users`. Nil for plain selects.
+    var author: PostAuthor?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,6 +32,24 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
         case reportCount = "report_count"
         case status
         case createdAt = "created_at"
+        case author
+    }
+}
+
+struct PostAuthor: Codable, Hashable, Sendable {
+    let username: String?
+    let userNumber: Int?
+    let home: HomeRef?
+
+    struct HomeRef: Codable, Hashable, Sendable {
+        let shortCode: String?
+        enum CodingKeys: String, CodingKey { case shortCode = "short_code" }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case username
+        case userNumber = "user_number"
+        case home
     }
 }
 

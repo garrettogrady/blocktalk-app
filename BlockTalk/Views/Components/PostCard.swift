@@ -14,6 +14,11 @@ struct PostCard: View {
     @State private var toastMessage = ""
     @State private var toastVisible = false
 
+    // Prefer the embedded author from the fetch; fall back to passed params
+    private var displayUsername: String { post.author?.username ?? username }
+    private var displayNumber: Int { post.author?.userNumber ?? userNumber }
+    private var displayHome: String? { post.author?.home?.shortCode ?? homeShortCode }
+
     var body: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
             // Meta row
@@ -84,15 +89,15 @@ struct PostCard: View {
 
     private var metaRow: some View {
         HStack(spacing: 6) {
-            Text("@\(username)")
+            Text("@\(displayUsername)")
                 .font(BTFont.bodySemibold(size: 11))
                 .foregroundStyle(Color.btText)
 
-            Text("#\(userNumber.formatted(.number))")
+            Text("#\(displayNumber.formatted(.number))")
                 .font(BTFont.monoBold(size: 11))
                 .foregroundStyle(Color.btLime)
 
-            if let shortCode = homeShortCode {
+            if let shortCode = displayHome {
                 HomeBadge(shortCode: shortCode)
             }
 
