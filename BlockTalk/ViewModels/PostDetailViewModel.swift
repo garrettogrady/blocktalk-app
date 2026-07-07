@@ -9,6 +9,10 @@ final class PostDetailViewModel {
     var replyText = ""
     var replyingTo: (id: UUID, username: String)?
 
+    var replyHasHate: Bool {
+        !replyText.isEmpty && LanguageCheck.containsHateSpeech(replyText)
+    }
+
     private let postService = PostService()
     private let replyService = ReplyService()
 

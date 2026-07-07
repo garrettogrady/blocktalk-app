@@ -73,6 +73,16 @@ struct PostDetailView: View {
         }
         .background(Color.btBg)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    ShareHelper.sharePost(post)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(Color.btText2)
+                }
+            }
+        }
         .sheet(isPresented: $showPreFrame) {
             LocationPreFrameSheet()
         }
@@ -110,26 +120,42 @@ struct PostDetailView: View {
                 .padding(.top, BTSpacing.sm)
             }
 
+            // Hate-speech warning
+            if viewModel.replyHasHate {
+                HStack(spacing: BTSpacing.xs) {
+                    Image(systemName: "exclamationmark.octagon")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.btPink)
+                    Text("Watch your language. BlockTalk doesn't allow hate speech.")
+                        .font(BTFont.bodySemibold(size: 12))
+                        .foregroundStyle(Color.btPink)
+                    Spacer()
+                }
+                .padding(.horizontal, BTSpacing.lg)
+                .padding(.top, BTSpacing.sm)
+            }
+
             HStack(alignment: .bottom, spacing: BTSpacing.md) {
                 TextField("Reply...", text: $viewModel.replyText, axis: .vertical)
                     .font(BTFont.body(size: 15))
-                    .foregroundStyle(Color.btText)
+                    .foregroundStyle(viewModel.replyHasHate ? Color.btPink : Color.btText)
                     .lineLimit(1...5)
                     .focused($replyFocused)
+                    .onChange(of: viewModel.replyText) { _, v in
+                        if v.count > replyLimit { viewModel.replyText = String(v.prefix(replyLimit)) }
+                    }
 
                 VStack(alignment: .trailing, spacing: BTSpacing.xs) {
-                    // Character counter
+                    // Character counter — muted 350 → orange 450 → pink 500
                     if viewModel.replyText.count >= replyWarnAt {
                         Text("\(viewModel.replyText.count)/\(replyLimit)")
                             .font(BTFont.mono(size: 10))
-                            .foregroundStyle(
-                                viewModel.replyText.count > replyLimit
-                                    ? Color.btPink : Color.btWarn
-                            )
+                            .foregroundStyle(replyCounterColor)
                     }
 
                     Button {
                         guard let userId = appState.currentUser?.id else { return }
+                        replyFocused = false
                         Task {
                             await viewModel.sendReply(postId: post.id, userId: userId)
                         }
@@ -151,7 +177,14 @@ struct PostDetailView: View {
 
     private var canSendReply: Bool {
         let trimmed = viewModel.replyText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && viewModel.replyText.count <= replyLimit
+        return !trimmed.isEmpty && viewModel.replyText.count <= replyLimit && !viewModel.replyHasHate
+    }
+
+    private var replyCounterColor: Color {
+        let n = viewModel.replyText.count
+        if n >= replyLimit { return .btPink }
+        if n >= 450 { return .btWarn }
+        return .btText3
     }
 }
 
