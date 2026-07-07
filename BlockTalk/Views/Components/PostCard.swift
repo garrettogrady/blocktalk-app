@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 struct PostCard: View {
@@ -21,6 +22,7 @@ struct PostCard: View {
     private var displayUsername: String { post.author?.username ?? username }
     private var displayNumber: Int { post.author?.userNumber ?? userNumber }
     private var displayHome: String? { post.author?.home?.shortCode ?? homeShortCode }
+    private var streetPin: Pin? { post.pinId.flatMap { id in Pin.samples.first { $0.id == id } } }
 
     var body: some View {
         // Reporter-side hide: a post you reported collapses to a tombstone
@@ -43,9 +45,27 @@ struct PostCard: View {
             // Meta row
             metaRow
 
-            // NOTE (§8, pending backend seed): street-comment 80px map snippet and
-            // the link-preview card render here in the mock; both need pin coords /
-            // linkPreview data from the backend, so they're wired in a later chunk.
+            // Street-comment map snippet (where the comment was dropped)
+            if let pin = streetPin, !isPreview {
+                Map(initialPosition: .region(MKCoordinateRegion(
+                    center: pin.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.0035)
+                )), interactionModes: []) {
+                    Annotation("", coordinate: pin.coordinate) {
+                        ZStack {
+                            Circle().fill(Color.btLime.opacity(0.25)).frame(width: 18, height: 18)
+                            Circle().fill(Color.btLime).frame(width: 9, height: 9)
+                                .overlay(Circle().stroke(Color.btBg, lineWidth: 1.5))
+                        }
+                    }
+                }
+                .frame(height: 80)
+                .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+                .colorScheme(.dark)
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLime.opacity(0.25), lineWidth: 1))
+                .allowsHitTesting(false)
+            }
 
             // Optional image — renders ABOVE the body to match the mock
             if let imageUrl = post.imageUrl, !imageUrl.isEmpty {
@@ -127,7 +147,7 @@ struct PostCard: View {
             }
 
             // Corner badge only on street comments with a resolved corner name
-            if post.isStreetComment, let corner = cornerName {
+            if let corner = streetPin?.cornerName ?? cornerName {
                 PinBadge(cornerName: corner)
             }
 

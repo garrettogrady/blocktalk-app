@@ -28,3 +28,4 @@ fastlane/test_output
 # Environment / secrets
 .env
 .env.*
+BlockTalk.xcodeproj/project.pbxproj

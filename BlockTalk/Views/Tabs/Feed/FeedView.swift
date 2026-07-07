@@ -137,22 +137,7 @@ struct FeedView: View {
                 }
             }
             .background(Color.btBg)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 0) {
-                        Text("block")
-                            .font(BTFont.display(size: 20))
-                            .foregroundStyle(Color.btText)
-                        Text(".")
-                            .font(BTFont.display(size: 20))
-                            .foregroundStyle(Color.btLime)
-                        Text("talk")
-                            .font(BTFont.display(size: 20))
-                            .foregroundStyle(Color.btText)
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Post.self) { post in
                 PostDetailView(post: post)
             }

@@ -73,9 +73,17 @@ struct PinDetailView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 if let cornerName = pin.cornerName {
-                    Text(cornerName)
+                    Text("Pin · \(cornerName)")
                         .font(BTFont.bodySemibold(size: 16))
                         .foregroundStyle(Color.btText)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    ShareHelper.sharePost(post)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(Color.btText2)
                 }
             }
         }

@@ -1,3 +1,4 @@
+import CoreLocation
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -24,8 +25,12 @@ struct ComposeView: View {
     var postingNeighborhood: Neighborhood?
     /// If set, creates a pin at this location before posting
     var pinDropLocation: CLLocationCoordinate2D?
+    /// Snapped corner name for the dropped pin (from the Map)
+    var pinCornerName: String?
     /// NYC-wide daily-prompt compose (from the Daily Prompt Feed)
     var nycWide: Bool = false
+
+    @State private var resolvedStreet: String?
 
     var body: some View {
         NavigationStack {
@@ -151,6 +156,8 @@ struct ComposeView: View {
                 // Rehydrate a stashed draft after the compose→map→compose round-trip
                 if viewModel.text.isEmpty { viewModel.text = appState.composeDraft }
                 textFocused = true
+                // No snapped corner → reverse-geocode to nearest street (never show coords)
+                if pinCornerName == nil, let coord = pinDropLocation { resolveStreet(coord) }
             }
             .onChange(of: viewModel.text) { _, newValue in
                 appState.composeDraft = newValue
@@ -184,12 +191,12 @@ struct ComposeView: View {
 
     private var scopeLabel: some View {
         let base = Text("Posting to ").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
-        if let coord = effectivePin {
-            let latlng = String(format: "%.4f, %.4f", coord.latitude, coord.longitude)
+        if effectivePin != nil {
+            let place = pinCornerName ?? resolvedStreet ?? "locating…"
             return base
                 + Text("📍 DROPPED PIN").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
                 + Text(" · ").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
-                + Text(latlng).font(BTFont.mono(size: 10.5)).foregroundColor(.btText)
+                + Text(place).font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btLime)
         } else if nycWide {
             return base
                 + Text("TODAY'S PROMPT").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
@@ -260,6 +267,14 @@ struct ComposeView: View {
 
     private func refocusInput() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { textFocused = true }
+    }
+
+    private func resolveStreet(_ coord: CLLocationCoordinate2D) {
+        CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: coord.latitude, longitude: coord.longitude)) { placemarks, _ in
+            if let p = placemarks?.first {
+                resolvedStreet = p.thoroughfare.map { "near \($0)" } ?? p.name
+            }
+        }
     }
 
     private var resolvedPostingNeighborhoodId: UUID? {

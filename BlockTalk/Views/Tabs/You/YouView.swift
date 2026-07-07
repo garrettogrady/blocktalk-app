@@ -39,9 +39,7 @@ struct YouView: View {
                 }
             }
             .background(Color.btBg)
-            .navigationTitle("You")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showNotifications) {
                 NotificationsView()
             }

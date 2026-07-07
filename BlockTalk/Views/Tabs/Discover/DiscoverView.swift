@@ -11,6 +11,14 @@ struct DiscoverView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
+                    // Title + search (grouped tight)
+                    VStack(alignment: .leading, spacing: BTSpacing.md) {
+                        Text("Discover")
+                            .font(BTFont.display(size: 30))
+                            .foregroundStyle(Color.btText)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.sm)
+
                     // Search bar
                     Button {
                         showSearch = true
@@ -33,6 +41,7 @@ struct DiscoverView: View {
                         )
                     }
                     .padding(.horizontal, BTSpacing.lg)
+                    }
 
                     // Trending section
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
@@ -90,12 +99,9 @@ struct DiscoverView: View {
 
                     Spacer(minLength: BTSpacing.xxxl)
                 }
-                .padding(.top, BTSpacing.md)
             }
             .background(Color.btBg)
-            .navigationTitle("Discover")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSearch) {
                 SearchView(scope: .global)
             }
