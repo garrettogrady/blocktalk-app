@@ -25,18 +25,23 @@ struct ReplyNode: View {
                 // Reply content
                 VStack(alignment: .leading, spacing: BTSpacing.sm) {
                     // Meta row
-                    HStack(spacing: BTSpacing.sm) {
-                        Text("BlockTalker")
-                            .font(BTFont.bodySemibold(size: 13))
-                            .foregroundStyle(Color.btText)
-
+                    HStack(spacing: BTSpacing.xs) {
+                        if let a = reply.author {
+                            Text("@\(a.username)")
+                                .font(BTFont.bodySemibold(size: 11))
+                                .foregroundStyle(Color.btText)
+                            Text("#\(a.userNumber.formatted(.number))")
+                                .font(BTFont.monoBold(size: 11))
+                                .foregroundStyle(Color.btLime)
+                            HomeBadge(shortCode: a.homeShortCode)
+                        }
                         if let createdAt = reply.createdAt {
+                            Text("·").foregroundStyle(Color.btText3)
                             Text(timeAgo(createdAt))
-                                .font(BTFont.body(size: 12))
+                                .font(BTFont.mono(size: 11))
                                 .foregroundStyle(Color.btText3)
                         }
-
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
 
                     // Body text
@@ -67,10 +72,12 @@ struct ReplyNode: View {
                                 .foregroundStyle(Color.btText3)
                         }
 
-                        // Reply pill (hidden at max depth)
+                        Spacer()
+
+                        // Reply pill (hidden at max depth), right-aligned
                         if reply.depth < maxDepth {
                             Button {
-                                onReplyTap?(reply.id, "BlockTalker")
+                                onReplyTap?(reply.id, reply.author?.username ?? "user")
                             } label: {
                                 HStack(spacing: BTSpacing.xs) {
                                     Image(systemName: "arrowshape.turn.up.left")
@@ -85,8 +92,6 @@ struct ReplyNode: View {
                                 .cornerRadius(BTRadius.full)
                             }
                         }
-
-                        Spacer()
                     }
                 }
                 .padding(BTSpacing.lg)
@@ -111,11 +116,11 @@ struct ReplyNode: View {
         let interval = Date().timeIntervalSince(date)
         let minutes = Int(interval / 60)
         if minutes < 1 { return "now" }
-        if minutes < 60 { return "\(minutes)m ago" }
+        if minutes < 60 { return "\(minutes)m" }
         let hours = minutes / 60
-        if hours < 24 { return "\(hours)h ago" }
+        if hours < 24 { return "\(hours)h" }
         let days = hours / 24
-        return "\(days)d ago"
+        return "\(days)d"
     }
 }
 

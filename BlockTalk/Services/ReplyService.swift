@@ -2,14 +2,8 @@ import Foundation
 
 struct ReplyService {
     func fetchReplies(postId: UUID) async throws -> [Reply] {
-        let flat: [Reply] = try await supabase.from("replies")
-            .select()
-            .eq("post_id", value: postId.uuidString)
-            .order("created_at", ascending: true)
-            .execute()
-            .value
-
-        return buildTree(from: flat)
+        // Bundled mock data (no backend)
+        Reply.sampleThread
     }
 
     func createReply(postId: UUID, userId: UUID, text: String, parentReplyId: UUID? = nil, depth: Int = 0) async throws -> Reply {
