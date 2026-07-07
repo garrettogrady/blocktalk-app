@@ -10,21 +10,20 @@ struct PostCard: View {
 
     @Environment(AppState.self) private var appState
     @State private var showReport = false
-    @State private var showEnrollmentToast = false
+    @State private var enrolled = false
+    @State private var toastMessage = ""
+    @State private var toastVisible = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
             // Meta row
             metaRow
 
-            // Body text
-            Text(post.text)
-                .font(BTFont.body(size: 15))
-                .foregroundStyle(Color.btText)
-                .lineSpacing(4)
-                .multilineTextAlignment(.leading)
+            // NOTE (§8, pending backend seed): street-comment 80px map snippet and
+            // the link-preview card render here in the mock; both need pin coords /
+            // linkPreview data from the backend, so they're wired in a later chunk.
 
-            // Optional image
+            // Optional image — renders ABOVE the body to match the mock
             if let imageUrl = post.imageUrl, !imageUrl.isEmpty {
                 AsyncImage(url: URL(string: imageUrl)) { phase in
                     switch phase {
@@ -32,9 +31,10 @@ struct PostCard: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(maxHeight: 220)
-                            .cornerRadius(BTRadius.md)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 220)
                             .clipped()
+                            .cornerRadius(BTRadius.md)
                     case .failure:
                         EmptyView()
                     default:
@@ -46,13 +46,27 @@ struct PostCard: View {
                 }
             }
 
+            // Body text
+            Text(post.text)
+                .font(BTFont.body(size: 13))
+                .foregroundStyle(Color.btText)
+                .lineSpacing(4)
+                .multilineTextAlignment(.leading)
+
             // Action row (hidden in preview mode)
             if !isPreview {
                 actionRow
+
+                if toastVisible {
+                    enrollmentToast
+                        .transition(.opacity)
+                }
             }
         }
         .padding(BTSpacing.lg)
-        .background(Color.btBg)
+        .background(
+            post.isStreetComment ? Color.btLime.opacity(0.04) : Color.btBg
+        )
         .overlay(alignment: .leading) {
             // Street comment variant: 3px lime left border
             if post.isStreetComment {
@@ -61,142 +75,143 @@ struct PostCard: View {
                     .frame(width: 3)
             }
         }
-        .background(
-            post.isStreetComment ? Color.btLime.opacity(0.04) : Color.clear
-        )
         .sheet(isPresented: $showReport) {
             ReportModalView(postId: post.id)
-        }
-        .overlay(alignment: .top) {
-            if showEnrollmentToast {
-                enrollmentToast
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
     }
 
     // MARK: - Meta Row
 
     private var metaRow: some View {
-        HStack(spacing: BTSpacing.sm) {
-            Text(username)
-                .font(BTFont.bodySemibold(size: 13))
+        HStack(spacing: 6) {
+            Text("@\(username)")
+                .font(BTFont.bodySemibold(size: 11))
                 .foregroundStyle(Color.btText)
 
-            Text("#\(String(format: "%04d", userNumber))")
-                .font(BTFont.mono(size: 11))
-                .foregroundStyle(Color.btText3)
+            Text("#\(userNumber.formatted(.number))")
+                .font(BTFont.monoBold(size: 11))
+                .foregroundStyle(Color.btLime)
 
-            // Home badge
             if let shortCode = homeShortCode {
                 HomeBadge(shortCode: shortCode)
             }
 
-            // Corner badge for street comments
-            if let corner = cornerName ?? post.pinId.map({ _ in "Corner" }) {
+            // Corner badge only on street comments with a resolved corner name
+            if post.isStreetComment, let corner = cornerName {
                 PinBadge(cornerName: corner)
             }
 
-            Spacer()
-
-            // Time ago
             if let createdAt = post.createdAt {
+                Text("·")
+                    .foregroundStyle(Color.btText3)
                 Text(timeAgo(createdAt))
-                    .font(BTFont.body(size: 12))
+                    .font(BTFont.mono(size: 11))
                     .foregroundStyle(Color.btText3)
             }
+
+            Spacer(minLength: 0)
         }
     }
 
     // MARK: - Action Row
 
     private var actionRow: some View {
-        HStack(spacing: BTSpacing.lg) {
+        HStack(spacing: 6) {
             // Vote pills
             VotePills(
                 score: post.score,
-                onUpvote: {
-                    // Handle upvote
-                },
-                onDownvote: {
-                    // Handle downvote
-                }
+                onUpvote: {},
+                onDownvote: {}
             )
 
-            // Bell button
-            Button {
-                withAnimation {
-                    showEnrollmentToast = true
-                }
-                Task {
-                    try? await Task.sleep(for: .seconds(2))
-                    withAnimation {
-                        showEnrollmentToast = false
-                    }
-                }
-            } label: {
-                Image(systemName: "bell")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.btText3)
+            // Bell — enroll toggle + haptic + toast
+            actionButton(
+                systemName: enrolled ? "bell.fill" : "bell",
+                active: enrolled,
+                activeColor: .btLime,
+                action: toggleBell
+            )
+
+            // Share — native share sheet
+            actionButton(systemName: "square.and.arrow.up") {
+                ShareHelper.sharePost(post)
             }
 
-            // Share button
-            Button {
-                // Share action
-            } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.btText3)
-            }
-
-            // Flag button (hidden on own posts)
+            // Flag (hidden on own posts)
             if appState.currentUser?.id != post.userId {
-                Button {
+                actionButton(systemName: "flag") {
                     showReport = true
-                } label: {
-                    Image(systemName: "flag")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.btText3)
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 0)
 
-            // Reply count
-            HStack(spacing: BTSpacing.xs) {
-                Image(systemName: "bubble.left")
-                    .font(.system(size: 12))
-                Text("\(post.replyCount)")
-                    .font(BTFont.mono(size: 12))
-            }
-            .foregroundStyle(Color.btText3)
+            // Reply count — "N replies", no icon
+            (Text("\(post.replyCount)").foregroundStyle(Color.btText)
+                + Text(" replies").foregroundStyle(Color.btText2))
+                .font(BTFont.monoBold(size: 11))
+        }
+    }
+
+    private func actionButton(systemName: String, active: Bool = false, activeColor: Color = .btText2, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13))
+                .foregroundStyle(active ? activeColor : Color.btText2)
+                .frame(width: 30, height: 30)
+                .background(active ? activeColor.opacity(0.12) : Color.btSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: BTRadius.sm)
+                        .stroke(active ? activeColor.opacity(0.45) : Color.btLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func toggleBell() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        enrolled.toggle()
+        toastMessage = enrolled
+            ? "you're in — we'll ping you when something moves"
+            : "you're out — we'll leave this one alone"
+        withAnimation { toastVisible = true }
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation { toastVisible = false }
         }
     }
 
     // MARK: - Enrollment Toast
 
     private var enrollmentToast: some View {
-        Text("You'll be notified about this post")
-            .font(BTFont.body(size: 13))
-            .foregroundStyle(Color.btBg)
-            .padding(.horizontal, BTSpacing.lg)
-            .padding(.vertical, BTSpacing.sm)
-            .background(Color.btLime)
-            .cornerRadius(BTRadius.full)
-            .padding(.top, BTSpacing.sm)
+        HStack(spacing: BTSpacing.xs) {
+            Image(systemName: enrolled ? "bell.fill" : "bell.slash")
+                .font(.system(size: 11))
+                .foregroundStyle(Color.btLime)
+            Text(toastMessage)
+                .font(BTFont.bodyMedium(size: 11))
+                .foregroundStyle(Color.btText)
+        }
+        .padding(.horizontal, BTSpacing.sm)
+        .padding(.vertical, 5)
+        .background(Color.btLime.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.sm)
+                .stroke(Color.btLime.opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
     }
 
     // MARK: - Time Ago
 
     private func timeAgo(_ date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
-        let minutes = Int(interval / 60)
-        if minutes < 1 { return "now" }
+        let minutes = Int(Date().timeIntervalSince(date) / 60)
+        if minutes < 1 { return "just now" }
         if minutes < 60 { return "\(minutes)m ago" }
         let hours = minutes / 60
         if hours < 24 { return "\(hours)h ago" }
-        let days = hours / 24
-        return "\(days)d ago"
+        return "\(hours / 24)d ago"
     }
 }
 
@@ -215,8 +230,8 @@ struct PostCard: View {
                 reportCount: 0,
                 status: .live
             ),
-            username: "BlockTalker",
-            userNumber: 42,
+            username: "streetrat",
+            userNumber: 4827,
             homeShortCode: "LES"
         )
         .environment(AppState())
