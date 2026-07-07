@@ -65,7 +65,7 @@ struct DailyPromptFeedView: View {
                 }
             }
             .sheet(isPresented: $showCompose) {
-                ComposeView()
+                ComposeView(nycWide: true)
             }
             .sheet(isPresented: $showPreFrame) {
                 LocationPreFrameSheet()
