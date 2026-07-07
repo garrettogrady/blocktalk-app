@@ -2,6 +2,7 @@ import SwiftUI
 
 struct YouView: View {
     @Environment(AppState.self) private var appState
+    @Environment(OfflineStore.self) private var offline
     @State private var showNotifications = false
     @State private var showSettings = false
     @State private var showFeedback = false
@@ -28,6 +29,10 @@ struct YouView: View {
 
                     // Footer actions
                     footerActions
+                        .padding(.horizontal, BTSpacing.lg)
+
+                    // 🧪 Offline demo debug card
+                    offlineDemoCard
                         .padding(.horizontal, BTSpacing.lg)
 
                     Spacer(minLength: BTSpacing.xxxl)
@@ -112,6 +117,56 @@ struct YouView: View {
             RoundedRectangle(cornerRadius: BTRadius.md)
                 .stroke(Color.btLine, lineWidth: 1)
         )
+    }
+
+    // MARK: - Offline Demo (debug)
+
+    private var offlineDemoCard: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.md) {
+            Text("🧪 OFFLINE DEMO")
+                .font(BTFont.monoBold(size: 11))
+                .tracking(1)
+                .foregroundStyle(Color.btText3)
+
+            debugButton(
+                offline.isOffline ? "Go back online (flushes queue)" : "Toggle offline",
+                icon: offline.isOffline ? "wifi" : "wifi.slash",
+                tint: offline.isOffline ? .btLime : .btWarn
+            ) { offline.toggleOffline() }
+
+            debugButton(
+                "Force-expire pending (\(offline.pending.count))",
+                icon: "clock.badge.exclamationmark",
+                tint: .btPink,
+                disabled: offline.pending.isEmpty
+            ) { offline.forceExpire() }
+
+            debugButton("Reset offline state", icon: "arrow.counterclockwise", tint: .btText2) {
+                offline.reset()
+            }
+
+            Text("Posts made offline queue for \(Int(OfflineStore.graceSeconds))s, then discard.")
+                .font(BTFont.body(size: 11))
+                .foregroundStyle(Color.btText3)
+        }
+        .padding(BTSpacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.btSurface)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+    }
+
+    private func debugButton(_ title: String, icon: String, tint: Color, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: icon).font(.system(size: 13)).frame(width: 20)
+                Text(title).font(BTFont.bodyMedium(size: 14))
+                Spacer()
+            }
+            .foregroundStyle(disabled ? Color.btText3 : tint)
+            .padding(.vertical, BTSpacing.xs)
+        }
+        .disabled(disabled)
     }
 
     private func footerButton(icon: String, title: String, isDestructive: Bool = false, action: @escaping () -> Void) -> some View {

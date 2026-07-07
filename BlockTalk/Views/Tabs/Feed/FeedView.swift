@@ -1,8 +1,10 @@
+import Combine
 import SwiftUI
 
 struct FeedView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
+    @Environment(OfflineStore.self) private var offline
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
@@ -23,6 +25,11 @@ struct FeedView: View {
                         // Location gate banner at top when location not granted
                         LocationGateBanner(showPreFrame: $showPreFrame)
 
+                        // Offline banner
+                        if offline.isOffline {
+                            OfflineBanner(pendingPostCount: offline.pending.count)
+                        }
+
                         // Daily prompt card
                         if let prompt = viewModel.dailyPrompt {
                             DailyPromptCard(prompt: prompt)
@@ -42,6 +49,40 @@ struct FeedView: View {
                         )
                         .padding(.horizontal, BTSpacing.lg)
                         .padding(.top, BTSpacing.md)
+
+                        // Offline: discarded (top) → pending → flushed, above the feed
+                        if !offline.discarded.isEmpty {
+                            VStack(spacing: BTSpacing.md) {
+                                ForEach(offline.discarded) { q in
+                                    DiscardedPostRow(post: q.post) { offline.dismissDiscarded(q.id) }
+                                }
+                            }
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.md)
+                        }
+
+                        if !offline.pending.isEmpty || !offline.flushed.isEmpty {
+                            LazyVStack(spacing: 0) {
+                                ForEach(offline.pending) { q in
+                                    PostCard(post: q.post, pending: true,
+                                             username: appState.currentUser?.username ?? "BlockTalker",
+                                             userNumber: appState.currentUser?.userNumber ?? 0,
+                                             homeShortCode: appState.viewingNeighborhood?.shortCode)
+                                    Divider().background(Color.btLine)
+                                }
+                                ForEach(offline.flushed) { post in
+                                    NavigationLink(value: post) {
+                                        PostCard(post: post,
+                                                 username: appState.currentUser?.username ?? "BlockTalker",
+                                                 userNumber: appState.currentUser?.userNumber ?? 0,
+                                                 homeShortCode: appState.viewingNeighborhood?.shortCode)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().background(Color.btLine)
+                                }
+                            }
+                            .padding(.top, BTSpacing.sm)
+                        }
 
                         // Posts
                         if viewModel.isLoading {
@@ -82,6 +123,10 @@ struct FeedView: View {
                 }
                 .refreshable {
                     await viewModel.refresh()
+                }
+                .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+                    // Age pending posts past the grace window into discarded
+                    offline.expireStale()
                 }
 
                 // Bottom bar: compose if location granted, location gate if not

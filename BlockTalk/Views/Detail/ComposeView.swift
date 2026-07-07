@@ -5,6 +5,7 @@ import UIKit
 struct ComposeView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
+    @Environment(OfflineStore.self) private var offline
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ComposeViewModel()
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -168,7 +169,7 @@ struct ComposeView: View {
                 Text(status)
                     .font(BTFont.monoBold(size: 9.5))
                     .tracking(0.6)
-                    .foregroundStyle(Color.btLime)
+                    .foregroundStyle(offline.isOffline ? Color.btWarn : Color.btLime)
             }
         }
         .padding(.horizontal, BTSpacing.md)
@@ -201,6 +202,7 @@ struct ComposeView: View {
 
     private var statusText: String? {
         if effectivePin != nil { return nil }
+        if offline.isOffline { return "📡 QUEUED LOCALLY" }
         return nycWide ? "▲ IN NYC" : "▲ IN-RANGE"
     }
 
@@ -283,6 +285,23 @@ struct ComposeView: View {
             print("Cannot post: no neighborhood resolved")
             return
         }
+
+        // Offline: queue the post locally instead of sending (§16). Pin posts
+        // queue too but hold the pin off the map until send.
+        if offline.isOffline {
+            let body = viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let queued = Post(
+                id: UUID(), userId: userId, neighborhoodId: neighborhoodId,
+                text: body, isDailyPrompt: false, score: 0, replyCount: 0,
+                reportCount: 0, status: .live, createdAt: Date()
+            )
+            offline.enqueue(queued)
+            appState.composeDraft = ""
+            appState.selectedTab = 0
+            dismiss()
+            return
+        }
+
         Task {
             if let pinLocation = effectivePin {
                 let pinService = PinService()

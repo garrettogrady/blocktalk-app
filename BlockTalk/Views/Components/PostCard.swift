@@ -3,6 +3,7 @@ import SwiftUI
 struct PostCard: View {
     let post: Post
     var isPreview: Bool = false
+    var pending: Bool = false
     var username: String = "BlockTalker"
     var userNumber: Int = 0
     var homeShortCode: String?
@@ -76,8 +77,8 @@ struct PostCard: View {
                 .lineSpacing(4)
                 .multilineTextAlignment(.leading)
 
-            // Action row (hidden in preview mode)
-            if !isPreview {
+            // Action row (hidden in preview + pending modes)
+            if !isPreview && !pending {
                 actionRow
 
                 if toastVisible {
@@ -87,8 +88,11 @@ struct PostCard: View {
             }
         }
         .padding(BTSpacing.lg)
+        .opacity(pending ? 0.7 : 1)
         .background(
-            post.isStreetComment ? Color.btLime.opacity(0.04) : Color.btBg
+            pending
+                ? Color.btWarn.opacity(0.03)
+                : (post.isStreetComment ? Color.btLime.opacity(0.04) : Color.btBg)
         )
         .overlay(alignment: .leading) {
             // Street comment variant: 3px lime left border
@@ -127,7 +131,9 @@ struct PostCard: View {
                 PinBadge(cornerName: corner)
             }
 
-            if let createdAt = post.createdAt {
+            if pending {
+                pendingPill
+            } else if let createdAt = post.createdAt {
                 Text("·")
                     .foregroundStyle(Color.btText3)
                 Text(timeAgo(createdAt))
@@ -237,6 +243,22 @@ struct PostCard: View {
             RoundedRectangle(cornerRadius: BTRadius.sm)
                 .stroke(Color.btLime.opacity(0.35), lineWidth: 1)
         )
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+    }
+
+    private var pendingPill: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 9))
+            Text("PENDING · sends when online")
+                .font(BTFont.monoBold(size: 9))
+                .tracking(0.6)
+        }
+        .foregroundStyle(Color.btWarn)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Color.btWarn.opacity(0.1))
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.sm).stroke(Color.btWarn.opacity(0.35), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
     }
 
