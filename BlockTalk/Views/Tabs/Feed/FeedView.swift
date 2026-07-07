@@ -7,6 +7,13 @@ struct FeedView: View {
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
     @State private var showPreFrame = false
+    @State private var showSearch = false
+
+    private var isViewingHome: Bool {
+        guard let homeId = appState.currentUser?.homeNeighborhoodId,
+              let viewingId = appState.viewingNeighborhood?.id else { return false }
+        return homeId == viewingId
+    }
 
     var body: some View {
         NavigationStack {
@@ -145,35 +152,62 @@ struct FeedView: View {
             .sheet(isPresented: $showPreFrame) {
                 LocationPreFrameSheet()
             }
+            .sheet(isPresented: $showSearch) {
+                SearchView()
+            }
         }
     }
 
     // MARK: - Location Row
 
     private var locationRow: some View {
-        Button {
-            showNeighborhoodPicker = true
-        } label: {
-            HStack(spacing: BTSpacing.sm) {
-                Text("VIEWING")
-                    .font(BTFont.mono(size: 10))
-                    .foregroundStyle(Color.btText3)
+        HStack(spacing: BTSpacing.sm) {
+            Button {
+                showNeighborhoodPicker = true
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("VIEWING")
+                        .font(BTFont.mono(size: 10))
+                        .foregroundStyle(Color.btText3)
 
-                Image(systemName: "house.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.btHouse)
+                    HStack(spacing: BTSpacing.sm) {
+                        // 🏠 only when viewing == home neighborhood
+                        if isViewingHome {
+                            Image(systemName: "house.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.btHouse)
+                        }
 
-                Text(appState.viewingNeighborhood?.name ?? "Locating...")
-                    .font(BTFont.display(size: 18))
-                    .foregroundStyle(Color.btText)
+                        Text(appState.viewingNeighborhood?.name ?? "Locating...")
+                            .font(BTFont.display(size: 18))
+                            .foregroundStyle(Color.btText)
 
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.btText3)
-
-                Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.btText3)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, BTSpacing.sm)
             }
-            .padding(.vertical, BTSpacing.sm)
+            .buttonStyle(.plain)
+
+            // 38×38 within-neighborhood search
+            Button {
+                showSearch = true
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Color.btText2)
+                    .frame(width: 38, height: 38)
+                    .background(Color.btSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: BTRadius.md)
+                            .stroke(Color.btLine, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+            }
+            .buttonStyle(.plain)
         }
     }
 

@@ -26,9 +26,12 @@ struct DailyPromptCard: View {
 
                     Spacer()
 
-                    Text(prompt.timeRemaining)
-                        .font(BTFont.mono(size: 10))
-                        .foregroundStyle(Color.btBg.opacity(0.7))
+                    // Live countdown — re-renders every 30s from activeUntil
+                    TimelineView(.periodic(from: .now, by: 30)) { _ in
+                        Text(prompt.timeRemaining)
+                            .font(BTFont.mono(size: 10))
+                            .foregroundStyle(Color.btBg.opacity(0.7))
+                    }
                 }
 
                 // Question
