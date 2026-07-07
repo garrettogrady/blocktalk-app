@@ -17,6 +17,16 @@ struct MapTabView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.024)
         )
     )
+    @State private var showPreFrame = false
+
+    // Known LES corners for the 200m drop-mode snap
+    private let knownCorners: [(name: String, coord: CLLocationCoordinate2D)] = [
+        ("Stanton & Norfolk", CLLocationCoordinate2D(latitude: 40.7211, longitude: -73.9871)),
+        ("Essex & Rivington", CLLocationCoordinate2D(latitude: 40.7196, longitude: -73.9878)),
+        ("Houston & Ludlow", CLLocationCoordinate2D(latitude: 40.7222, longitude: -73.9877)),
+        ("Delancey & Allen", CLLocationCoordinate2D(latitude: 40.7186, longitude: -73.9898)),
+        ("Clinton & Delancey", CLLocationCoordinate2D(latitude: 40.7181, longitude: -73.9862)),
+    ]
 
     var body: some View {
         ZStack {
@@ -69,8 +79,12 @@ struct MapTabView: View {
                     }
                 }
 
-                // User location
-                UserAnnotation()
+                // House-blue "you are here" dot — only once location is granted
+                if let loc = locationService.currentLocation {
+                    Annotation("", coordinate: loc) {
+                        HouseBlueDot()
+                    }
+                }
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .colorScheme(.dark)
@@ -82,38 +96,42 @@ struct MapTabView: View {
 
             // Top pills
             VStack {
-                HStack(spacing: BTSpacing.sm) {
-                    // Location pill
-                    if let neighborhood = locationService.currentNeighborhood {
-                        HStack(spacing: BTSpacing.xs) {
-                            Circle()
-                                .fill(Color.btLime)
-                                .frame(width: 6, height: 6)
-                            Text("You're in \(neighborhood.shortCode)")
-                                .font(BTFont.mono(size: 11))
-                                .foregroundStyle(Color.btText)
-                            Text(viewModel.formatRadius())
-                                .font(BTFont.monoBold(size: 11))
-                                .foregroundStyle(Color.btText2)
-                        }
-                        .padding(.horizontal, BTSpacing.md)
-                        .padding(.vertical, BTSpacing.sm)
-                        .background(Color.btSurface.opacity(0.9))
-                        .cornerRadius(BTRadius.full)
-                    } else {
-                        Text(viewModel.formatRadius())
-                            .font(BTFont.mono(size: 11))
-                            .foregroundStyle(Color.btText)
+                if viewModel.isDropMode {
+                    dropModePill
+                        .padding(.horizontal, BTSpacing.lg)
+                        .padding(.top, BTSpacing.sm)
+                } else {
+                    HStack(spacing: BTSpacing.sm) {
+                        // Location pill
+                        if let neighborhood = locationService.currentNeighborhood {
+                            HStack(spacing: BTSpacing.xs) {
+                                Circle()
+                                    .fill(Color.btLime)
+                                    .frame(width: 6, height: 6)
+                                Text("You're in \(neighborhood.shortCode)")
+                                    .font(BTFont.mono(size: 11))
+                                    .foregroundStyle(Color.btText)
+                                Text(viewModel.formatRadius())
+                                    .font(BTFont.monoBold(size: 11))
+                                    .foregroundStyle(Color.btText2)
+                            }
                             .padding(.horizontal, BTSpacing.md)
                             .padding(.vertical, BTSpacing.sm)
                             .background(Color.btSurface.opacity(0.9))
                             .cornerRadius(BTRadius.full)
-                    }
+                        } else {
+                            Text(viewModel.formatRadius())
+                                .font(BTFont.mono(size: 11))
+                                .foregroundStyle(Color.btText)
+                                .padding(.horizontal, BTSpacing.md)
+                                .padding(.vertical, BTSpacing.sm)
+                                .background(Color.btSurface.opacity(0.9))
+                                .cornerRadius(BTRadius.full)
+                        }
 
-                    Spacer()
+                        Spacer()
 
-                    // Hint pill
-                    if !viewModel.isDropMode {
+                        // Hint pill
                         Text("tap a neighborhood name to open its feed")
                             .font(BTFont.body(size: 11))
                             .foregroundStyle(Color.btText2)
@@ -122,9 +140,9 @@ struct MapTabView: View {
                             .background(Color.btSurface.opacity(0.9))
                             .cornerRadius(BTRadius.full)
                     }
+                    .padding(.horizontal, BTSpacing.lg)
+                    .padding(.top, BTSpacing.sm)
                 }
-                .padding(.horizontal, BTSpacing.lg)
-                .padding(.top, BTSpacing.sm)
 
                 Spacer()
             }
@@ -153,16 +171,17 @@ struct MapTabView: View {
                         }
 
                         Button {
-                            showComposeForPin = true
+                            if dropInRange { showComposeForPin = true }
                         } label: {
-                            Text("Drop here")
+                            Text(dropInRange ? "Drop pin here" : "Out of range")
                                 .font(BTFont.bodySemibold(size: 15))
-                                .foregroundStyle(Color.btBg)
+                                .foregroundStyle(dropInRange ? Color.btBg : Color.btText3)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, BTSpacing.md)
-                                .background(Color.btLime)
+                                .background(dropInRange ? Color.btLime : Color.btSurface2)
                                 .cornerRadius(BTRadius.md)
                         }
+                        .disabled(!dropInRange)
                     }
                     .padding(.horizontal, BTSpacing.xxl)
                     .padding(.bottom, BTSpacing.xxxl)
@@ -197,17 +216,19 @@ struct MapTabView: View {
                         .padding(.horizontal, BTSpacing.lg)
                         .padding(.bottom, BTSpacing.xxxl)
                     } else {
-                        // Location gate for map
+                        // Location gate FAB — routes through the shared pre-frame
                         Button {
-                            locationService.requestPermission()
+                            locationGateTap(locationService, showPreFrame: $showPreFrame)
                         } label: {
                             HStack(spacing: BTSpacing.sm) {
                                 Image(systemName: "location.slash")
                                     .font(.system(size: 14, weight: .semibold))
-                                Text("Enable location to post")
+                                Text(locationService.permissionState == .denied
+                                     ? "Open Settings · location off"
+                                     : "Enable location to post")
                                     .font(BTFont.bodySemibold(size: 14))
                             }
-                            .foregroundStyle(Color.btBg)
+                            .foregroundStyle(Color.btOnAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, BTSpacing.md)
                             .background(Color.btWarn)
@@ -224,6 +245,9 @@ struct MapTabView: View {
                 postingNeighborhood: appState.viewingNeighborhood ?? locationService.currentNeighborhood,
                 pinDropLocation: mapCenter
             )
+        }
+        .sheet(isPresented: $showPreFrame) {
+            LocationPreFrameSheet()
         }
         .sheet(isPresented: $showPinDetail) {
             if let detail = selectedPinDetail {
@@ -273,6 +297,49 @@ struct MapTabView: View {
             }
         }
         return false
+    }
+
+    /// The polygon the user is currently in (drives the pin-drop geofence)
+    private var activePolygon: NeighborhoodPolygon? {
+        polygons.first { isCurrentNeighborhood($0.name) }
+    }
+
+    private var dropInRange: Bool {
+        activePolygon?.contains(mapCenter) ?? true
+    }
+
+    private func snappedCorner(_ coord: CLLocationCoordinate2D) -> String? {
+        let here = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+        for c in knownCorners {
+            let there = CLLocation(latitude: c.coord.latitude, longitude: c.coord.longitude)
+            if here.distance(from: there) <= 200 { return c.name }
+        }
+        return nil
+    }
+
+    private var dropModePill: some View {
+        let corner = snappedCorner(mapCenter)
+        let inRange = dropInRange
+        return VStack(spacing: 2) {
+            Text(inRange ? "📍 SELECT A LOCATION" : "📍 OUT OF RANGE")
+                .font(BTFont.monoBold(size: 11))
+                .tracking(0.6)
+                .foregroundStyle(inRange ? Color.btText : Color.btWarn)
+            Text(inRange
+                 ? (corner ?? "drag the map to position the pin")
+                 : "you can only drop pins in your current neighborhood")
+                .font(BTFont.body(size: 10.5))
+                .foregroundStyle(inRange && corner != nil ? Color.btLime : Color.btText2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, BTSpacing.lg)
+        .padding(.vertical, BTSpacing.sm)
+        .background((inRange ? Color.btSurface : Color.btWarn.opacity(0.15)).opacity(0.95))
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.lg)
+                .stroke(inRange ? Color.clear : Color.btWarn.opacity(0.5), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
     }
 
     private func openPinDetail(_ pin: Pin) {
@@ -354,6 +421,32 @@ struct PulsatingPinView: View {
                 .easeInOut(duration: 1.8)
                 .repeatForever(autoreverses: false)
             ) {
+                isPulsing = true
+            }
+        }
+    }
+}
+
+// MARK: - House-blue "you are here" dot
+
+struct HouseBlueDot: View {
+    @State private var isPulsing = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.btHouse.opacity(0.18))
+                .frame(width: 30, height: 30)
+                .scaleEffect(isPulsing ? 1.7 : 1.0)
+                .opacity(isPulsing ? 0 : 0.6)
+            Circle()
+                .fill(Color.btHouse)
+                .frame(width: 14, height: 14)
+                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                .shadow(color: Color.btHouse.opacity(0.6), radius: 4)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: false)) {
                 isPulsing = true
             }
         }

@@ -21,6 +21,27 @@ struct NeighborhoodPolygon: Identifiable {
         let lng = ring.map(\.longitude).reduce(0, +) / Double(ring.count)
         return CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
+
+    /// Ray-casting point-in-polygon over any ring (used for the pin-drop geofence)
+    func contains(_ coord: CLLocationCoordinate2D) -> Bool {
+        rings.contains { Self.pointInRing(coord, $0) }
+    }
+
+    static func pointInRing(_ p: CLLocationCoordinate2D, _ ring: [CLLocationCoordinate2D]) -> Bool {
+        guard ring.count > 2 else { return false }
+        var inside = false
+        var j = ring.count - 1
+        for i in 0..<ring.count {
+            let (xi, yi) = (ring[i].longitude, ring[i].latitude)
+            let (xj, yj) = (ring[j].longitude, ring[j].latitude)
+            if ((yi > p.latitude) != (yj > p.latitude)) &&
+                (p.longitude < (xj - xi) * (p.latitude - yi) / (yj - yi) + xi) {
+                inside.toggle()
+            }
+            j = i
+        }
+        return inside
+    }
 }
 
 enum NeighborhoodPolygonLoader {
