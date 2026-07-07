@@ -165,6 +165,7 @@ struct FeedView: View {
                 }
                 // Sync viewModel with appState on appear
                 viewModel.viewingNeighborhood = appState.viewingNeighborhood
+                await viewModel.loadDailyPrompt()
                 if viewModel.posts.isEmpty {
                     await viewModel.loadPosts()
                 }

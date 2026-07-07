@@ -104,6 +104,22 @@ enum PostSort: String, CaseIterable {
     case mostDisliked = "Most Disliked"
 }
 
+struct DailyPromptService {
+    /// The currently-active prompt (now within [active_from, active_until]).
+    func fetchActivePrompt() async throws -> DailyPrompt? {
+        let nowISO = ISO8601DateFormatter().string(from: Date())
+        let prompts: [DailyPrompt] = try await supabase.from("daily_prompts")
+            .select()
+            .lte("active_from", value: nowISO)
+            .gte("active_until", value: nowISO)
+            .order("active_from", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return prompts.first
+    }
+}
+
 enum TimeFilter: String, CaseIterable {
     case day = "Last 24 hours"
     case week = "Last week"

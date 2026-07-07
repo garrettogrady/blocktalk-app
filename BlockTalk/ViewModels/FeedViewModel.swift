@@ -11,6 +11,16 @@ final class FeedViewModel {
     var dailyPrompt: DailyPrompt?
 
     private let postService = PostService()
+    private let promptService = DailyPromptService()
+
+    /// Fetch the active daily prompt (was never wired — the card couldn't render)
+    func loadDailyPrompt() async {
+        do {
+            dailyPrompt = try await promptService.fetchActivePrompt()
+        } catch {
+            print("Failed to load daily prompt: \(error)")
+        }
+    }
 
     func loadPosts() async {
         guard let neighborhood = viewingNeighborhood else { return }
