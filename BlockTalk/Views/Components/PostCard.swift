@@ -9,6 +9,7 @@ struct PostCard: View {
     var cornerName: String?
 
     @Environment(AppState.self) private var appState
+    @Environment(ModerationStore.self) private var moderation
     @State private var showReport = false
     @State private var enrolled = false
     @State private var toastMessage = ""
@@ -21,6 +22,22 @@ struct PostCard: View {
     private var displayHome: String? { post.author?.home?.shortCode ?? homeShortCode }
 
     var body: some View {
+        // Reporter-side hide: a post you reported collapses to a tombstone
+        if !isPreview && moderation.isHidden(post.id) {
+            Tombstone(
+                variant: .reporter,
+                reasonShort: moderation.reasonShort(post.id),
+                bodyText: post.text,
+                onShowAnyway: { moderation.toggleShowAnyway(post.id) }
+            )
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.vertical, BTSpacing.sm)
+        } else {
+            cardContent
+        }
+    }
+
+    private var cardContent: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
             // Meta row
             metaRow
@@ -83,6 +100,7 @@ struct PostCard: View {
         }
         .sheet(isPresented: $showReport) {
             ReportModalView(postId: post.id) { short in
+                moderation.report(postId: post.id, reasonShort: short)
                 showToast("reported for \(short) · we'll review", icon: "flag.fill")
             }
         }
@@ -145,10 +163,14 @@ struct PostCard: View {
                 ShareHelper.sharePost(post)
             }
 
-            // Flag (hidden on own posts)
+            // Flag (hidden on own posts; filled+pink once reported)
             if appState.currentUser?.id != post.userId {
-                actionButton(systemName: "flag") {
-                    showReport = true
+                if moderation.isReported(post.id) {
+                    actionButton(systemName: "flag.fill", active: true, activeColor: .btPink) {}
+                } else {
+                    actionButton(systemName: "flag") {
+                        showReport = true
+                    }
                 }
             }
 
@@ -250,5 +272,6 @@ struct PostCard: View {
             homeShortCode: "LES"
         )
         .environment(AppState())
+        .environment(ModerationStore())
     }
 }

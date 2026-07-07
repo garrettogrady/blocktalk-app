@@ -4,6 +4,7 @@ import SwiftUI
 struct BlockTalkApp: App {
     @State private var appState = AppState()
     @State private var locationService = LocationService()
+    @State private var moderation = ModerationStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -22,6 +23,7 @@ struct BlockTalkApp: App {
             }
             .environment(appState)
             .environment(locationService)
+            .environment(moderation)
             .preferredColorScheme(.dark)
             .task {
                 await restoreSession()

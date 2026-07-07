@@ -41,3 +41,31 @@ final class AppState {
         stage = .splash
     }
 }
+
+/// Session-scoped moderation state (mock mechanics — see HANDOFF for the
+/// backend-vs-client seam). Currently drives the reporter-side hide: reporting
+/// a post collapses it to a tombstone for you, with a Show-anyway reveal.
+@Observable
+final class ModerationStore {
+    /// postId → reason short string, for posts the current user reported
+    private(set) var reportedReasons: [UUID: String] = [:]
+    /// posts the reporter chose to reveal despite reporting
+    private(set) var shownAnyway: Set<UUID> = []
+
+    func report(postId: UUID, reasonShort: String) {
+        reportedReasons[postId] = reasonShort
+    }
+
+    func toggleShowAnyway(_ postId: UUID) {
+        if shownAnyway.contains(postId) {
+            shownAnyway.remove(postId)
+        } else {
+            shownAnyway.insert(postId)
+        }
+    }
+
+    func isReported(_ postId: UUID) -> Bool { reportedReasons[postId] != nil }
+    func reasonShort(_ postId: UUID) -> String? { reportedReasons[postId] }
+    /// Hidden = reported and not currently revealed
+    func isHidden(_ postId: UUID) -> Bool { isReported(postId) && !shownAnyway.contains(postId) }
+}
