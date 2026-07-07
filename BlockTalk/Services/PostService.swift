@@ -3,7 +3,7 @@ import Foundation
 struct PostService {
     /// Embeds the author (username / number / home short code) so cards render
     /// real identity instead of the placeholder default.
-    private static let postSelect = "*, author:users(username, user_number, home:neighborhoods(short_code))"
+    static let postSelect = "*, author:users(username, user_number, home:neighborhoods(short_code))"
 
     func fetchPosts(neighborhoodId: UUID, sort: PostSort = .newest, limit: Int = 50) async throws -> [Post] {
         var query = supabase.from("posts")

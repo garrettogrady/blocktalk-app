@@ -89,7 +89,7 @@ struct DiscoverView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .sheet(isPresented: $showSearch) {
-                SearchView()
+                SearchView(scope: .global)
             }
             .task {
                 await viewModel.load()

@@ -32,7 +32,7 @@ final class SearchViewModel {
         do {
             // Build the query, applying sort before executing
             var queryBuilder = supabase.from("posts")
-                .select()
+                .select(PostService.postSelect)
                 .ilike("text", pattern: "%\(trimmed)%")
                 .eq("status", value: "live")
 

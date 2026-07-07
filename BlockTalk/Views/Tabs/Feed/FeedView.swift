@@ -153,7 +153,7 @@ struct FeedView: View {
                 LocationPreFrameSheet()
             }
             .sheet(isPresented: $showSearch) {
-                SearchView()
+                SearchView(scope: .neighborhood, neighborhood: appState.viewingNeighborhood)
             }
         }
     }
