@@ -15,74 +15,61 @@ struct DailyPromptCard: View {
                 showPromptFeed = true
             }
         } label: {
-            VStack(alignment: .leading, spacing: BTSpacing.md) {
-                // Top row: DAILY PROMPT + LIVE pill + countdown
-                HStack(spacing: BTSpacing.sm) {
-                    Text("DAILY PROMPT")
-                        .font(BTFont.mono(size: 10))
-                        .foregroundStyle(Color.btBg)
-
-                    livePill
-
+            VStack(alignment: .leading, spacing: 6) {
+                // Head: label + live countdown
+                HStack {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.btLime)
+                            .frame(width: 5, height: 5)
+                            .shadow(color: Color.btLime.opacity(0.7), radius: 4)
+                        Text("TODAY'S PROMPT · NYC WIDE")
+                            .font(BTFont.monoBold(size: 9.5))
+                            .tracking(1.5)
+                            .foregroundStyle(Color.btLime)
+                    }
                     Spacer()
-
-                    // Live countdown — re-renders every 30s from activeUntil
                     TimelineView(.periodic(from: .now, by: 30)) { _ in
                         Text(prompt.timeRemaining)
-                            .font(BTFont.mono(size: 10))
-                            .foregroundStyle(Color.btBg.opacity(0.7))
+                            .font(BTFont.mono(size: 11))
+                            .tracking(0.5)
+                            .foregroundStyle(Color.btText3)
                     }
                 }
 
                 // Question
                 Text(prompt.question)
-                    .font(BTFont.bodySemibold(size: 16))
-                    .foregroundStyle(Color.btBg)
+                    .font(BTFont.display(size: 14))
+                    .foregroundStyle(Color.btText)
+                    .lineSpacing(5)
                     .multilineTextAlignment(.leading)
-                    .lineSpacing(3)
 
-                // Bottom row
+                // Stats + CTA
                 HStack {
-                    if answerCount > 0 {
-                        Text("\(answerCount) answers")
-                            .font(BTFont.body(size: 12))
-                            .foregroundStyle(Color.btBg.opacity(0.7))
-                    }
-
+                    (Text(answerCount.formatted())
+                        .font(BTFont.monoBold(size: 11))
+                        .foregroundColor(.btLime)
+                     + Text(" answers so far")
+                        .font(BTFont.body(size: 11))
+                        .foregroundColor(.btText2))
                     Spacer()
-
-                    HStack(spacing: BTSpacing.xs) {
-                        Text("Answer")
-                            .font(BTFont.bodySemibold(size: 13))
-                            .foregroundStyle(Color.btBg)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color.btBg)
-                    }
+                    Text("Open prompt feed →")
+                        .font(BTFont.bodySemibold(size: 11))
+                        .foregroundStyle(Color.btLime)
                 }
             }
-            .padding(BTSpacing.lg)
-            .background(Color.btLime)
-            .cornerRadius(BTRadius.lg)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.btLime.opacity(0.06))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.btLime.opacity(0.18)).frame(height: 1)
+            }
         }
+        .buttonStyle(.plain)
         .sheet(isPresented: $showPromptFeed) {
             DailyPromptFeedView(prompt: prompt)
         }
-    }
-
-    private var livePill: some View {
-        HStack(spacing: BTSpacing.xs) {
-            Circle()
-                .fill(Color.btPink)
-                .frame(width: 6, height: 6)
-            Text("LIVE")
-                .font(BTFont.monoBold(size: 9))
-                .foregroundStyle(Color.btBg)
-        }
-        .padding(.horizontal, BTSpacing.sm)
-        .padding(.vertical, BTSpacing.xs)
-        .background(Color.btBg.opacity(0.15))
-        .cornerRadius(BTRadius.full)
     }
 }
 
@@ -92,12 +79,11 @@ struct DailyPromptCard: View {
         DailyPromptCard(
             prompt: DailyPrompt(
                 id: UUID(),
-                question: "What's the most underrated spot in your neighborhood?",
+                question: "What's the craziest thing you've ever seen in NYC?",
                 activeFrom: Date(),
-                activeUntil: Date().addingTimeInterval(3600 * 8)
+                activeUntil: Date().addingTimeInterval(3600 * 22)
             ),
-            answerCount: 47
+            answerCount: 1842
         )
-        .padding()
     }
 }

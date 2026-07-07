@@ -30,11 +30,9 @@ struct FeedView: View {
                             OfflineBanner(pendingPostCount: offline.pending.count)
                         }
 
-                        // Daily prompt card
+                        // Daily prompt card — full-width strip
                         if let prompt = viewModel.dailyPrompt {
                             DailyPromptCard(prompt: prompt)
-                                .padding(.horizontal, BTSpacing.lg)
-                                .padding(.top, BTSpacing.md)
                         }
 
                         // Location / neighborhood row
