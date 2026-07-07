@@ -6,6 +6,7 @@ struct FeedView: View {
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
+    @State private var showPreFrame = false
 
     var body: some View {
         NavigationStack {
@@ -13,7 +14,7 @@ struct FeedView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Location gate banner at top when location not granted
-                        LocationGateBanner()
+                        LocationGateBanner(showPreFrame: $showPreFrame)
 
                         // Daily prompt card
                         if let prompt = viewModel.dailyPrompt {
@@ -82,7 +83,7 @@ struct FeedView: View {
                         showCompose = true
                     }
                 } else {
-                    LocationGate()
+                    LocationGateBar(showPreFrame: $showPreFrame)
                 }
             }
             .background(Color.btBg)
@@ -140,6 +141,9 @@ struct FeedView: View {
                     viewModel.viewingNeighborhood = neighborhood
                     Task { await viewModel.loadPosts() }
                 }
+            }
+            .sheet(isPresented: $showPreFrame) {
+                LocationPreFrameSheet()
             }
         }
     }

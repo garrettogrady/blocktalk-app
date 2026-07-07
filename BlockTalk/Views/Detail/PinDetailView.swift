@@ -6,7 +6,9 @@ struct PinDetailView: View {
     let post: Post
 
     @Environment(AppState.self) private var appState
+    @Environment(LocationService.self) private var location
     @State private var viewModel = PostDetailViewModel()
+    @State private var showPreFrame = false
     @FocusState private var replyFocused: Bool
 
     private let replyLimit = 500
@@ -30,8 +32,12 @@ struct PinDetailView: View {
                             ReplyNode(
                                 reply: reply,
                                 onReplyTap: { replyId, username in
-                                    viewModel.replyingTo = (id: replyId, username: username)
-                                    replyFocused = true
+                                    if location.permissionState == .granted {
+                                        viewModel.replyingTo = (id: replyId, username: username)
+                                        replyFocused = true
+                                    } else {
+                                        locationGateTap(location, showPreFrame: $showPreFrame)
+                                    }
                                 },
                                 onVote: { replyId, direction in
                                     guard let userId = appState.currentUser?.id else { return }
@@ -51,11 +57,18 @@ struct PinDetailView: View {
                 }
             }
 
-            // Reply compose bar
-            replyComposeBar
+            // Reply compose bar — replaced by the location gate when ungated
+            if location.permissionState == .granted {
+                replyComposeBar
+            } else {
+                LocationGateBar(label: "Enable location to reply on this corner", showPreFrame: $showPreFrame)
+            }
         }
         .background(Color.btBg)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPreFrame) {
+            LocationPreFrameSheet()
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 if let cornerName = pin.cornerName {
@@ -134,7 +147,7 @@ struct PinDetailView: View {
             }
 
             HStack(alignment: .bottom, spacing: BTSpacing.md) {
-                TextField("Reply...", text: $viewModel.replyText, axis: .vertical)
+                TextField("Reply on this corner…", text: $viewModel.replyText, axis: .vertical)
                     .font(BTFont.body(size: 15))
                     .foregroundStyle(Color.btText)
                     .lineLimit(1...5)

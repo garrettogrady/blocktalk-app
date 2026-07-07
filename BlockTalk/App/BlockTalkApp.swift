@@ -4,6 +4,7 @@ import SwiftUI
 struct BlockTalkApp: App {
     @State private var appState = AppState()
     @State private var locationService = LocationService()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +25,11 @@ struct BlockTalkApp: App {
             .preferredColorScheme(.dark)
             .task {
                 await restoreSession()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                // Recheck permission on foreground so flipping the toggle in
+                // iOS Settings clears the gate without a relaunch (§17)
+                if phase == .active { locationService.checkPermission() }
             }
         }
     }

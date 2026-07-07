@@ -3,7 +3,9 @@ import SwiftUI
 struct PostDetailView: View {
     let post: Post
     @Environment(AppState.self) private var appState
+    @Environment(LocationService.self) private var location
     @State private var viewModel = PostDetailViewModel()
+    @State private var showPreFrame = false
     @FocusState private var replyFocused: Bool
 
     private let replyLimit = 500
@@ -32,8 +34,13 @@ struct PostDetailView: View {
                             ReplyNode(
                                 reply: reply,
                                 onReplyTap: { replyId, username in
-                                    viewModel.replyingTo = (id: replyId, username: username)
-                                    replyFocused = true
+                                    // Replies require physical presence — gate when ungated
+                                    if location.permissionState == .granted {
+                                        viewModel.replyingTo = (id: replyId, username: username)
+                                        replyFocused = true
+                                    } else {
+                                        locationGateTap(location, showPreFrame: $showPreFrame)
+                                    }
                                 },
                                 onVote: { replyId, direction in
                                     guard let userId = appState.currentUser?.id else { return }
@@ -57,11 +64,18 @@ struct PostDetailView: View {
                 await viewModel.loadReplies(postId: post.id)
             }
 
-            // Reply compose bar
-            replyBar
+            // Reply compose bar — replaced by the location gate when ungated
+            if location.permissionState == .granted {
+                replyBar
+            } else {
+                LocationGateBar(label: "Enable location to reply", showPreFrame: $showPreFrame)
+            }
         }
         .background(Color.btBg)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPreFrame) {
+            LocationPreFrameSheet()
+        }
         .task {
             viewModel.post = post
             await viewModel.loadReplies(postId: post.id)

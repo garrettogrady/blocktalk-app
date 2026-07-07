@@ -4,9 +4,11 @@ struct DailyPromptFeedView: View {
     let prompt: DailyPrompt
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(LocationService.self) private var location
     @State private var responses: [Post] = []
     @State private var archivePrompts: [DailyPrompt] = []
     @State private var showCompose = false
+    @State private var showPreFrame = false
 
     var body: some View {
         NavigationStack {
@@ -43,9 +45,13 @@ struct DailyPromptFeedView: View {
                     }
                 }
 
-                // Compose bar
-                ComposeBarView {
-                    showCompose = true
+                // Compose bar — replaced by the location gate when ungated
+                if location.permissionState == .granted {
+                    ComposeBarView {
+                        showCompose = true
+                    }
+                } else {
+                    LocationGateBar(label: "Enable location to answer the prompt", showPreFrame: $showPreFrame)
                 }
             }
             .background(Color.btBg)
@@ -60,6 +66,9 @@ struct DailyPromptFeedView: View {
             }
             .sheet(isPresented: $showCompose) {
                 ComposeView()
+            }
+            .sheet(isPresented: $showPreFrame) {
+                LocationPreFrameSheet()
             }
         }
     }
