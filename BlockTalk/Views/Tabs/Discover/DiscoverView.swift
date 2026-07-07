@@ -67,11 +67,8 @@ struct DiscoverView: View {
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: BTSpacing.md) {
-                                ForEach(boroughs, id: \.self) { borough in
-                                    BoroughCard(
-                                        borough: borough,
-                                        posts: viewModel.boroughPosts[borough] ?? []
-                                    )
+                                ForEach(viewModel.boroughCards) { card in
+                                    BoroughCard(borough: card.borough, posts: card.posts)
                                 }
                             }
                             .padding(.horizontal, BTSpacing.lg)
@@ -85,8 +82,8 @@ struct DiscoverView: View {
                             .foregroundStyle(Color.btText)
                             .padding(.horizontal, BTSpacing.lg)
 
-                        ForEach(viewModel.randomNeighborhoods) { neighborhood in
-                            neighborhoodRow(neighborhood)
+                        ForEach(viewModel.neighborhoods) { n in
+                            neighborhoodRow(n)
                                 .padding(.horizontal, BTSpacing.lg)
                         }
                     }
@@ -111,30 +108,29 @@ struct DiscoverView: View {
         }
     }
 
-    private func neighborhoodRow(_ neighborhood: Neighborhood) -> some View {
+    private func neighborhoodRow(_ n: DiscoverNeighborhood) -> some View {
         HStack(spacing: BTSpacing.md) {
-            Text(neighborhood.shortCode)
-                .font(BTFont.monoBold(size: 12))
-                .foregroundStyle(Color.btLime)
-                .frame(width: 80, alignment: .leading)
-
-            Text(neighborhood.name)
-                .font(BTFont.bodyMedium(size: 15))
-                .foregroundStyle(Color.btText)
-
+            VStack(alignment: .leading, spacing: 2) {
+                Text(n.name)
+                    .font(BTFont.bodySemibold(size: 15))
+                    .foregroundStyle(Color.btText)
+                Text("\(n.borough) · \(n.talking) TALKING")
+                    .font(BTFont.monoBold(size: 9))
+                    .tracking(0.5)
+                    .foregroundStyle(Color.btText3)
+            }
             Spacer()
-
-            Text(neighborhood.borough)
-                .font(BTFont.body(size: 12))
-                .foregroundStyle(Color.btText3)
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11))
-                .foregroundStyle(Color.btText3)
+            Text("OPEN →")
+                .font(BTFont.bodySemibold(size: 12))
+                .foregroundStyle(Color.btLime)
         }
         .padding(BTSpacing.md)
         .background(Color.btSurface)
         .cornerRadius(BTRadius.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.md)
+                .stroke(Color.btLine, lineWidth: 1)
+        )
     }
 }
 

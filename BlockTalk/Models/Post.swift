@@ -129,6 +129,30 @@ extension Post {
         sample("avenuec", 1022, "overheard on Clinton: \"i told her, the apartment doesn't get sun, but it gets vibes.\" brother. that's the sun.", agoMin: 4320, score: 341, replies: 58),
     ]
 
+    private static func trend(_ username: String, _ number: Int, _ home: String, _ text: String, agoMin: Double, score: Int, replies: Int) -> Post {
+        Post(
+            id: UUID(), userId: UUID(), neighborhoodId: UUID(),
+            text: text, isDailyPrompt: false, score: score, replyCount: replies,
+            reportCount: 0, status: .live,
+            createdAt: Date().addingTimeInterval(-agoMin * 60),
+            author: PostAuthor(username: username, userNumber: number, home: .init(shortCode: home))
+        )
+    }
+
+    /// Cross-NYC trending posts for Discover (distinct from the LES feed)
+    static let sampleTrending: [Post] = [
+        trend("bryantparker", 218, "MIDTOWN", "if you ride the e train past 53rd & 5th and don't briefly question your career path you are not paying attention", agoMin: 22, score: 1234, replies: 89),
+        trend("williamsburger", 4118, "WILLYB", "the line at Lilia is now its own neighborhood with its own gentrification debate", agoMin: 38, score: 891, replies: 52),
+        trend("astoriaforever", 2041, "ASTORIA", "the q70 SBS to LGA at 4am is just me, three flight attendants, and one guy in a cowboy hat. we have a quiet agreement.", agoMin: 60, score: 743, replies: 67),
+        trend("parkslopeparent", 1612, "PARK.SLP", "saw a guy at the food coop arguing with the cheese guy about whether brie is 'colonialist.' i need to leave brooklyn for at least a weekend.", agoMin: 120, score: 712, replies: 134),
+        trend("ferrygoer", 588, "ST.GRG", "the staten island ferry guitar guy did wonderwall tonight and the entire upper deck sighed in unison. there is unity here. it's just hidden.", agoMin: 120, score: 698, replies: 41),
+        trend("riverdalerat", 912, "B-DALE", "tour bus dumped a group on Arthur Ave and one of them said 'this feels too italian to be real' — brother, that's because it is real.", agoMin: 180, score: 612, replies: 38),
+        trend("jackson_hts", 3209, "JCKSN.HTS", "the line at Pio Pio at 9pm on a tuesday is full of people from 14 different boroughs of their own imagination", agoMin: 240, score: 587, replies: 49),
+        trend("uppereastsider", 1872, "UES", "the 4 train at 8am sounds like 200 people simultaneously deciding they need a new career", agoMin: 300, score: 541, replies: 88),
+        trend("cobblehiller", 702, "COBBLE", "girl on Court St with a smoothie, a notebook, and three different colored pens. she's about to ruin some guy's life. i can feel it.", agoMin: 360, score: 488, replies: 31),
+        trend("bushwickdad", 2447, "BUSHWICK", "Maria Hernandez Park at sunset is what people are talking about when they say new york is healing", agoMin: 480, score: 419, replies: 26),
+    ]
+
     private static func pinPost(_ pinId: UUID, _ username: String, _ number: Int, _ text: String, score: Int, replies: Int, agoMin: Double) -> Post {
         Post(
             id: UUID(), userId: UUID(), neighborhoodId: lesNeighborhoodId,

@@ -2,31 +2,26 @@ import SwiftUI
 
 struct BoroughCard: View {
     let borough: String
-    let posts: [Post]
+    let posts: [BoroughMini]
 
     var body: some View {
         VStack(alignment: .leading, spacing: BTSpacing.md) {
-            // Borough name
             Text(borough.uppercased())
-                .font(BTFont.monoBold(size: 13))
-                .foregroundStyle(Color.btText)
+                .font(BTFont.monoBold(size: 12))
+                .tracking(1)
+                .foregroundStyle(Color.btLime)
 
-            // 3 mini-posts stacked
-            VStack(spacing: BTSpacing.sm) {
-                ForEach(Array(posts.prefix(3))) { post in
+            VStack(spacing: 0) {
+                ForEach(Array(posts.enumerated()), id: \.element.id) { i, post in
                     miniPostRow(post)
-                }
-
-                // Placeholder rows if fewer than 3 posts
-                if posts.count < 3 {
-                    ForEach(0 ..< (3 - posts.count), id: \.self) { _ in
-                        placeholderRow
+                    if i < posts.count - 1 {
+                        Divider().background(Color.btLine)
                     }
                 }
             }
         }
         .padding(BTSpacing.lg)
-        .frame(width: 220)
+        .frame(width: 240, alignment: .leading)
         .background(Color.btSurface)
         .cornerRadius(BTRadius.lg)
         .overlay(
@@ -35,50 +30,29 @@ struct BoroughCard: View {
         )
     }
 
-    private func miniPostRow(_ post: Post) -> some View {
+    private func miniPostRow(_ post: BoroughMini) -> some View {
         VStack(alignment: .leading, spacing: BTSpacing.xs) {
             Text(post.text)
                 .font(BTFont.body(size: 12))
-                .foregroundStyle(Color.btText2)
-                .lineLimit(2)
+                .foregroundStyle(Color.btText)
+                .lineLimit(3)
                 .lineSpacing(2)
 
-            HStack(spacing: BTSpacing.sm) {
-                HStack(spacing: 2) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 8, weight: .semibold))
-                    Text("\(post.score)")
-                        .font(BTFont.mono(size: 9))
-                }
+            Text("▲ \(post.score) · \(post.replies) replies")
+                .font(BTFont.monoBold(size: 9))
                 .foregroundStyle(Color.btText3)
-
-                HStack(spacing: 2) {
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 8))
-                    Text("\(post.replyCount)")
-                        .font(BTFont.mono(size: 9))
-                }
-                .foregroundStyle(Color.btText3)
-
-                Spacer()
-            }
         }
-        .padding(BTSpacing.sm)
-        .background(Color.btSurface2)
-        .cornerRadius(BTRadius.sm)
-    }
-
-    private var placeholderRow: some View {
-        RoundedRectangle(cornerRadius: BTRadius.sm)
-            .fill(Color.btSurface2)
-            .frame(height: 44)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, BTSpacing.sm)
     }
 }
 
 #Preview {
     ZStack {
         Color.btBg.ignoresSafeArea()
-        BoroughCard(borough: "Manhattan", posts: [])
-            .padding()
+        BoroughCard(borough: "Manhattan", posts: [
+            BoroughMini(text: "the woman walking 9 dogs on Ave A is maintaining the EV", score: 631, replies: 52),
+        ])
+        .padding()
     }
 }
