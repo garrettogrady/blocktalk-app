@@ -5,6 +5,7 @@ struct YouView: View {
     @State private var showNotifications = false
     @State private var showSettings = false
     @State private var showFeedback = false
+    @State private var showSignOutConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -46,6 +47,12 @@ struct YouView: View {
             }
             .sheet(isPresented: $showFeedback) {
                 FeedbackView()
+            }
+            .alert("Sign out of BlockTalk?", isPresented: $showSignOutConfirm) {
+                Button("Cancel", role: .cancel) {}
+                Button("Sign Out", role: .destructive) { appState.signOut() }
+            } message: {
+                Text("You'll need to sign back in with Apple to continue.")
             }
         }
     }
@@ -90,13 +97,13 @@ struct YouView: View {
             }
             Divider().background(Color.btLine)
 
-            footerButton(icon: "envelope", title: "Send Feedback") {
+            footerButton(icon: "envelope", title: "Feedback") {
                 showFeedback = true
             }
             Divider().background(Color.btLine)
 
             footerButton(icon: "rectangle.portrait.and.arrow.right", title: "Sign Out", isDestructive: true) {
-                appState.signOut()
+                showSignOutConfirm = true
             }
         }
         .background(Color.btSurface)
