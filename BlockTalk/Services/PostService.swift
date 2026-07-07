@@ -18,13 +18,7 @@ struct PostService {
     }
 
     func fetchPostForPin(_ pinId: UUID) async throws -> Post? {
-        let posts: [Post] = try await supabase.from("posts")
-            .select(Self.postSelect)
-            .eq("pin_id", value: pinId.uuidString)
-            .limit(1)
-            .execute()
-            .value
-        return posts.first
+        return Post.samplePinPosts[pinId]   // bundled mock data
     }
 
     func createPost(_ post: NewPost) async throws -> Post {

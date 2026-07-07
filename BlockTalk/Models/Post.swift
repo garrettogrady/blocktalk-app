@@ -128,4 +128,23 @@ extension Post {
         sample("clintonst", 441, "the fancy hardware store on Bowery is selling a $48 sponge. it is a sponge. it is the same sponge i can get on Essex for $1.25. but this one is gray.", agoMin: 4320, score: 204, replies: 34),
         sample("avenuec", 1022, "overheard on Clinton: \"i told her, the apartment doesn't get sun, but it gets vibes.\" brother. that's the sun.", agoMin: 4320, score: 341, replies: 58),
     ]
+
+    private static func pinPost(_ pinId: UUID, _ username: String, _ number: Int, _ text: String, score: Int, replies: Int, agoMin: Double) -> Post {
+        Post(
+            id: UUID(), userId: UUID(), neighborhoodId: lesNeighborhoodId,
+            text: text, pinId: pinId, isDailyPrompt: false, score: score,
+            replyCount: replies, reportCount: 0, status: .live,
+            createdAt: Date().addingTimeInterval(-agoMin * 60),
+            author: PostAuthor(username: username, userNumber: number, home: .init(shortCode: "LES"))
+        )
+    }
+
+    /// Featured post for each pin (keyed by pin id), for Pin Detail
+    static let samplePinPosts: [UUID: Post] = [
+        Pin.essexRivington: pinPost(Pin.essexRivington, "BlockTalker", 3442, "whoever is busking on this corner — please. learn one (1) other song. it's been \"wonderwall\" for six straight weekends.", score: 88, replies: 9, agoMin: 120),
+        Pin.stantonNorfolk: pinPost(Pin.stantonNorfolk, "norfolkghost", 2118, "the croissant deli has set up a little folding chair and a sign that says \"fresh at 3am\" and i need an investigation.", score: 41, replies: 5, agoMin: 45),
+        Pin.houstonLudlow: pinPost(Pin.houstonLudlow, "forsyth", 1777, "three years. same Barbour jacket. same cigarette. either a ghost or me.", score: 132, replies: 14, agoMin: 180),
+        Pin.delanceyAllen: pinPost(Pin.delanceyAllen, "attorney_st", 1558, "unmarked black sedan, hazards on, 90 minutes. either a movie shoot or the prologue to a kidnapping.", score: 67, replies: 8, agoMin: 300),
+        Pin.clintonDelancey: pinPost(Pin.clintonDelancey, "henrystreet", 2341, "Solid gym, think they might want to look into selling deoderant in addition to pre-work out, place is a zoo", score: 54, replies: 6, agoMin: 60),
+    ]
 }

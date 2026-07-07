@@ -38,19 +38,10 @@ struct PinService {
     }
 
     func fetchPinsForNeighborhood(_ neighborhoodId: UUID) async throws -> [Pin] {
-        try await supabase.from("pins_with_coords")
-            .select()
-            .eq("neighborhood_id", value: neighborhoodId.uuidString)
-            .order("created_at", ascending: false)
-            .execute()
-            .value
+        Pin.samples   // bundled mock data
     }
 
     func fetchAllPins() async throws -> [Pin] {
-        try await supabase.from("pins_with_coords")
-            .select()
-            .order("created_at", ascending: false)
-            .execute()
-            .value
+        Pin.samples   // bundled mock data
     }
 }
