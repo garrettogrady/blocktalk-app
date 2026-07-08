@@ -6,7 +6,6 @@ struct NeighborhoodPickerView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
-    @State private var selectedNeighborhood: Neighborhood?
     @State private var neighborhoods: [Neighborhood] = []
     @State private var isLoading = true
 
@@ -44,10 +43,12 @@ struct NeighborhoodPickerView: View {
                             Section {
                                 ForEach(group.neighborhoods) { neighborhood in
                                     Button {
-                                        // Dismiss the keyboard so the Apply button is
-                                        // immediately reachable after searching
+                                        // Tap = apply. The search tap already expressed
+                                        // intent — no separate Confirm step (dismiss the
+                                        // keyboard first to avoid a flash).
                                         dismissKeyboard()
-                                        selectedNeighborhood = neighborhood
+                                        onConfirm(neighborhood)
+                                        dismiss()
                                     } label: {
                                         HStack(spacing: BTSpacing.md) {
                                             Text(neighborhood.shortCode)
@@ -61,8 +62,7 @@ struct NeighborhoodPickerView: View {
 
                                             Spacer()
 
-                                            if selectedNeighborhood?.id == neighborhood.id ||
-                                                (selectedNeighborhood == nil && currentValue?.id == neighborhood.id) {
+                                            if currentValue?.id == neighborhood.id {
                                                 Image(systemName: "checkmark")
                                                     .font(.system(size: 13, weight: .semibold))
                                                     .foregroundStyle(Color.btLime)
@@ -93,17 +93,6 @@ struct NeighborhoodPickerView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(Color.btText2)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Confirm") {
-                        if let selected = selectedNeighborhood {
-                            onConfirm(selected)
-                        }
-                        dismiss()
-                    }
-                    .font(BTFont.bodySemibold(size: 16))
-                    .foregroundStyle(selectedNeighborhood != nil ? Color.btLime : Color.btMuted)
-                    .disabled(selectedNeighborhood == nil && currentValue == nil)
                 }
             }
             .task {
