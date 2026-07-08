@@ -273,25 +273,19 @@ struct MapTabView: View {
 
     // MARK: - Helpers
 
+    /// The single active neighborhood (only this one is highlighted). Uses the
+    /// viewing neighborhood (reliable locally), falling back to GPS-resolved,
+    /// then LES — never highlights two at once.
+    private var activeNeighborhoodName: String {
+        appState.viewingNeighborhood?.name ?? locationService.currentNeighborhood?.name ?? "Lower East Side"
+    }
+
     private var hereShortCode: String {
-        locationService.currentNeighborhood?.shortCode ?? appState.viewingNeighborhood?.shortCode ?? "NYC"
+        appState.viewingNeighborhood?.shortCode ?? locationService.currentNeighborhood?.shortCode ?? "NYC"
     }
 
     private func isCurrentNeighborhood(_ polygonName: String) -> Bool {
-        let pName = polygonName.lowercased()
-        // Check GPS-resolved neighborhood
-        if let current = locationService.currentNeighborhood {
-            if pName == current.name.lowercased() || pName == current.shortCode.lowercased() {
-                return true
-            }
-        }
-        // Also check the actively viewed neighborhood
-        if let viewing = appState.viewingNeighborhood {
-            if pName == viewing.name.lowercased() || pName == viewing.shortCode.lowercased() {
-                return true
-            }
-        }
-        return false
+        polygonName.lowercased() == activeNeighborhoodName.lowercased()
     }
 
     /// Exact geofence: in-range iff the reticle is inside the SAME polygon(s)
