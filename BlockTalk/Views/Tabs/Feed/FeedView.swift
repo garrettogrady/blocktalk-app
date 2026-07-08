@@ -172,7 +172,11 @@ struct FeedView: View {
                 }
             }
             .sheet(isPresented: $showNeighborhoodPicker) {
-                NeighborhoodPickerView(currentValue: appState.viewingNeighborhood) { neighborhood in
+                NeighborhoodPickerView(
+                    currentValue: appState.viewingNeighborhood,
+                    title: "Viewing Neighborhood",
+                    confirmCta: { "View \($0)" }
+                ) { neighborhood in
                     appState.viewingNeighborhood = neighborhood
                     viewModel.viewingNeighborhood = neighborhood
                     Task { await viewModel.loadPosts() }

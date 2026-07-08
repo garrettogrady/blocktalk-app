@@ -237,7 +237,8 @@ struct ProfileCreationView: View {
         .background(Color.btBg.ignoresSafeArea())
         .sheet(isPresented: $showNeighborhoodPicker) {
             NeighborhoodPickerView(
-                currentValue: viewModel.selectedNeighborhood
+                currentValue: viewModel.selectedNeighborhood,
+                confirmCta: { "Use \($0)" }
             ) { neighborhood in
                 viewModel.selectedNeighborhood = neighborhood
                 showNeighborhoodPicker = false
