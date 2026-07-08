@@ -74,8 +74,15 @@ enum NeighborhoodPolygonLoader {
                 }
             }
 
-            guard !rings.isEmpty else { return nil }
-            return NeighborhoodPolygon(name: name, rings: rings)
+            // Drop tiny detached slivers (NTA artifacts) — keep the main shape
+            // + any genuinely large secondary part. Otherwise LES etc. render a
+            // confusing disconnected fragment near the waterfront.
+            let maxCount = rings.map(\.count).max() ?? 0
+            let threshold = max(4, Int(Double(maxCount) * 0.3))
+            let kept = rings.filter { $0.count >= threshold }
+
+            guard !kept.isEmpty else { return nil }
+            return NeighborhoodPolygon(name: name, rings: kept)
         }
     }
 }
