@@ -6,6 +6,7 @@ struct NeighborhoodPickerView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
+    @State private var selectedNeighborhood: Neighborhood?
     @State private var neighborhoods: [Neighborhood] = []
     @State private var isLoading = true
 
@@ -43,12 +44,10 @@ struct NeighborhoodPickerView: View {
                             Section {
                                 ForEach(group.neighborhoods) { neighborhood in
                                     Button {
-                                        // Tap = apply. The search tap already expressed
-                                        // intent — no separate Confirm step (dismiss the
-                                        // keyboard first to avoid a flash).
+                                        // Tap selects (drops the keyboard); the bottom
+                                        // Confirm bar applies — reachable without leaving search
                                         dismissKeyboard()
-                                        onConfirm(neighborhood)
-                                        dismiss()
+                                        selectedNeighborhood = neighborhood
                                     } label: {
                                         HStack(spacing: BTSpacing.md) {
                                             Text(neighborhood.shortCode)
@@ -62,14 +61,17 @@ struct NeighborhoodPickerView: View {
 
                                             Spacer()
 
-                                            if currentValue?.id == neighborhood.id {
+                                            if (selectedNeighborhood?.id ?? currentValue?.id) == neighborhood.id {
                                                 Image(systemName: "checkmark")
                                                     .font(.system(size: 13, weight: .semibold))
                                                     .foregroundStyle(Color.btLime)
                                             }
                                         }
                                     }
-                                    .listRowBackground(Color.btSurface)
+                                    .listRowBackground(
+                                        selectedNeighborhood?.id == neighborhood.id
+                                            ? Color.btLime.opacity(0.08) : Color.btSurface
+                                    )
                                 }
                             } header: {
                                 Text(group.borough.uppercased())
@@ -86,6 +88,7 @@ struct NeighborhoodPickerView: View {
             }
             .searchable(text: $searchText, prompt: "Search neighborhoods...")
             .background(Color.btBg)
+            .safeAreaInset(edge: .bottom) { confirmBar }
             .navigationTitle("Choose Neighborhood")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -98,6 +101,28 @@ struct NeighborhoodPickerView: View {
             .task {
                 await loadNeighborhoods()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var confirmBar: some View {
+        if let sel = selectedNeighborhood {
+            Button {
+                onConfirm(sel)
+                dismiss()
+            } label: {
+                Text("Use \(sel.name)")
+                    .font(BTFont.bodyBold(size: 15))
+                    .foregroundStyle(Color.btOnAccent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, BTSpacing.lg)
+                    .background(Color.btLime)
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.vertical, BTSpacing.md)
+            .background(.ultraThinMaterial)
         }
     }
 
