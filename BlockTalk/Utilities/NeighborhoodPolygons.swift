@@ -12,14 +12,16 @@ struct NeighborhoodPolygon: Identifiable {
         rings.map { MKPolygon(coordinates: $0, count: $0.count) }
     }
 
-    /// Center point (average of all coordinates in the first ring)
+    /// Label centroid — average of ALL points across ALL rings (matches Expo's
+    /// centroidOf). Averaging only the first ring put the label on a tiny
+    /// detached piece (LES's label drifted toward the river/Brooklyn).
     var center: CLLocationCoordinate2D {
-        guard let ring = rings.first, !ring.isEmpty else {
-            return CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
+        var lat = 0.0, lng = 0.0, n = 0
+        for ring in rings {
+            for p in ring { lat += p.latitude; lng += p.longitude; n += 1 }
         }
-        let lat = ring.map(\.latitude).reduce(0, +) / Double(ring.count)
-        let lng = ring.map(\.longitude).reduce(0, +) / Double(ring.count)
-        return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        guard n > 0 else { return CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060) }
+        return CLLocationCoordinate2D(latitude: lat / Double(n), longitude: lng / Double(n))
     }
 
     /// Ray-casting point-in-polygon over any ring (used for the pin-drop geofence)
