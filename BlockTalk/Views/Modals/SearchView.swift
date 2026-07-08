@@ -27,6 +27,7 @@ struct SearchView: View {
                 Divider().background(Color.btLine)
                 resultsArea
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color.btBg.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Post.self) { post in
