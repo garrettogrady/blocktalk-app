@@ -144,7 +144,8 @@ struct SortTimeFilters: View {
             RoundedRectangle(cornerRadius: BTRadius.md)
                 .stroke(Color.btLine, lineWidth: 1)
         )
-        .transition(.opacity.combined(with: .move(edge: .top)))
+        // Expand cleanly out of the button (scale from top) — not a drop-in slide
+        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
     }
 }
 

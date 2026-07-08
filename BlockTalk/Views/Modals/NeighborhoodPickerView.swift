@@ -44,6 +44,9 @@ struct NeighborhoodPickerView: View {
                             Section {
                                 ForEach(group.neighborhoods) { neighborhood in
                                     Button {
+                                        // Dismiss the keyboard so the Apply button is
+                                        // immediately reachable after searching
+                                        dismissKeyboard()
                                         selectedNeighborhood = neighborhood
                                     } label: {
                                         HStack(spacing: BTSpacing.md) {
@@ -110,17 +113,15 @@ struct NeighborhoodPickerView: View {
     }
 
     private func loadNeighborhoods() async {
-        do {
-            let service = NeighborhoodService()
-            neighborhoods = try await service.fetchAll()
-        } catch {
-            print("Failed to load neighborhoods: \(error)")
-            // Fall back to local directory with random UUIDs as last resort
-            neighborhoods = NeighborhoodDirectory.all.map {
-                Neighborhood(id: UUID(), name: $0.name, shortCode: $0.shortCode, borough: $0.borough)
-            }
+        // Bundled mock — local directory, no backend (instant, no loading hang)
+        neighborhoods = NeighborhoodDirectory.all.map {
+            Neighborhood(id: UUID(), name: $0.name, shortCode: $0.shortCode, borough: $0.borough)
         }
         isLoading = false
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
