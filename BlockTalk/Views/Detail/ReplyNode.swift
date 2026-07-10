@@ -5,6 +5,9 @@ struct ReplyNode: View {
     var onReplyTap: ((_ replyId: UUID, _ username: String) -> Void)?
     var onVote: ((_ replyId: UUID, _ direction: Int) -> Void)?
 
+    @State private var showReport = false
+    @State private var reported = false
+
     private let maxDepth = 3
 
     var body: some View {
@@ -51,7 +54,7 @@ struct ReplyNode: View {
                         .lineSpacing(3)
 
                     // Action row
-                    HStack(spacing: BTSpacing.lg) {
+                    HStack(spacing: 6) {
                         // Vote pills
                         VotePills(
                             score: reply.score,
@@ -63,14 +66,22 @@ struct ReplyNode: View {
                             }
                         )
 
-                        // Flag icon
+                        // Flag — boxed to match the main comment's action buttons
                         Button {
-                            // Report reply
+                            if !reported { showReport = true }
                         } label: {
-                            Image(systemName: "flag")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Color.btText3)
+                            Image(systemName: reported ? "flag.fill" : "flag")
+                                .font(.system(size: 13))
+                                .foregroundStyle(reported ? Color.btPink : Color.btText2)
+                                .frame(width: 30, height: 30)
+                                .background(reported ? Color.btPink.opacity(0.12) : Color.btSurface)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: BTRadius.sm)
+                                        .stroke(reported ? Color.btPink.opacity(0.45) : Color.btLine, lineWidth: 1)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
                         }
+                        .buttonStyle(.plain)
 
                         Spacer()
 
@@ -95,6 +106,11 @@ struct ReplyNode: View {
                     }
                 }
                 .padding(BTSpacing.lg)
+            }
+            .sheet(isPresented: $showReport) {
+                ReportModalView(postId: reply.id, targetLabel: "reply") { _ in
+                    reported = true
+                }
             }
 
             Divider().background(Color.btLine)

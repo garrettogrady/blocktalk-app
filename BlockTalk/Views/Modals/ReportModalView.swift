@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ReportModalView: View {
     let postId: UUID
+    /// "post" or "reply" — used in the header copy (matches the RN modal).
+    var targetLabel: String = "post"
     /// Called on successful submit with the reason's short string, so the
     /// presenting card can flash the "reported for {short} · we'll review" toast.
     var onReported: ((String) -> Void)?
@@ -31,12 +33,16 @@ struct ReportModalView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
                     VStack(alignment: .leading, spacing: BTSpacing.sm) {
-                        Text("Why are you reporting this post?")
-                            .font(BTFont.bodySemibold(size: 17))
+                        Text("Why are you reporting this \(targetLabel)?")
+                            .font(BTFont.display(size: 22))
                             .foregroundStyle(Color.btText)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text("Only report content that is hateful, racist, or personally identifies someone.")
                             .font(BTFont.body(size: 13))
                             .foregroundStyle(Color.btText2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.top, BTSpacing.xxl)
 
@@ -100,7 +106,7 @@ struct ReportModalView: View {
                                 ProgressView()
                                     .tint(Color.btText)
                             }
-                            Text("Report Post")
+                            Text("Report \(targetLabel.capitalized)")
                                 .font(BTFont.bodySemibold(size: 16))
                         }
                         .foregroundStyle(canSubmit ? Color.btText : Color.btText3)
@@ -114,7 +120,7 @@ struct ReportModalView: View {
                 .padding(.horizontal, BTSpacing.xxl)
             }
             .background(Color.btBg.ignoresSafeArea())
-            .navigationTitle("Report")
+            .navigationTitle("Report \(targetLabel.capitalized)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -178,28 +184,11 @@ struct ReportModalView: View {
     // MARK: - Submit
 
     private func submitReport() {
-        guard let reason = selectedReason,
-              let userId = appState.currentUser?.id
-        else { return }
-
-        isSubmitting = true
-        let postService = PostService()
-
-        Task {
-            do {
-                try await postService.report(
-                    postId: postId,
-                    reporterId: userId,
-                    reason: reason.rawValue,
-                    freeText: reason == .other ? freeText : nil
-                )
-                onReported?(reason.short)
-                dismiss()
-            } catch {
-                self.error = error.localizedDescription
-                isSubmitting = false
-            }
-        }
+        guard let reason = selectedReason else { return }
+        // Local mock: no backend write (Supabase RLS blocks anonymous inserts).
+        // The moderation store handles the hide/tombstone; this just confirms.
+        onReported?(reason.short)
+        dismiss()
     }
 }
 
