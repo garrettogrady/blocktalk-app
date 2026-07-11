@@ -94,7 +94,10 @@ struct NeighborhoodPickerView: View {
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.btLine, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        // Top 12; bottom 4 + the first header's 8 top = 12, so the space
+        // above and below the field is identical.
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     // MARK: - List
@@ -110,7 +113,7 @@ struct NeighborhoodPickerView: View {
                         .frame(maxWidth: .infinity)
                         .padding(36)
                 } else {
-                    ForEach(Array(sections.enumerated()), id: \.element.borough) { index, section in
+                    ForEach(sections, id: \.borough) { section in
                         Section {
                             ForEach(section.items) { n in
                                 row(n)
@@ -120,10 +123,12 @@ struct NeighborhoodPickerView: View {
                             Text(section.borough.uppercased())
                                 .font(BTFont.bodyBold(size: 15))
                                 .tracking(1.0)
-                                .foregroundStyle(Color.btText2)
+                                .foregroundStyle(Color.btLime)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 18)
-                                .padding(.top, index == 0 ? 2 : 16)
+                                // Uniform padding so every borough sits at the
+                                // same height when it pins to the top on scroll.
+                                .padding(.top, 8)
                                 .padding(.bottom, 8)
                                 .background(Color.btBg)
                         }
@@ -187,14 +192,15 @@ struct NeighborhoodPickerView: View {
         .buttonStyle(.plain)
         .disabled(!canConfirm)
         .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 14)
+        // Mirrors the Expo bar exactly (top 10, bottom 26). The bar reaches
+        // the physical screen bottom (ignoresSafeArea), so the home-indicator
+        // area lives inside that 26 rather than being added below it.
+        .padding(.top, 10)
+        .padding(.bottom, 26)
+        .frame(maxWidth: .infinity)
         .background(Color.btBg)
         .overlay(alignment: .top) { Rectangle().fill(Color.btLine).frame(height: 1) }
-        // Extend the bar through the home-indicator area so the button reads
-        // as centered (equal padding above/below) instead of the system
-        // adding an extra gap beneath it.
-        .ignoresSafeArea(.container, edges: .bottom)
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private var confirmLabel: String {
