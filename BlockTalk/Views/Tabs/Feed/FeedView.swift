@@ -171,7 +171,7 @@ struct FeedView: View {
                     Task { await viewModel.loadPosts() }
                 }
             }
-            .sheet(isPresented: $showNeighborhoodPicker) {
+            .fullScreenCover(isPresented: $showNeighborhoodPicker) {
                 NeighborhoodPickerView(
                     currentValue: appState.viewingNeighborhood,
                     title: "Viewing Neighborhood",
@@ -185,7 +185,7 @@ struct FeedView: View {
             .sheet(isPresented: $showPreFrame) {
                 LocationPreFrameSheet()
             }
-            .sheet(isPresented: $showSearch) {
+            .fullScreenCover(isPresented: $showSearch) {
                 SearchView(scope: .neighborhood, neighborhood: appState.viewingNeighborhood)
             }
         }

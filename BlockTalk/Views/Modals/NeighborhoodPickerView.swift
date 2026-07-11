@@ -37,7 +37,7 @@ struct NeighborhoodPickerView: View {
             list
         }
         .background(Color.btBg.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom) { confirmBar }
+        .overlay(alignment: .bottom) { confirmBar }
         .onAppear {
             if neighborhoods.isEmpty {
                 neighborhoods = NeighborhoodDirectory.all.map {
@@ -100,31 +100,39 @@ struct NeighborhoodPickerView: View {
     // MARK: - List
 
     private var list: some View {
-        List {
-            if sections.isEmpty {
-                Text("No neighborhoods match \"\(query)\".")
-                    .font(BTFont.body(size: 13))
-                    .foregroundStyle(Color.btText3)
-                    .frame(maxWidth: .infinity)
-                    .padding(36)
-                    .listRowBackground(Color.btBg)
-                    .listRowSeparator(.hidden)
-            } else {
-                ForEach(sections, id: \.borough) { section in
-                    Section {
-                        ForEach(section.items) { n in row(n) }
-                    } header: {
-                        Text(section.borough.uppercased())
-                            .font(BTFont.bodySemibold(size: 9.5))
-                            .tracking(1.7)
-                            .foregroundStyle(Color.btText3)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                if sections.isEmpty {
+                    Text("No neighborhoods match \"\(query)\".")
+                        .font(BTFont.body(size: 13))
+                        .foregroundStyle(Color.btText3)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(36)
+                } else {
+                    ForEach(Array(sections.enumerated()), id: \.element.borough) { index, section in
+                        Section {
+                            ForEach(section.items) { n in
+                                row(n)
+                                Rectangle().fill(Color.btLine).frame(height: 1)
+                            }
+                        } header: {
+                            Text(section.borough.uppercased())
+                                .font(BTFont.bodyBold(size: 15))
+                                .tracking(1.0)
+                                .foregroundStyle(Color.btText2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 18)
+                                .padding(.top, index == 0 ? 2 : 16)
+                                .padding(.bottom, 8)
+                                .background(Color.btBg)
+                        }
                     }
                 }
             }
+            // Clear the floating confirm bar at the bottom
+            .padding(.bottom, 96)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.btBg)
         .scrollDismissesKeyboard(.interactively)
     }
 
@@ -149,9 +157,13 @@ struct NeighborhoodPickerView: View {
                         .foregroundStyle(Color.btLime)
                 }
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 13)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .background(isPicked ? Color.btLime.opacity(0.05) : Color.clear)
         }
-        .listRowBackground(isPicked ? Color.btLime.opacity(0.05) : Color.btBg)
-        .listRowSeparatorTint(Color.btLine)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Confirm bar
@@ -175,9 +187,14 @@ struct NeighborhoodPickerView: View {
         .buttonStyle(.plain)
         .disabled(!canConfirm)
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 14)
         .background(Color.btBg)
         .overlay(alignment: .top) { Rectangle().fill(Color.btLine).frame(height: 1) }
+        // Extend the bar through the home-indicator area so the button reads
+        // as centered (equal padding above/below) instead of the system
+        // adding an extra gap beneath it.
+        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     private var confirmLabel: String {
