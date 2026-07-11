@@ -45,7 +45,7 @@ struct SearchView: View {
     // MARK: - Top bar (input + Cancel)
 
     private var topBar: some View {
-        HStack(spacing: BTSpacing.md) {
+        HStack(spacing: 10) {
             HStack(spacing: BTSpacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14))
@@ -73,17 +73,17 @@ struct SearchView: View {
             .padding(.horizontal, BTSpacing.md)
             .background(Color.btSurface)
             .overlay(
-                RoundedRectangle(cornerRadius: BTRadius.lg)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.btLine, lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
 
             Button("Cancel") { dismiss() }
                 .font(BTFont.bodyMedium(size: 13))
                 .foregroundStyle(Color.btText2)
         }
-        .padding(.horizontal, BTSpacing.md)
-        .padding(.vertical, BTSpacing.sm)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.btLine).frame(height: 1)
         }

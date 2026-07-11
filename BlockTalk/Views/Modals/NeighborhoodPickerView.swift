@@ -175,8 +175,7 @@ struct NeighborhoodPickerView: View {
         .buttonStyle(.plain)
         .disabled(!canConfirm)
         .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 26)
+        .padding(.vertical, 12)
         .background(Color.btBg)
         .overlay(alignment: .top) { Rectangle().fill(Color.btLine).frame(height: 1) }
     }
