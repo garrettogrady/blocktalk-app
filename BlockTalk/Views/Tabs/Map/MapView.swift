@@ -30,6 +30,7 @@ struct MapTabView: View {
 
     var body: some View {
         ZStack {
+            MapReader { proxy in
             Map(position: $cameraPosition, interactionModes: .all) {
                 // Neighborhood polygon overlays
                 ForEach(polygons) { polygon in
@@ -53,23 +54,17 @@ struct MapTabView: View {
                     }
                 }
 
-                // Neighborhood name labels
-                ForEach(polygons) { polygon in
-                    let isCurrent = isCurrentNeighborhood(polygon.name)
+                // Only the active neighborhood gets our label (lime). Every other
+                // neighborhood name comes from the base map — rendering our own
+                // duplicated them in softer grey at scattered centroid positions.
+                ForEach(polygons.filter { isCurrentNeighborhood($0.name) }) { polygon in
                     Annotation("", coordinate: polygon.center) {
-                        // Stack multi-word names (LOWER EAST SIDE) onto separate
-                        // lines — MapKit sizes annotations to intrinsic width and
-                        // ignores frame limits, so a wide one-liner runs off-screen.
-                        Text(stackedLabel(polygon.name))
-                            .font(BTFont.display(size: isCurrent ? 12 : 9))
+                        Text(polygon.name.uppercased())
+                            .font(BTFont.display(size: 12))
                             .tracking(1.1)
-                            .foregroundStyle(isCurrent ? Color.btLime : Color.btText3)
+                            .foregroundStyle(Color.btLime)
                             .shadow(color: .black.opacity(0.85), radius: 3, x: 0, y: 0)
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(1)
-                            .onTapGesture {
-                                goToNeighborhoodFeed(polygon.name)
-                            }
+                            .fixedSize()
                     }
                 }
 
@@ -97,6 +92,18 @@ struct MapTabView: View {
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
             }
+            // Tap a neighborhood (other than the one you're in) to open its
+            // feed. Only fires for non-active areas, and pins live inside the
+            // active neighborhood, so this never steals a pin tap.
+            .onTapGesture { screenPoint in
+                guard !viewModel.isDropMode,
+                      let coord = proxy.convert(screenPoint, from: .local),
+                      let hit = polygons.first(where: { $0.contains(coord) }),
+                      !isCurrentNeighborhood(hit.name)
+                else { return }
+                goToNeighborhoodFeed(hit.name)
+            }
+            } // MapReader
 
             // Top pills
             VStack {
@@ -123,7 +130,7 @@ struct MapTabView: View {
                         .clipShape(Capsule())
 
                         // Hint pill — centered, below
-                        Text("tap a neighborhood name to open its feed")
+                        Text("tap a neighborhood to open its feed")
                             .font(BTFont.body(size: 11))
                             .foregroundStyle(Color.btText2)
                             .padding(.horizontal, BTSpacing.md)
@@ -290,14 +297,6 @@ struct MapTabView: View {
 
     private func isCurrentNeighborhood(_ polygonName: String) -> Bool {
         polygonName.lowercased() == activeNeighborhoodName.lowercased()
-    }
-
-    /// Stack long multi-word names onto separate lines so they don't run off
-    /// the screen edge (MapKit annotations size to intrinsic width).
-    private func stackedLabel(_ name: String) -> String {
-        let up = name.uppercased()
-        guard up.count > 10 else { return up }
-        return up.replacingOccurrences(of: " ", with: "\n")
     }
 
     /// Exact geofence: in-range iff the reticle is inside the SAME polygon(s)
