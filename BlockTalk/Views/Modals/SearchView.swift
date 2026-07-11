@@ -135,7 +135,7 @@ struct SearchView: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, BTSpacing.lg)
-        .padding(.vertical, BTSpacing.sm)
+        .padding(.vertical, 10)
         .background(Color.btBg)
     }
 
@@ -168,7 +168,7 @@ struct SearchView: View {
                         Spacer()
                     }
                     .padding(.horizontal, BTSpacing.lg)
-                    .padding(.vertical, BTSpacing.md)
+                    .padding(.vertical, 10)
                     .background(Color.btBg)
 
                     ForEach(viewModel.results) { post in
