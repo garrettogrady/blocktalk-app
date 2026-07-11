@@ -35,9 +35,13 @@ struct NeighborhoodPickerView: View {
             header
             searchBar
             list
+            confirmBar
         }
         .background(Color.btBg.ignoresSafeArea())
-        .overlay(alignment: .bottom) { confirmBar }
+        // Let the stack run to the physical screen bottom so the confirm bar's
+        // equal top/bottom padding truly centers the button (the home-indicator
+        // area sits inside the bottom padding, not added beneath it).
+        .ignoresSafeArea(.container, edges: .bottom)
         .onAppear {
             if neighborhoods.isEmpty {
                 neighborhoods = NeighborhoodDirectory.all.map {
@@ -135,8 +139,6 @@ struct NeighborhoodPickerView: View {
                     }
                 }
             }
-            // Clear the floating confirm bar at the bottom
-            .padding(.bottom, 96)
         }
         .scrollDismissesKeyboard(.interactively)
     }
@@ -192,15 +194,12 @@ struct NeighborhoodPickerView: View {
         .buttonStyle(.plain)
         .disabled(!canConfirm)
         .padding(.horizontal, 14)
-        // Mirrors the Expo bar exactly (top 10, bottom 26). The bar reaches
-        // the physical screen bottom (ignoresSafeArea), so the home-indicator
-        // area lives inside that 26 rather than being added below it.
-        .padding(.top, 10)
-        .padding(.bottom, 26)
+        // Equal top/bottom padding — with the stack extended to the physical
+        // bottom, this centers the button (equal black above and below).
+        .padding(.vertical, 22)
         .frame(maxWidth: .infinity)
         .background(Color.btBg)
         .overlay(alignment: .top) { Rectangle().fill(Color.btLine).frame(height: 1) }
-        .ignoresSafeArea(edges: .bottom)
     }
 
     private var confirmLabel: String {
