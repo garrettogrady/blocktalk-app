@@ -20,9 +20,9 @@ struct VotePills: View {
     var body: some View {
         HStack(spacing: BTSpacing.xs) {
             pill(glyph: "▲", color: .btLime, active: vote == 1,
-                 count: hasEverVoted ? upCount : nil, action: tapUp)
+                 count: upCount, showCount: hasEverVoted, action: tapUp)
             pill(glyph: "▽", color: .btPink, active: vote == -1,
-                 count: hasEverVoted ? downCount : nil, action: tapDown)
+                 count: downCount, showCount: hasEverVoted, action: tapDown)
         }
     }
 
@@ -38,17 +38,18 @@ struct VotePills: View {
         hasEverVoted = true
     }
 
-    private func pill(glyph: String, color: Color, active: Bool, count: Int?, action: @escaping () -> Void) -> some View {
+    private func pill(glyph: String, color: Color, active: Bool, count: Int, showCount: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Text(glyph)
                     .font(BTFont.bodyBold(size: 11))
                     .foregroundStyle(color)
-                if let count {
-                    Text("\(count)")
-                        .font(BTFont.monoBold(size: 11))
-                        .foregroundStyle(color)
-                }
+                // Count space is always reserved so the pills never resize /
+                // shove each other when the score reveals on first vote.
+                Text("\(count)")
+                    .font(BTFont.monoBold(size: 11))
+                    .foregroundStyle(color)
+                    .opacity(showCount ? 1 : 0)
             }
             .frame(height: 30)
             .padding(.horizontal, 11)
