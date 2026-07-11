@@ -68,23 +68,6 @@ struct SettingsProfileView: View {
             .listRowBackground(Color.btSurface)
             .listRowSeparatorTint(Color.btLine)
 
-            // Device section
-            Section {
-                HStack {
-                    Text("Apple ID")
-                        .font(BTFont.bodyMedium(size: 15))
-                        .foregroundStyle(Color.btText)
-                    Spacer()
-                    chip("V1 BAN ENFORCED", tone: .btLime)
-                }
-            } header: {
-                Text("DEVICE")
-                    .font(BTFont.mono(size: 11))
-                    .foregroundStyle(Color.btText3)
-            }
-            .listRowBackground(Color.btSurface)
-            .listRowSeparatorTint(Color.btLine)
-
             // Danger Zone
             Section {
                 Button {

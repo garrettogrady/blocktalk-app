@@ -141,9 +141,9 @@ struct ReportModalView: View {
                 }
                 .disabled(!canSubmit)
                 .padding(.horizontal, BTSpacing.xxl)
-                .padding(.top, BTSpacing.sm)
-                .padding(.bottom, BTSpacing.sm)
-                .background(Color.btBg)
+                .padding(.vertical, BTSpacing.md)
+                .frame(maxWidth: .infinity)
+                .background(Color.btBg.ignoresSafeArea(.container, edges: .bottom))
             }
             .navigationTitle("Report \(targetLabel.capitalized)")
             .navigationBarTitleDisplayMode(.inline)

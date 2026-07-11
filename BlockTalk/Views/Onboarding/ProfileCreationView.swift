@@ -97,7 +97,7 @@ struct ProfileCreationView: View {
                                 .font(BTFont.body(size: 14))
                                 .foregroundStyle(Color.btText)
                                 .padding(.horizontal, 14)
-                                .padding(.leading, 16) // extra space for @
+                                .padding(.leading, 10) // room for @ — kept tight so it reads "@name"
                                 .padding(.vertical, 12)
                                 .focused($usernameFieldFocused)
                                 .autocorrectionDisabled()
@@ -232,7 +232,8 @@ struct ProfileCreationView: View {
             }
             .disabled(!viewModel.canContinue)
             .padding(.horizontal, BTSpacing.xxl)
-            .padding(.bottom, BTSpacing.xxl)
+            .padding(.top, BTSpacing.sm)
+            .padding(.bottom, BTSpacing.md)
         }
         .background(Color.btBg.ignoresSafeArea())
         .sheet(isPresented: $showNeighborhoodPicker) {

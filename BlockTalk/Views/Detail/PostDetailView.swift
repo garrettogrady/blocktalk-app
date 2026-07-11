@@ -172,7 +172,9 @@ struct PostDetailView: View {
             .padding(.horizontal, BTSpacing.lg)
             .padding(.vertical, BTSpacing.md)
         }
-        .background(Color.btSurface)
+        .background {
+            Color.btSurface.ignoresSafeArea(.container, edges: .bottom)
+        }
     }
 
     private var canSendReply: Bool {

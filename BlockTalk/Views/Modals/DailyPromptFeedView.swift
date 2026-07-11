@@ -220,7 +220,9 @@ struct DailyPromptFeedView: View {
             .buttonStyle(.plain)
             .padding(.bottom, BTSpacing.sm)
         }
-        .background(Color.btBg)
+        .background {
+            Color.btBg.ignoresSafeArea(.container, edges: .bottom)
+        }
     }
 }
 

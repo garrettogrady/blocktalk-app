@@ -110,7 +110,7 @@ struct FeedbackView: View {
                 .cornerRadius(BTRadius.md)
             }
             .disabled(!canSubmit)
-            .padding(.bottom, BTSpacing.xxxl)
+            .padding(.bottom, BTSpacing.md)
         }
     }
 

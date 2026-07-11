@@ -70,7 +70,13 @@ struct LocationGateBar: View {
             }
             .padding(.horizontal, BTSpacing.md)
             .padding(.vertical, 10)
-            .background(Color.btWarn.opacity(0.08))
+            .frame(maxWidth: .infinity)
+            // Opaque base that runs through the home-indicator strip so feed
+            // content can't show through the bar or peek out beneath it.
+            .background {
+                Color.btBg.overlay(Color.btWarn.opacity(0.08))
+                    .ignoresSafeArea(.container, edges: .bottom)
+            }
             .overlay(alignment: .top) {
                 Rectangle().fill(Color.btWarn.opacity(0.45)).frame(height: 1)
             }

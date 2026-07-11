@@ -3,6 +3,11 @@ import SwiftUI
 struct TrendingCard: View {
     let post: Post
 
+    @Environment(AppState.self) private var appState
+    @Environment(ModerationStore.self) private var moderation
+    @State private var enrolled = false
+    @State private var showReport = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
             // TOP TRENDING chip
@@ -36,10 +41,28 @@ struct TrendingCard: View {
                 .lineLimit(4)
                 .multilineTextAlignment(.leading)
 
-            // Vote pills + reply count
-            HStack(spacing: BTSpacing.sm) {
+            // Action row — matches every other post card
+            HStack(spacing: 6) {
                 VotePills(score: post.score, onUpvote: {}, onDownvote: {})
-                Spacer()
+
+                actionButton(systemName: enrolled ? "bell.fill" : "bell",
+                             active: enrolled, activeColor: .btLime) {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    enrolled.toggle()
+                }
+                actionButton(systemName: "square.and.arrow.up") {
+                    ShareHelper.sharePost(post)
+                }
+                if appState.currentUser?.id != post.userId {
+                    if moderation.isReported(post.id) {
+                        actionButton(systemName: "flag.fill", active: true, activeColor: .btPink) {}
+                    } else {
+                        actionButton(systemName: "flag") { showReport = true }
+                    }
+                }
+
+                Spacer(minLength: 0)
+
                 (Text("\(post.replyCount)").foregroundStyle(Color.btText)
                  + Text(" replies").foregroundStyle(Color.btText2))
                     .font(BTFont.monoBold(size: 11))
@@ -50,6 +73,27 @@ struct TrendingCard: View {
         .background(Color.btLime.opacity(0.04))
         .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.3), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        .sheet(isPresented: $showReport) {
+            ReportModalView(postId: post.id) { short in
+                moderation.report(postId: post.id, reasonShort: short)
+            }
+        }
+    }
+
+    private func actionButton(systemName: String, active: Bool = false, activeColor: Color = .btText2, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 13))
+                .foregroundStyle(active ? activeColor : Color.btText2)
+                .frame(width: 30, height: 30)
+                .background(active ? activeColor.opacity(0.12) : Color.btSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: BTRadius.sm)
+                        .stroke(active ? activeColor.opacity(0.45) : Color.btLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -8,16 +8,25 @@ struct ToneRulesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Step 03 / 03
+            // Step 03 / 03 — matches the Profile step bar (bar left, counter right)
             HStack(spacing: BTSpacing.sm) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.btSurface2)
+                            .frame(height: 3)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.btLime)
+                            .frame(width: geo.size.width, height: 3)
+                    }
+                }
+                .frame(height: 3)
+
                 Text("03 / 03")
                     .font(BTFont.mono(size: 10))
                     .foregroundStyle(Color.btText3)
                     .tracking(1)
-                Capsule()
-                    .fill(Color.btLime)
-                    .frame(height: 3)
-                    .frame(maxWidth: .infinity)
+                    .fixedSize()
             }
 
             Spacer()

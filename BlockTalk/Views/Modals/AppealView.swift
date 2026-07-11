@@ -34,6 +34,11 @@ struct AppealView: View {
                 .padding(.top, BTSpacing.xxl)
             }
             .background(Color.btBg.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) {
+                if !showSuccess && !alreadyAppealed {
+                    submitBar
+                }
+            }
             .navigationTitle("Appeal Removal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -119,27 +124,33 @@ struct AppealView: View {
                     .font(BTFont.body(size: 13))
                     .foregroundStyle(Color.btText3)
             }
-
-            // Submit button
-            Button {
-                submit()
-            } label: {
-                HStack {
-                    if isSubmitting {
-                        ProgressView()
-                            .tint(Color.btBg)
-                    }
-                    Text("Submit Appeal")
-                        .font(BTFont.bodySemibold(size: 16))
-                }
-                .foregroundStyle(Color.btBg)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, BTSpacing.lg)
-                .background(canSubmit ? Color.btLime : Color.btMuted)
-                .cornerRadius(BTRadius.md)
-            }
-            .disabled(!canSubmit)
         }
+    }
+
+    // MARK: - Submit bar (bottom-anchored)
+
+    private var submitBar: some View {
+        Button {
+            submit()
+        } label: {
+            HStack {
+                if isSubmitting {
+                    ProgressView().tint(Color.btBg)
+                }
+                Text("Submit Appeal")
+                    .font(BTFont.bodySemibold(size: 16))
+            }
+            .foregroundStyle(Color.btBg)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, BTSpacing.lg)
+            .background(canSubmit ? Color.btLime : Color.btMuted)
+            .cornerRadius(BTRadius.md)
+        }
+        .disabled(!canSubmit)
+        .padding(.horizontal, BTSpacing.xxl)
+        .padding(.vertical, BTSpacing.md)
+        .frame(maxWidth: .infinity)
+        .background(Color.btBg.ignoresSafeArea(.container, edges: .bottom))
     }
 
     // MARK: - Success

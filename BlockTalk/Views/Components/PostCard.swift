@@ -5,6 +5,9 @@ struct PostCard: View {
     let post: Post
     var isPreview: Bool = false
     var pending: Bool = false
+    /// Suppress the inline street mini-map (used in Pin Detail, which already
+    /// shows a full-size map of the same corner up top).
+    var showStreetMap: Bool = true
     var username: String = "BlockTalker"
     var userNumber: Int = 0
     var homeShortCode: String?
@@ -45,11 +48,13 @@ struct PostCard: View {
             // Meta row
             metaRow
 
-            // Street-comment map snippet (where the comment was dropped)
-            if let pin = streetPin, !isPreview {
+            // Street-comment map snippet (where the comment was dropped).
+            // Zoomed in tight so it reads as "this corner" — streets + the pin —
+            // instead of a cluttered view full of neighborhood labels.
+            if let pin = streetPin, !isPreview, showStreetMap {
                 Map(initialPosition: .region(MKCoordinateRegion(
                     center: pin.coordinate,
-                    span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.0035)
+                    span: MKCoordinateSpan(latitudeDelta: 0.0022, longitudeDelta: 0.0019)
                 )), interactionModes: []) {
                     Annotation("", coordinate: pin.coordinate) {
                         ZStack {

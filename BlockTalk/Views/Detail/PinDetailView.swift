@@ -22,8 +22,9 @@ struct PinDetailView: View {
                     mapSnippet
                         .frame(height: 200)
 
-                    // Featured pin post
-                    PostCard(post: post)
+                    // Featured pin post — hide its inline mini-map; the
+                    // full-size map above already shows this corner.
+                    PostCard(post: post, showStreetMap: false)
 
                     Divider().background(Color.btLine)
 
@@ -203,7 +204,9 @@ struct PinDetailView: View {
             .padding(.horizontal, BTSpacing.lg)
             .padding(.vertical, BTSpacing.md)
         }
-        .background(Color.btSurface)
+        .background {
+            Color.btSurface.ignoresSafeArea(.container, edges: .bottom)
+        }
     }
 
     private var canSendReply: Bool {

@@ -57,12 +57,16 @@ struct MapTabView: View {
                 ForEach(polygons) { polygon in
                     let isCurrent = isCurrentNeighborhood(polygon.name)
                     Annotation("", coordinate: polygon.center) {
-                        Text(polygon.name.uppercased())
+                        // Stack multi-word names (LOWER EAST SIDE) onto separate
+                        // lines — MapKit sizes annotations to intrinsic width and
+                        // ignores frame limits, so a wide one-liner runs off-screen.
+                        Text(stackedLabel(polygon.name))
                             .font(BTFont.display(size: isCurrent ? 12 : 9))
                             .tracking(1.1)
                             .foregroundStyle(isCurrent ? Color.btLime : Color.btText3)
                             .shadow(color: .black.opacity(0.85), radius: 3, x: 0, y: 0)
-                            .fixedSize()
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(1)
                             .onTapGesture {
                                 goToNeighborhoodFeed(polygon.name)
                             }
@@ -286,6 +290,14 @@ struct MapTabView: View {
 
     private func isCurrentNeighborhood(_ polygonName: String) -> Bool {
         polygonName.lowercased() == activeNeighborhoodName.lowercased()
+    }
+
+    /// Stack long multi-word names onto separate lines so they don't run off
+    /// the screen edge (MapKit annotations size to intrinsic width).
+    private func stackedLabel(_ name: String) -> String {
+        let up = name.uppercased()
+        guard up.count > 10 else { return up }
+        return up.replacingOccurrences(of: " ", with: "\n")
     }
 
     /// Exact geofence: in-range iff the reticle is inside the SAME polygon(s)
