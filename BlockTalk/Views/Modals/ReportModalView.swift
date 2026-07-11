@@ -158,9 +158,13 @@ struct ReportModalView: View {
                     Text(reason.label)
                         .font(BTFont.bodyMedium(size: 15))
                         .foregroundStyle(Color.btText)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(reason.desc)
                         .font(BTFont.body(size: 12))
                         .foregroundStyle(Color.btText3)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Spacer()
