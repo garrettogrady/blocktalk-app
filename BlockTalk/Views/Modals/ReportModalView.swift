@@ -15,6 +15,7 @@ struct ReportModalView: View {
     @State private var freeText = ""
     @State private var isSubmitting = false
     @State private var error: String?
+    @FocusState private var freeTextFocused: Bool
 
     private let freeTextMin = 10
     private let freeTextMax = 140
@@ -30,6 +31,7 @@ struct ReportModalView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
                     VStack(alignment: .leading, spacing: BTSpacing.sm) {
@@ -64,8 +66,9 @@ struct ReportModalView: View {
                                 .font(BTFont.body(size: 15))
                                 .foregroundStyle(Color.btText)
                                 .scrollContentBackground(.hidden)
+                                .focused($freeTextFocused)
                                 .padding(BTSpacing.md)
-                                .frame(minHeight: 80)
+                                .frame(minHeight: 110)
                                 .background(Color.btSurface)
                                 .cornerRadius(BTRadius.md)
                                 .overlay(
@@ -88,6 +91,7 @@ struct ReportModalView: View {
                                     )
                             }
                         }
+                        .id("freetext")
                     }
 
                     // Error
@@ -96,30 +100,51 @@ struct ReportModalView: View {
                             .font(BTFont.body(size: 13))
                             .foregroundStyle(Color.btPink)
                     }
-
-                    // Report Post button
-                    Button {
-                        submitReport()
-                    } label: {
-                        HStack {
-                            if isSubmitting {
-                                ProgressView()
-                                    .tint(Color.btText)
-                            }
-                            Text("Report \(targetLabel.capitalized)")
-                                .font(BTFont.bodySemibold(size: 16))
-                        }
-                        .foregroundStyle(canSubmit ? Color.btText : Color.btText3)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, BTSpacing.lg)
-                        .background(canSubmit ? Color.btPink : Color.btMuted)
-                        .cornerRadius(BTRadius.md)
-                    }
-                    .disabled(!canSubmit)
                 }
                 .padding(.horizontal, BTSpacing.xxl)
+                .padding(.bottom, BTSpacing.lg)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: freeTextFocused) { _, focused in
+                if focused {
+                    withAnimation { proxy.scrollTo("freetext", anchor: .bottom) }
+                }
+            }
+            .onChange(of: selectedReason) { _, reason in
+                if reason == .other {
+                    // Give the editor a beat to appear, then reveal + focus it.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation { proxy.scrollTo("freetext", anchor: .bottom) }
+                        freeTextFocused = true
+                    }
+                }
+            }
             }
             .background(Color.btBg.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) {
+                // Report CTA pinned above the keyboard so it's never buried.
+                Button {
+                    submitReport()
+                } label: {
+                    HStack {
+                        if isSubmitting {
+                            ProgressView().tint(Color.btText)
+                        }
+                        Text("Report \(targetLabel.capitalized)")
+                            .font(BTFont.bodySemibold(size: 16))
+                    }
+                    .foregroundStyle(canSubmit ? Color.btText : Color.btText3)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, BTSpacing.lg)
+                    .background(canSubmit ? Color.btPink : Color.btMuted)
+                    .cornerRadius(BTRadius.md)
+                }
+                .disabled(!canSubmit)
+                .padding(.horizontal, BTSpacing.xxl)
+                .padding(.top, BTSpacing.sm)
+                .padding(.bottom, BTSpacing.sm)
+                .background(Color.btBg)
+            }
             .navigationTitle("Report \(targetLabel.capitalized)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
