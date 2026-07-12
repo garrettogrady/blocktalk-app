@@ -91,16 +91,13 @@ struct MapTabView: View {
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
             }
-            // Tap anywhere to SELECT that neighborhood (it highlights + a card
-            // names it). Works at any zoom: exact hit, else snap to the nearest
-            // neighborhood so a tap is never dead. Skips taps on a pin.
+            // Tap to select; tap the selected one again to open its feed; tap
+            // empty water/far away to deselect. Skips taps on a pin.
             .onTapGesture { screenPoint in
                 guard !viewModel.isDropMode,
                       let coord = proxy.convert(screenPoint, from: .local),
                       !isNearPin(coord) else { return }
-                if let name = neighborhood(at: coord) {
-                    withAnimation(.easeOut(duration: 0.15)) { selectedNeighborhood = name }
-                }
+                handleTap(at: coord)
             }
             }
             .ignoresSafeArea() // on the MapReader so its `.local` space == tap space
@@ -364,11 +361,19 @@ struct MapTabView: View {
                     Text(name)
                         .font(BTFont.display(size: 18))
                         .foregroundStyle(Color.btText)
-                    if let boro {
-                        Text(boro.uppercased())
+                    HStack(spacing: 5) {
+                        if let boro {
+                            Text(boro.uppercased())
+                                .font(BTFont.monoBold(size: 9))
+                                .tracking(1.2)
+                                .foregroundStyle(Color.btText3)
+                            Text("·").foregroundStyle(Color.btText3)
+                        }
+                        Circle().fill(Color.btLime).frame(width: 5, height: 5)
+                        Text("\(talkingCount(name)) talking")
                             .font(BTFont.monoBold(size: 9))
-                            .tracking(1.2)
-                            .foregroundStyle(Color.btText3)
+                            .tracking(0.8)
+                            .foregroundStyle(Color.btLime)
                     }
                 }
                 Spacer()
@@ -419,14 +424,72 @@ struct MapTabView: View {
         }
     }
 
-    /// Which neighborhood a tapped coordinate belongs to: the polygon that
-    /// contains it, else the nearest one (so a tap in a gap/near an edge still
-    /// selects something sensible instead of doing nothing).
-    private func neighborhood(at coord: CLLocationCoordinate2D) -> String? {
-        if let hit = polygons.first(where: { $0.contains(coord) }) { return hit.name }
-        return polygons.min(by: {
-            distance(coord, $0.center) < distance(coord, $1.center)
-        })?.name
+    /// Tap routing: inside a neighborhood selects it (or opens it if it's
+    /// already selected — double-tap-to-confirm); a near-miss snaps to the
+    /// closest neighborhood (forgives edge imprecision); a far tap (water,
+    /// empty space) clears the selection.
+    private func handleTap(at coord: CLLocationCoordinate2D) {
+        if let hit = polygons.first(where: { $0.contains(coord) }) {
+            if hit.name == selectedNeighborhood {
+                openFeed(hit.name)          // second tap on the selected → open
+            } else {
+                select(hit.name)
+            }
+            return
+        }
+        if let near = nearestPolygon(to: coord), near.dist < 250 {
+            select(near.name)               // just outside an edge → snap in
+        } else if selectedNeighborhood != nil {
+            withAnimation(.easeOut(duration: 0.2)) { selectedNeighborhood = nil }
+        }
+    }
+
+    private func select(_ name: String) {
+        withAnimation(.easeOut(duration: 0.18)) { selectedNeighborhood = name }
+        focus(on: name)                     // zoom-to-fit the neighborhood
+    }
+
+    /// Nearest neighborhood to a coordinate by distance to its outline.
+    private func nearestPolygon(to coord: CLLocationCoordinate2D) -> (name: String, dist: CLLocationDistance)? {
+        var best: (String, CLLocationDistance)?
+        for poly in polygons {
+            for ring in poly.rings where ring.count > 2 {
+                for p in ring {
+                    let d = distance(coord, p)
+                    if best == nil || d < best!.1 { best = (poly.name, d) }
+                }
+            }
+        }
+        return best.map { (name: $0.0, dist: $0.1) }
+    }
+
+    /// Gently pan/zoom so the whole selected neighborhood is in view.
+    private func focus(on name: String) {
+        guard let poly = polygons.first(where: { $0.name == name }) else { return }
+        var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0
+        for ring in poly.rings {
+            for p in ring {
+                minLat = min(minLat, p.latitude);  maxLat = max(maxLat, p.latitude)
+                minLng = min(minLng, p.longitude); maxLng = max(maxLng, p.longitude)
+            }
+        }
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2),
+            span: MKCoordinateSpan(
+                latitudeDelta: max((maxLat - minLat) * 1.5, 0.012),
+                longitudeDelta: max((maxLng - minLng) * 1.5, 0.010)
+            )
+        )
+        withAnimation(.easeInOut(duration: 0.45)) {
+            cameraPosition = .region(region)
+        }
+    }
+
+    /// A stable, made-up "N talking" count per neighborhood so the map feels
+    /// alive. Deterministic from the name (no backend). [PROD-DIFF]
+    private func talkingCount(_ name: String) -> Int {
+        let base = name.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return base % 180 + 14
     }
 
     /// True if the tap landed on a map pin (let the pin's own tap handle it).
