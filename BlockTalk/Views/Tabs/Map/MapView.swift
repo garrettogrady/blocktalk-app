@@ -7,7 +7,9 @@ struct MapTabView: View {
     @State private var viewModel = MapViewModel()
     @State private var showComposeForPin = false
     @State private var polygons: [NeighborhoodPolygon] = []
-    @State private var tappedNeighborhood: String?
+    /// The neighborhood the user tapped — highlighted + named in a bottom card,
+    /// pending confirmation. Tap-to-select-then-confirm (not instant navigate).
+    @State private var selectedNeighborhood: String?
     @State private var selectedPinDetail: (pin: Pin, post: Post)?
     @State private var showPinDetail = false
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
@@ -35,18 +37,16 @@ struct MapTabView: View {
                 // Neighborhood polygon overlays
                 ForEach(polygons) { polygon in
                     let isCurrent = isCurrentNeighborhood(polygon.name)
-                    let isTapped = tappedNeighborhood == polygon.name
+                    let isSelected = selectedNeighborhood == polygon.name
                     ForEach(Array(polygon.rings.enumerated()), id: \.offset) { _, ring in
                         MapPolygon(coordinates: ring)
                             .stroke(
-                                isCurrent || isTapped
-                                    ? Color.btLime
-                                    : Color.white.opacity(0.22),
-                                lineWidth: isCurrent || isTapped ? 1.5 : 0.9
+                                isSelected || isCurrent ? Color.btLime : Color.white.opacity(0.22),
+                                lineWidth: isSelected ? 2.5 : (isCurrent ? 1.5 : 0.9)
                             )
                             .foregroundStyle(
-                                isTapped
-                                    ? Color.btLime.opacity(0.18)
+                                isSelected
+                                    ? Color.btLime.opacity(0.22)
                                     : isCurrent
                                         ? Color.btLime.opacity(0.07)
                                         : Color.white.opacity(0.02)
@@ -54,10 +54,10 @@ struct MapTabView: View {
                     }
                 }
 
-                // Only the active neighborhood gets our label (lime). Every other
-                // neighborhood name comes from the base map — rendering our own
-                // duplicated them in softer grey at scattered centroid positions.
-                ForEach(polygons.filter { isCurrentNeighborhood($0.name) }) { polygon in
+                // Lime label follows the highlighted neighborhood (selected if the
+                // user tapped one, otherwise the one they're in). Every other name
+                // comes from the base map — rendering our own duplicated them.
+                ForEach(polygons.filter { $0.name == (selectedNeighborhood ?? activeNeighborhoodName) }) { polygon in
                     Annotation("", coordinate: polygon.center) {
                         Text(polygon.name.uppercased())
                             .font(BTFont.display(size: 12))
@@ -87,23 +87,24 @@ struct MapTabView: View {
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .colorScheme(.dark)
-            .ignoresSafeArea()
             .onMapCameraChange { context in
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
             }
-            // Tap a neighborhood (other than the one you're in) to open its
-            // feed. Only fires for non-active areas, and pins live inside the
-            // active neighborhood, so this never steals a pin tap.
+            // Tap anywhere to SELECT that neighborhood (it highlights + a card
+            // names it). Works at any zoom: exact hit, else snap to the nearest
+            // neighborhood so a tap is never dead. Skips taps on a pin.
             .onTapGesture { screenPoint in
                 guard !viewModel.isDropMode,
                       let coord = proxy.convert(screenPoint, from: .local),
-                      let hit = polygons.first(where: { $0.contains(coord) }),
-                      !isCurrentNeighborhood(hit.name)
-                else { return }
-                goToNeighborhoodFeed(hit.name)
+                      !isNearPin(coord) else { return }
+                if let name = neighborhood(at: coord) {
+                    withAnimation(.easeOut(duration: 0.15)) { selectedNeighborhood = name }
+                }
             }
-            } // MapReader
+            }
+            .ignoresSafeArea() // on the MapReader so its `.local` space == tap space
+            // MapReader
 
             // Top pills
             VStack {
@@ -130,7 +131,7 @@ struct MapTabView: View {
                         .clipShape(Capsule())
 
                         // Hint pill — centered, below
-                        Text("tap a neighborhood to open its feed")
+                        Text("tap a neighborhood to select it")
                             .font(BTFont.body(size: 11))
                             .foregroundStyle(Color.btText2)
                             .padding(.horizontal, BTSpacing.md)
@@ -186,12 +187,17 @@ struct MapTabView: View {
                 }
             }
 
-            // FAB or location gate
+            // Selection card, FAB, or location gate
             if !viewModel.isDropMode {
                 VStack {
                     Spacer()
 
-                    if locationService.permissionState == .granted {
+                    if let selected = selectedNeighborhood {
+                        selectionCard(selected)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.bottom, BTSpacing.xxxl)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else if locationService.permissionState == .granted {
                         Button {
                             viewModel.enterDropMode()
                         } label: {
@@ -271,6 +277,7 @@ struct MapTabView: View {
         .onChange(of: appState.pendingPinPlacement) { _, pending in
             // Compose switched to pin mode → auto-enter drop mode
             if pending {
+                selectedNeighborhood = nil
                 viewModel.enterDropMode()
                 appState.pendingPinPlacement = false
             }
@@ -348,6 +355,56 @@ struct MapTabView: View {
         .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
     }
 
+    /// Bottom card shown after tapping a neighborhood: names it + confirms.
+    private func selectionCard(_ name: String) -> some View {
+        let boro = NeighborhoodDirectory.all.first { $0.name == name }?.borough
+        return VStack(alignment: .leading, spacing: BTSpacing.sm) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(BTFont.display(size: 18))
+                        .foregroundStyle(Color.btText)
+                    if let boro {
+                        Text(boro.uppercased())
+                            .font(BTFont.monoBold(size: 9))
+                            .tracking(1.2)
+                            .foregroundStyle(Color.btText3)
+                    }
+                }
+                Spacer()
+                Button { withAnimation { selectedNeighborhood = nil } } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color.btText3)
+                        .frame(width: 28, height: 28)
+                        .background(Color.btSurface2)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            Button { openFeed(name) } label: {
+                HStack(spacing: 6) {
+                    Text("View \(name) feed")
+                        .font(BTFont.bodySemibold(size: 14))
+                        .lineLimit(1)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(Color.btOnAccent)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, BTSpacing.md)
+                .background(Color.btLime)
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(BTSpacing.lg)
+        .background(Color.btSurface.opacity(0.98))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.4), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
+    }
+
     private func openPinDetail(_ pin: Pin) {
         Task {
             do {
@@ -362,29 +419,38 @@ struct MapTabView: View {
         }
     }
 
-    private func goToNeighborhoodFeed(_ name: String) {
-        tappedNeighborhood = name
-        // Find the matching neighborhood from polygons and resolve it
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-            tappedNeighborhood = nil
-            // Look up the neighborhood from Supabase by name
-            Task {
-                do {
-                    let results: [Neighborhood] = try await supabase.from("neighborhoods")
-                        .select("id, name, short_code, borough")
-                        .ilike("name", value: name)
-                        .limit(1)
-                        .execute()
-                        .value
-                    if let neighborhood = results.first {
-                        appState.viewingNeighborhood = neighborhood
-                        appState.selectedTab = 0 // Switch to Feed
-                    }
-                } catch {
-                    print("Failed to find neighborhood '\(name)': \(error)")
-                }
-            }
+    /// Which neighborhood a tapped coordinate belongs to: the polygon that
+    /// contains it, else the nearest one (so a tap in a gap/near an edge still
+    /// selects something sensible instead of doing nothing).
+    private func neighborhood(at coord: CLLocationCoordinate2D) -> String? {
+        if let hit = polygons.first(where: { $0.contains(coord) }) { return hit.name }
+        return polygons.min(by: {
+            distance(coord, $0.center) < distance(coord, $1.center)
+        })?.name
+    }
+
+    /// True if the tap landed on a map pin (let the pin's own tap handle it).
+    private func isNearPin(_ coord: CLLocationCoordinate2D) -> Bool {
+        let here = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+        return viewModel.pins.contains {
+            here.distance(from: CLLocation(latitude: $0.coordinate.latitude,
+                                           longitude: $0.coordinate.longitude)) < 50
         }
+    }
+
+    private func distance(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> CLLocationDistance {
+        CLLocation(latitude: a.latitude, longitude: a.longitude)
+            .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
+    }
+
+    /// Open the confirmed neighborhood's feed — resolved locally from the
+    /// bundled directory (no backend). Switches to the Feed tab.
+    private func openFeed(_ name: String) {
+        guard let e = NeighborhoodDirectory.all.first(where: { $0.name.lowercased() == name.lowercased() })
+        else { return }
+        appState.viewingNeighborhood = Neighborhood(id: UUID(), name: e.name, shortCode: e.shortCode, borough: e.borough)
+        selectedNeighborhood = nil
+        appState.selectedTab = 0
     }
 
 }
