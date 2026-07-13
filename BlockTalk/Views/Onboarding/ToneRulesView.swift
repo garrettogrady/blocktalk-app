@@ -64,6 +64,7 @@ struct ToneRulesView: View {
             Button {
                 // Bundled-mock: ensure a user exists when entering via onboarding
                 if appState.currentUser == nil { appState.currentUser = .sample }
+                appState.selectedTab = 0   // land on the Feed, not wherever we came from
                 appState.advanceTo(.app)
             } label: {
                 Text("I get it")

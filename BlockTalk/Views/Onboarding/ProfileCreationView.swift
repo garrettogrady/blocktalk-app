@@ -8,7 +8,7 @@ struct ProfileCreationView: View {
 
     private let userNumber = "4,827"
     // Universally-NYC + neighborhood-agnostic so it reads true on any block.
-    private let examplePost = "the whole train sighed at the same time. we are one people."
+    private let examplePost = "the bodega cat has seen everything and will tell you nothing."
 
     /// The name shown in the preview + CTA — falls back to the default when blank.
     private var displayName: String {
