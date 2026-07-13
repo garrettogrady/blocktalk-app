@@ -16,9 +16,19 @@ struct ProfileCreationView: View {
     private var isDefaultName: Bool {
         displayName.caseInsensitiveCompare("BlockTalker") == .orderedSame
     }
-    /// The button states the outcome — people read the CTA, not the body copy.
+    private enum CTAState { case fixUsername, pickNeighborhood, ready }
+    private var ctaState: CTAState {
+        if isErrorState { return .fixUsername }
+        if viewModel.selectedNeighborhood == nil { return .pickNeighborhood }
+        return .ready
+    }
+    /// The button states the outcome / next action — people read the CTA.
     private var ctaLabel: String {
-        isDefaultName ? "Continue as BlockTalker" : "Continue as @\(displayName)"
+        switch ctaState {
+        case .fixUsername:      return "Continue"
+        case .pickNeighborhood: return "Pick your neighborhood"
+        case .ready:            return isDefaultName ? "Continue as BlockTalker" : "Continue as @\(displayName)"
+        }
     }
 
     var body: some View {
@@ -156,19 +166,16 @@ struct ProfileCreationView: View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
             fieldLabel("USERNAME", tag: "OPTIONAL", tagColor: Color.btText3)
 
-            ZStack(alignment: .leading) {
+            HStack(spacing: 0) {
+                // Same font as the field so the @ sits on the exact baseline.
                 Text("@")
-                    .font(BTFont.monoBold(size: 15))
+                    .font(BTFont.body(size: 15))
                     .foregroundStyle(Color.btText3)
-                    .padding(.leading, 14)
-                    .zIndex(1)
+                    .padding(.trailing, 1)
 
                 TextField("BlockTalker", text: $viewModel.username)
                     .font(BTFont.body(size: 15))
                     .foregroundStyle(Color.btText)
-                    .padding(.horizontal, 14)
-                    .padding(.leading, 12)
-                    .padding(.vertical, 13)
                     .focused($usernameFieldFocused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -180,21 +187,18 @@ struct ProfileCreationView: View {
                         }
                     }
 
-                HStack {
-                    Spacer()
-                    if viewModel.usernameOk {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color.btLime)
-                            .padding(.trailing, 14)
-                    } else if isErrorState {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Color.btPink)
-                            .padding(.trailing, 14)
-                    }
+                if viewModel.usernameOk {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.btLime)
+                } else if isErrorState {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.btPink)
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
             .background(isErrorState ? Color.btPink.opacity(0.05) : Color.btSurface)
             .cornerRadius(BTRadius.lg)
             .overlay(
@@ -247,25 +251,45 @@ struct ProfileCreationView: View {
 
     private var continueBar: some View {
         Button {
-            handleContinue()
+            switch ctaState {
+            case .fixUsername:      break
+            case .pickNeighborhood: showNeighborhoodPicker = true
+            case .ready:            handleContinue()
+            }
         } label: {
             HStack(spacing: 6) {
+                if ctaState == .pickNeighborhood {
+                    Image(systemName: "mappin.and.ellipse").font(.system(size: 13, weight: .semibold))
+                }
                 Text(ctaLabel)
                     .font(BTFont.bodyBold(size: 14))
                     .lineLimit(1)
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 13, weight: .semibold))
+                if ctaState == .ready {
+                    Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold))
+                }
             }
-            .foregroundStyle(viewModel.canContinue ? Color.btOnAccent : Color.btText3)
+            .foregroundStyle(ctaForeground)
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .background(viewModel.canContinue ? Color.btLime : Color.btSurface2)
+            .background(ctaState == .ready ? Color.btLime : Color.btSurface2)
+            .overlay(
+                RoundedRectangle(cornerRadius: BTRadius.lg)
+                    .stroke(ctaState == .pickNeighborhood ? Color.btLine : Color.clear, lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
         }
-        .disabled(!viewModel.canContinue)
+        .disabled(ctaState == .fixUsername)
         .padding(.horizontal, BTSpacing.xxl)
         .padding(.top, BTSpacing.sm)
         .padding(.bottom, BTSpacing.md)
+    }
+
+    private var ctaForeground: Color {
+        switch ctaState {
+        case .ready:            return Color.btOnAccent
+        case .pickNeighborhood: return Color.btText
+        case .fixUsername:      return Color.btText3
+        }
     }
 
     // MARK: - Helpers
