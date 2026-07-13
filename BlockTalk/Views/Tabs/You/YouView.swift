@@ -35,6 +35,10 @@ struct YouView: View {
                     offlineDemoCard
                         .padding(.horizontal, BTSpacing.lg)
 
+                    // 🧪 Onboarding replay (debug)
+                    onboardingDemoCard
+                        .padding(.horizontal, BTSpacing.lg)
+
                     Spacer(minLength: BTSpacing.xxxl)
                 }
             }
@@ -144,6 +148,29 @@ struct YouView: View {
             RoundedRectangle(cornerRadius: BTRadius.md)
                 .stroke(Color.btLine, lineWidth: 1)
         )
+    }
+
+    // MARK: - Onboarding Replay (debug)
+
+    private var onboardingDemoCard: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.md) {
+            Text("🧪 ONBOARDING")
+                .font(BTFont.monoBold(size: 11))
+                .tracking(1)
+                .foregroundStyle(Color.btText3)
+
+            debugButton("Replay onboarding", icon: "arrow.uturn.backward.circle", tint: .btLime) {
+                appState.advanceTo(.profile)
+            }
+
+            Text("Jumps to the profile → rule screens so you can see onboarding without signing out.")
+                .font(BTFont.body(size: 11))
+                .foregroundStyle(Color.btText3)
+        }
+        .padding(BTSpacing.lg)
+        .background(Color.btSurface)
+        .cornerRadius(BTRadius.md)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
     }
 
     // MARK: - Offline Demo (debug)
