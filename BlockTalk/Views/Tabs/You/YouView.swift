@@ -160,10 +160,11 @@ struct YouView: View {
                 .foregroundStyle(Color.btText3)
 
             debugButton("Replay onboarding", icon: "arrow.uturn.backward.circle", tint: .btLime) {
-                appState.advanceTo(.profile)
+                appState.forceOnboarding = true
+                appState.advanceTo(.splash)
             }
 
-            Text("Jumps to the profile → rule screens so you can see onboarding without signing out.")
+            Text("Starts at the landing screen and walks the full splash → profile → rule flow.")
                 .font(BTFont.body(size: 11))
                 .foregroundStyle(Color.btText3)
         }

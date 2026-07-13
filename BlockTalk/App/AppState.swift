@@ -29,6 +29,10 @@ final class AppState {
     /// Signal the Map to auto-enter drop mode (set when compose switches to pin mode)
     var pendingPinPlacement = false
 
+    /// Debug: force the splash to lead into onboarding (bypasses the
+    /// returning-user skip) so "Replay onboarding" can show the full flow.
+    var forceOnboarding = false
+
     func advanceTo(_ stage: AppStage) {
         withAnimation {
             self.stage = stage

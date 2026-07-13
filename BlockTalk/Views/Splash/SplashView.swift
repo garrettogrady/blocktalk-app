@@ -52,35 +52,25 @@ struct SplashView: View {
 
                 Spacer()
 
-                // Apple Sign In button
+                // Apple Sign In. Real auth is production; the Simulator can't do it,
+                // and "Replay onboarding" forces the bypass so the demo can walk the
+                // full splash → onboarding flow on-device.
                 #if targetEnvironment(simulator)
-                // Simulator bypass — Apple Sign In doesn't work in the Simulator
-                Button {
-                    appState.advanceTo(.profile)
-                } label: {
-                    HStack {
-                        Image(systemName: "apple.logo")
-                        Text("Sign in with Apple")
-                            .font(BTFont.bodySemibold(size: 17))
-                    }
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(.white)
-                    .cornerRadius(BTRadius.md)
-                }
-                .padding(.horizontal, BTSpacing.xxl)
-                .padding(.bottom, BTSpacing.lg)
+                appleSignInButton { startOnboarding() }
                 #else
-                SignInWithAppleButton(.signIn) { request in
-                    request.requestedScopes = [.email]
-                } onCompletion: { result in
-                    handleSignIn(result)
+                if appState.forceOnboarding {
+                    appleSignInButton { startOnboarding() }
+                } else {
+                    SignInWithAppleButton(.signIn) { request in
+                        request.requestedScopes = [.email]
+                    } onCompletion: { result in
+                        handleSignIn(result)
+                    }
+                    .signInWithAppleButtonStyle(.white)
+                    .frame(height: 50)
+                    .padding(.horizontal, BTSpacing.xxl)
+                    .padding(.bottom, BTSpacing.lg)
                 }
-                .signInWithAppleButtonStyle(.white)
-                .frame(height: 50)
-                .padding(.horizontal, BTSpacing.xxl)
-                .padding(.bottom, BTSpacing.lg)
                 #endif
 
                 // Legal text
@@ -169,6 +159,30 @@ struct SplashView: View {
                 .stroke(Color.btLine, lineWidth: 1)
         )
         .padding(.horizontal, BTSpacing.xxl)
+    }
+
+    // MARK: - Sign In
+
+    /// White Apple-styled button used for the Simulator + onboarding-replay bypass.
+    private func appleSignInButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: "apple.logo")
+                Text("Sign in with Apple").font(BTFont.bodySemibold(size: 17))
+            }
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(.white)
+            .cornerRadius(BTRadius.md)
+        }
+        .padding(.horizontal, BTSpacing.xxl)
+        .padding(.bottom, BTSpacing.lg)
+    }
+
+    private func startOnboarding() {
+        appState.forceOnboarding = false
+        appState.advanceTo(.profile)
     }
 
     // MARK: - Sign In Handler
