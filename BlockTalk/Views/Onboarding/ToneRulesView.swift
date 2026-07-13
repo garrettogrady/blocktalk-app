@@ -66,19 +66,19 @@ struct ToneRulesView: View {
                 if appState.currentUser == nil { appState.currentUser = .sample }
                 appState.advanceTo(.app)
             } label: {
-                Text("I get it →")
-                    .font(BTFont.bodyBold(size: 13))
+                Text("I get it")
+                    .font(BTFont.bodyBold(size: 14))
                     .foregroundStyle(Color.btOnAccent)
                     .tracking(0.4)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 46)
+                    .frame(height: 50)
                     .background(Color.btLime)
                     .cornerRadius(BTRadius.lg)
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, BTSpacing.xxl)
         .padding(.top, BTSpacing.sm)
-        .padding(.bottom, 22)
+        .padding(.bottom, BTSpacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.btBg.ignoresSafeArea())
     }

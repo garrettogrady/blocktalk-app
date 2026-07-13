@@ -7,8 +7,8 @@ struct ProfileCreationView: View {
     @FocusState private var usernameFieldFocused: Bool
 
     private let userNumber = "4,827"
-    // Neighborhood-agnostic so it reads true no matter which block they pick.
-    private let examplePost = "blasting sinatra out a 4th-floor window. honestly? correct."
+    // Universally-NYC + neighborhood-agnostic so it reads true on any block.
+    private let examplePost = "the whole train sighed at the same time. we are one people."
 
     /// The name shown in the preview + CTA — falls back to the default when blank.
     private var displayName: String {
@@ -263,29 +263,24 @@ struct ProfileCreationView: View {
             case .ready:            handleContinue()
             }
         } label: {
-            HStack(spacing: 6) {
-                if ctaState == .pickNeighborhood {
-                    Image(systemName: "house.fill").font(.system(size: 13, weight: .semibold))
-                }
-                Text(ctaLabel).font(BTFont.bodyBold(size: 14)).lineLimit(1)
-                if ctaState == .ready {
-                    Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold))
-                }
-            }
-            .foregroundStyle(ctaForeground)
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(ctaState == .ready ? Color.btLime : Color.btSurface2)
-            .overlay(
-                RoundedRectangle(cornerRadius: BTRadius.lg)
-                    .stroke(ctaState == .pickNeighborhood ? Color.btLine : Color.clear, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+            Text(ctaLabel)
+                .font(BTFont.bodyBold(size: 14))
+                .tracking(0.4)
+                .lineLimit(1)
+                .foregroundStyle(ctaForeground)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(ctaState == .ready ? Color.btLime : Color.btSurface2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: BTRadius.lg)
+                        .stroke(ctaState == .pickNeighborhood ? Color.btLine : Color.clear, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
         }
         .disabled(ctaState == .fixUsername)
         .padding(.horizontal, BTSpacing.xxl)
         .padding(.top, BTSpacing.sm)
-        .padding(.bottom, BTSpacing.md)
+        .padding(.bottom, BTSpacing.lg)
     }
 
     private var ctaForeground: Color {
