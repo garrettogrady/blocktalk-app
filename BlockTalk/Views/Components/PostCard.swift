@@ -65,7 +65,7 @@ struct PostCard: View {
                         }
                     }
                 }
-                .frame(height: 96)
+                .frame(height: 150)
                 .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
                 .colorScheme(.dark)
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))

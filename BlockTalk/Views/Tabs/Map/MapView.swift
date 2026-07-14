@@ -258,7 +258,9 @@ struct MapTabView: View {
         .sheet(isPresented: $showPinDetail) {
             if let detail = selectedPinDetail {
                 NavigationStack {
-                    PinDetailView(pin: detail.pin, post: detail.post)
+                    // Same detail view as the feed, so a street comment looks
+                    // identical whether opened from the map or the feed.
+                    PostDetailView(post: detail.post)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarLeading) {
                                 Button {
