@@ -162,11 +162,21 @@ final class OfflineStore {
 final class LocalContentStore {
     private(set) var posts: [Post] = []   // newest first
     private(set) var pins: [Pin] = []
+    private(set) var repliesByPost: [UUID: [Reply]] = [:]   // postId → replies you sent
 
     /// Add a freshly-created post (and its pin, for a street comment).
     func add(post: Post, pin: Pin? = nil) {
         if let pin { pins.insert(pin, at: 0) }
         posts.insert(post, at: 0)
+    }
+
+    /// Persist a reply so it survives leaving + reopening the post this session.
+    func addReply(_ reply: Reply, toPost postId: UUID) {
+        repliesByPost[postId, default: []].append(reply)
+    }
+
+    func replies(forPost postId: UUID) -> [Reply] {
+        repliesByPost[postId] ?? []
     }
 
     /// User-created posts for a given neighborhood, newest first.
@@ -180,5 +190,6 @@ final class LocalContentStore {
     func reset() {
         posts = []
         pins = []
+        repliesByPost = [:]
     }
 }

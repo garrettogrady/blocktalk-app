@@ -4,7 +4,17 @@ struct PostDetailView: View {
     let post: Post
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var location
+    @Environment(LocalContentStore.self) private var localContent
     @State private var viewModel = PostDetailViewModel()
+
+    /// The current user's identity, embedded on replies they send.
+    private var replyAuthor: ReplyAuthor {
+        ReplyAuthor(
+            username: appState.currentUser?.username ?? "BlockTalker",
+            userNumber: appState.currentUser?.userNumber ?? 0,
+            homeShortCode: appState.physicalNeighborhood?.shortCode ?? "LES"
+        )
+    }
     @State private var showPreFrame = false
     @FocusState private var replyFocused: Bool
 
@@ -44,13 +54,7 @@ struct PostDetailView: View {
                                 },
                                 onVote: { replyId, direction in
                                     guard let userId = appState.currentUser?.id else { return }
-                                    Task {
-                                        await viewModel.voteOnReply(
-                                            replyId: replyId,
-                                            userId: userId,
-                                            direction: direction
-                                        )
-                                    }
+                                    viewModel.voteOnReply(replyId: replyId, userId: userId, direction: direction)
                                 }
                             )
                         }
@@ -61,7 +65,7 @@ struct PostDetailView: View {
                 }
             }
             .refreshable {
-                await viewModel.loadReplies(postId: post.id)
+                await viewModel.loadReplies(for: post, store: localContent)
             }
 
             // Reply compose bar — replaced by the location gate when ungated
@@ -88,7 +92,7 @@ struct PostDetailView: View {
         }
         .task {
             viewModel.post = post
-            await viewModel.loadReplies(postId: post.id)
+            await viewModel.loadReplies(for: post, store: localContent)
         }
     }
 
@@ -156,9 +160,7 @@ struct PostDetailView: View {
                     Button {
                         guard let userId = appState.currentUser?.id else { return }
                         replyFocused = false
-                        Task {
-                            await viewModel.sendReply(postId: post.id, userId: userId)
-                        }
+                        viewModel.sendReply(post: post, userId: userId, author: replyAuthor, store: localContent)
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 28))

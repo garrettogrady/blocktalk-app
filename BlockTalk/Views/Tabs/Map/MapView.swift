@@ -181,7 +181,12 @@ struct MapTabView: View {
                         }
 
                         Button {
-                            if dropInRange { showComposeForPin = true }
+                            // Capture the drop location (mapCenter = the reticle),
+                            // then leave drop mode so we don't return to it after
+                            // posting — that stranded the user in the drop overlay.
+                            guard dropInRange else { return }
+                            showComposeForPin = true
+                            viewModel.cancelDrop()
                         } label: {
                             Text(dropInRange ? "Drop pin here" : "Out of range")
                                 .font(BTFont.bodySemibold(size: 15))
