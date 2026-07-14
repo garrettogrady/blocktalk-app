@@ -1,6 +1,14 @@
 import MapKit
 import SwiftUI
 
+/// Identifiable wrapper so the pin-detail sheet is item-driven (presents only
+/// once the post is resolved, never blank).
+struct PinDetailItem: Identifiable {
+    let pin: Pin
+    let post: Post
+    var id: UUID { pin.id }
+}
+
 struct MapTabView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
@@ -11,8 +19,9 @@ struct MapTabView: View {
     /// The neighborhood the user tapped — highlighted + named in a bottom card,
     /// pending confirmation. Tap-to-select-then-confirm (not instant navigate).
     @State private var selectedNeighborhood: String?
-    @State private var selectedPinDetail: (pin: Pin, post: Post)?
-    @State private var showPinDetail = false
+    // Item-driven so the sheet only presents once the post is resolved — avoids
+    // the blank-first-tap sheet that `.sheet(isPresented:)` + separate state hits.
+    @State private var selectedPinDetail: PinDetailItem?
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -256,31 +265,29 @@ struct MapTabView: View {
         .sheet(isPresented: $showPreFrame) {
             LocationPreFrameSheet()
         }
-        .sheet(isPresented: $showPinDetail) {
-            if let detail = selectedPinDetail {
-                NavigationStack {
-                    // Same detail view as the feed, so a street comment looks
-                    // identical whether opened from the map or the feed.
-                    PostDetailView(post: detail.post)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button {
-                                    showPinDetail = false
-                                } label: {
-                                    HStack(spacing: BTSpacing.xs) {
-                                        Image(systemName: "arrow.left")
-                                            .font(.system(size: 14, weight: .semibold))
-                                        Text("Pin · \(detail.pin.cornerName ?? "Drop")")
-                                            .font(BTFont.bodySemibold(size: 16))
-                                    }
-                                    .foregroundStyle(Color.btText)
+        .sheet(item: $selectedPinDetail) { detail in
+            NavigationStack {
+                // Same detail view as the feed, so a street comment looks
+                // identical whether opened from the map or the feed.
+                PostDetailView(post: detail.post)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                selectedPinDetail = nil
+                            } label: {
+                                HStack(spacing: BTSpacing.xs) {
+                                    Image(systemName: "arrow.left")
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text("Pin · \(detail.pin.cornerName ?? "Drop")")
+                                        .font(BTFont.bodySemibold(size: 16))
                                 }
+                                .foregroundStyle(Color.btText)
                             }
                         }
-                }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                    }
             }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: appState.pendingPinPlacement) { _, pending in
             // Compose switched to pin mode → auto-enter drop mode
@@ -427,16 +434,14 @@ struct MapTabView: View {
     private func openPinDetail(_ pin: Pin) {
         // Session-created street comment first, else the bundled sample post.
         if let post = localContent.post(forPinId: pin.id) {
-            selectedPinDetail = (pin: pin, post: post)
-            showPinDetail = true
+            selectedPinDetail = PinDetailItem(pin: pin, post: post)
             return
         }
         Task {
             do {
                 let postService = PostService()
                 if let post = try await postService.fetchPostForPin(pin.id) {
-                    selectedPinDetail = (pin: pin, post: post)
-                    showPinDetail = true
+                    selectedPinDetail = PinDetailItem(pin: pin, post: post)
                 }
             } catch {
                 print("Failed to load post for pin: \(error)")
