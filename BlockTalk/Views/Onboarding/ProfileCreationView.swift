@@ -325,6 +325,7 @@ struct ProfileCreationView: View {
         guard viewModel.canContinue, let neighborhood = viewModel.selectedNeighborhood else { return }
         if appState.currentUser == nil { appState.currentUser = .sample }
         appState.viewingNeighborhood = neighborhood
+        appState.physicalNeighborhood = neighborhood   // mock: your home is where you are
         appState.advanceTo(.tone)
     }
 }

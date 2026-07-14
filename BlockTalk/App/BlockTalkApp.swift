@@ -44,6 +44,7 @@ struct BlockTalkApp: App {
         if appState.currentUser == nil {
             appState.currentUser = .sample
             appState.viewingNeighborhood = .les
+            appState.physicalNeighborhood = .les   // mock: you're home in LES
             appState.hasResolvedInitialNeighborhood = true
             appState.stage = .app
         }

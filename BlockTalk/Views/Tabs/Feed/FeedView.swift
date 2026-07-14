@@ -25,6 +25,10 @@ struct FeedView: View {
                         // Location gate banner at top when location not granted
                         LocationGateBanner(showPreFrame: $showPreFrame)
 
+                        // Browsing a neighborhood you're not physically in — read
+                        // freely, but posting is locked to where you actually are.
+                        viewingElsewhereBanner
+
                         // Offline banner
                         if offline.isOffline {
                             OfflineBanner(pendingPostCount: offline.pending.count)
@@ -127,13 +131,17 @@ struct FeedView: View {
                     offline.expireStale()
                 }
 
-                // Bottom bar: compose if location granted, location gate if not
-                if locationService.permissionState == .granted {
+                // Bottom bar: location gate if not granted; compose if you're
+                // viewing the block you're physically in; otherwise a browse-only
+                // notice (you can read here but only post where you actually are).
+                if locationService.permissionState != .granted {
+                    LocationGateBar(showPreFrame: $showPreFrame)
+                } else if appState.canPostInViewing {
                     ComposeBarView {
                         showCompose = true
                     }
                 } else {
-                    LocationGateBar(showPreFrame: $showPreFrame)
+                    browseOnlyBar
                 }
             }
             .background(Color.btBg)
@@ -189,6 +197,79 @@ struct FeedView: View {
                 SearchView(scope: .neighborhood, neighborhood: appState.viewingNeighborhood)
             }
         }
+    }
+
+    // MARK: - Location locking
+
+    /// Thin banner shown when the viewed feed isn't the block you're in.
+    @ViewBuilder private var viewingElsewhereBanner: some View {
+        if locationService.permissionState == .granted,
+           let home = appState.physicalNeighborhood,
+           let viewing = appState.viewingNeighborhood,
+           !appState.canPostInViewing {
+            Button {
+                appState.viewingNeighborhood = home
+            } label: {
+                HStack(spacing: BTSpacing.xs) {
+                    Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
+                    (Text("browsing \(viewing.name) · you can only post in ")
+                     + Text(home.name).font(BTFont.bodyBold(size: 10.5)))
+                        .font(BTFont.bodyBold(size: 10.5))
+                        .tracking(0.2)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text("go back ›").font(BTFont.monoBold(size: 9)).tracking(0.5)
+                }
+                .foregroundStyle(Color.btHouse)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, BTSpacing.lg)
+                .padding(.vertical, 7)
+                .background(Color.btHouse.opacity(0.1))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// Replaces the compose bar when you're viewing a block you're not in —
+    /// you can read, but posting is locked to where you actually are.
+    private var browseOnlyBar: some View {
+        Button {
+            if let home = appState.physicalNeighborhood { appState.viewingNeighborhood = home }
+        } label: {
+            HStack(spacing: BTSpacing.sm) {
+                HStack(spacing: BTSpacing.sm) {
+                    Image(systemName: "eye").font(.system(size: 14)).foregroundStyle(Color.btHouse)
+                    Text("browsing only · post in \(appState.physicalNeighborhood?.name ?? "your block")")
+                        .font(BTFont.bodySemibold(size: 12))
+                        .foregroundStyle(Color.btText)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .frame(height: 38)
+                .padding(.horizontal, BTSpacing.md)
+                .background(Color.btSurface)
+                .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btHouse.opacity(0.35), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.btOnAccent)
+                    .frame(width: 38, height: 38)
+                    .background(Color.btHouse)
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+            }
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background {
+                Color.btBg.overlay(Color.btHouse.opacity(0.06))
+                    .ignoresSafeArea(.container, edges: .bottom)
+            }
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color.btHouse.opacity(0.35)).frame(height: 1)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Location Row

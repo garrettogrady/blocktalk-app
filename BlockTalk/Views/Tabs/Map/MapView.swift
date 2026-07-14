@@ -196,6 +196,10 @@ struct MapTabView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if locationService.permissionState == .granted {
                         Button {
+                            // Recenter to your postable zone so the reticle starts
+                            // in-range even if you'd panned off to browse elsewhere.
+                            selectedNeighborhood = nil
+                            focus(on: activeNeighborhoodName)
                             viewModel.enterDropMode()
                         } label: {
                             HStack(spacing: BTSpacing.sm) {
@@ -239,7 +243,7 @@ struct MapTabView: View {
         }
         .sheet(isPresented: $showComposeForPin) {
             ComposeView(
-                postingNeighborhood: appState.viewingNeighborhood ?? locationService.currentNeighborhood,
+                postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
                 pinDropLocation: mapCenter,
                 pinCornerName: snappedCorner(mapCenter)
             )
@@ -275,6 +279,7 @@ struct MapTabView: View {
             // Compose switched to pin mode → auto-enter drop mode
             if pending {
                 selectedNeighborhood = nil
+                focus(on: activeNeighborhoodName)
                 viewModel.enterDropMode()
                 appState.pendingPinPlacement = false
             }
@@ -291,12 +296,14 @@ struct MapTabView: View {
     /// The single active neighborhood (only this one is highlighted). Uses the
     /// viewing neighborhood (reliable locally), falling back to GPS-resolved,
     /// then LES — never highlights two at once.
+    /// The neighborhood you're physically in — the postable zone (green outline +
+    /// "You're in X"). NOT the one you're browsing: you can drop pins only here.
     private var activeNeighborhoodName: String {
-        appState.viewingNeighborhood?.name ?? locationService.currentNeighborhood?.name ?? "Lower East Side"
+        appState.physicalNeighborhood?.name ?? locationService.currentNeighborhood?.name ?? "Lower East Side"
     }
 
     private var hereShortCode: String {
-        appState.viewingNeighborhood?.shortCode ?? locationService.currentNeighborhood?.shortCode ?? "NYC"
+        appState.physicalNeighborhood?.shortCode ?? locationService.currentNeighborhood?.shortCode ?? "NYC"
     }
 
     private func isCurrentNeighborhood(_ polygonName: String) -> Bool {

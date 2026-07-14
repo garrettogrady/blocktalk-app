@@ -18,6 +18,17 @@ final class AppState {
 
     /// The neighborhood the user is currently viewing/interacting with (shared across tabs)
     var viewingNeighborhood: Neighborhood?
+
+    /// The neighborhood the user is PHYSICALLY in — the only place they can post
+    /// or reply. Mock: set to their home block. [PROD-DIFF: resolve from live GPS.]
+    var physicalNeighborhood: Neighborhood?
+
+    /// True when the feed they're viewing is the one they're physically in — the
+    /// only case where posting is allowed.
+    var canPostInViewing: Bool {
+        guard let p = physicalNeighborhood, let v = viewingNeighborhood else { return false }
+        return p.name.caseInsensitiveCompare(v.name) == .orderedSame
+    }
     /// Whether the initial neighborhood has been resolved (prevents resetting on tab switch)
     var hasResolvedInitialNeighborhood = false
     /// Selected tab index for cross-tab navigation
@@ -46,6 +57,7 @@ final class AppState {
         currentUser = nil
         session = nil
         viewingNeighborhood = nil
+        physicalNeighborhood = nil
         hasResolvedInitialNeighborhood = false
         selectedTab = 0
         stage = .splash
