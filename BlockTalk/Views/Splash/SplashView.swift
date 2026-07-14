@@ -1,5 +1,4 @@
 import AuthenticationServices
-import MapKit
 import SwiftUI
 
 struct SplashView: View {
@@ -7,19 +6,23 @@ struct SplashView: View {
 
     var body: some View {
         ZStack {
-            // MapKit background locked to Lower Manhattan
-            Map(initialPosition: .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911),
-                span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.024)
-            )), interactionModes: []) {
-            }
-            .mapStyle(.standard(pointsOfInterest: .excludingAll))
-            .ignoresSafeArea()
-            .colorScheme(.dark)
-
-            // 50% black scrim
-            Color.black.opacity(0.5)
+            // Static on-brand backdrop (no live Apple map = no attribution logo to
+            // show, and it renders instantly instead of waiting on map tiles).
+            Color.btBg
                 .ignoresSafeArea()
+            RadialGradient(
+                colors: [Color.btLime.opacity(0.12), Color.clear],
+                center: UnitPoint(x: 0.5, y: 0.18),
+                startRadius: 0,
+                endRadius: 460
+            )
+            .ignoresSafeArea()
+            LinearGradient(
+                colors: [Color.clear, Color.black.opacity(0.55)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
