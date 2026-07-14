@@ -153,3 +153,32 @@ final class OfflineStore {
         flushed = []
     }
 }
+
+/// Session-scoped store for content the user creates in this run (posts + pins).
+/// The mock has no backend, so a new post/street-comment lives here and is
+/// merged into the feed + map for the session. [PROD-DIFF: Garrett's Supabase
+/// writes replace this — createPost/createPin insert server-side instead.]
+@Observable
+final class LocalContentStore {
+    private(set) var posts: [Post] = []   // newest first
+    private(set) var pins: [Pin] = []
+
+    /// Add a freshly-created post (and its pin, for a street comment).
+    func add(post: Post, pin: Pin? = nil) {
+        if let pin { pins.insert(pin, at: 0) }
+        posts.insert(post, at: 0)
+    }
+
+    /// User-created posts for a given neighborhood, newest first.
+    func posts(in neighborhoodId: UUID) -> [Post] {
+        posts.filter { $0.neighborhoodId == neighborhoodId }
+    }
+
+    func pin(id: UUID) -> Pin? { pins.first { $0.id == id } }
+    func post(forPinId pinId: UUID) -> Post? { posts.first { $0.pinId == pinId } }
+
+    func reset() {
+        posts = []
+        pins = []
+    }
+}

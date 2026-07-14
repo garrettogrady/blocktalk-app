@@ -15,6 +15,7 @@ struct PostCard: View {
 
     @Environment(AppState.self) private var appState
     @Environment(ModerationStore.self) private var moderation
+    @Environment(LocalContentStore.self) private var localContent
     @State private var showReport = false
     @State private var enrolled = false
     @State private var toastMessage = ""
@@ -25,7 +26,11 @@ struct PostCard: View {
     private var displayUsername: String { post.author?.username ?? username }
     private var displayNumber: Int { post.author?.userNumber ?? userNumber }
     private var displayHome: String? { post.author?.home?.shortCode ?? homeShortCode }
-    private var streetPin: Pin? { post.pinId.flatMap { id in Pin.samples.first { $0.id == id } } }
+    private var streetPin: Pin? {
+        guard let id = post.pinId else { return nil }
+        // Session-created pins first, then the bundled sample corners.
+        return localContent.pin(id: id) ?? Pin.samples.first { $0.id == id }
+    }
 
     var body: some View {
         // Reporter-side hide: a post you reported collapses to a tombstone

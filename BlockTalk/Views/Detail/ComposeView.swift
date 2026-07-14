@@ -7,6 +7,7 @@ struct ComposeView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
     @Environment(OfflineStore.self) private var offline
+    @Environment(LocalContentStore.self) private var localContent
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ComposeViewModel()
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -317,25 +318,33 @@ struct ComposeView: View {
             return
         }
 
+        // Embed the poster's identity so the created card renders correctly.
+        let author = PostAuthor(
+            username: appState.currentUser?.username,
+            userNumber: appState.currentUser?.userNumber,
+            home: .init(shortCode: appState.physicalNeighborhood?.shortCode
+                        ?? appState.viewingNeighborhood?.shortCode ?? "LES")
+        )
+
         Task {
             if let pinLocation = effectivePin {
-                let pinService = PinService()
-                do {
-                    let pin = try await pinService.createPin(
-                        userId: userId,
-                        coordinate: pinLocation,
-                        cornerName: nil,
-                        neighborhoodId: neighborhoodId
-                    )
-                    if await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, pinId: pin.id) != nil {
-                        routeAfterPost()
-                    }
-                } catch {
-                    print("Failed to create pin: \(error)")
-                    viewModel.error = error.localizedDescription
+                // Street comment: build the pin locally (bundled-mock, no backend).
+                let pin = Pin(
+                    id: UUID(),
+                    userId: userId,
+                    latitude: pinLocation.latitude,
+                    longitude: pinLocation.longitude,
+                    cornerName: pinCornerName ?? resolvedStreet,
+                    neighborhoodId: neighborhoodId,
+                    createdAt: Date()
+                )
+                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
+                    localContent.add(post: post, pin: pin)
+                    routeAfterPost()
                 }
             } else {
-                if await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId) != nil {
+                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author) {
+                    localContent.add(post: post)
                     routeAfterPost()
                 }
             }

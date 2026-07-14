@@ -4,6 +4,7 @@ import SwiftUI
 struct MapTabView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
+    @Environment(LocalContentStore.self) private var localContent
     @State private var viewModel = MapViewModel()
     @State private var showComposeForPin = false
     @State private var polygons: [NeighborhoodPolygon] = []
@@ -68,8 +69,8 @@ struct MapTabView: View {
                     }
                 }
 
-                // Pin annotations
-                ForEach(viewModel.pins) { pin in
+                // Pin annotations (bundled samples + anything created this session)
+                ForEach(viewModel.pins + localContent.pins) { pin in
                     Annotation("", coordinate: pin.coordinate) {
                         PulsatingPinView()
                             .onTapGesture {
@@ -424,6 +425,12 @@ struct MapTabView: View {
     }
 
     private func openPinDetail(_ pin: Pin) {
+        // Session-created street comment first, else the bundled sample post.
+        if let post = localContent.post(forPinId: pin.id) {
+            selectedPinDetail = (pin: pin, post: post)
+            showPinDetail = true
+            return
+        }
         Task {
             do {
                 let postService = PostService()

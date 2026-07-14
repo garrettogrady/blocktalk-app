@@ -5,11 +5,18 @@ struct FeedView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
     @Environment(OfflineStore.self) private var offline
+    @Environment(LocalContentStore.self) private var localContent
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
     @State private var showPreFrame = false
     @State private var showSearch = false
+
+    /// Posts the user created this session for the neighborhood being viewed.
+    private var myPosts: [Post] {
+        guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
+        return localContent.posts(in: viewingId)
+    }
 
     private var isViewingHome: Bool {
         guard let homeId = appState.currentUser?.homeNeighborhoodId,
@@ -78,6 +85,21 @@ struct FeedView: View {
                                                  username: appState.currentUser?.username ?? "BlockTalker",
                                                  userNumber: appState.currentUser?.userNumber ?? 0,
                                                  homeShortCode: appState.viewingNeighborhood?.shortCode)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().background(Color.btLine)
+                                }
+                            }
+                            .padding(.top, BTSpacing.sm)
+                        }
+
+                        // Posts you created this session (bundled-mock, no
+                        // backend) — shown on top of the sample feed.
+                        if !myPosts.isEmpty {
+                            LazyVStack(spacing: 0) {
+                                ForEach(myPosts) { post in
+                                    NavigationLink(value: post) {
+                                        PostCard(post: post)
                                     }
                                     .buttonStyle(.plain)
                                     Divider().background(Color.btLine)

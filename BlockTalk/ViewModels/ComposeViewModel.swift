@@ -32,33 +32,36 @@ final class ComposeViewModel {
     private let postService = PostService()
     private let imageService = ImageService()
 
-    func submit(userId: UUID, neighborhoodId: UUID, pinId: UUID? = nil) async -> Post? {
+    /// Builds the post locally (bundled-mock: no backend). The caller stashes it
+    /// in LocalContentStore so it shows in the feed/map for the session.
+    /// [PROD-DIFF: swap back to postService.createPost for the Supabase write.]
+    func submit(userId: UUID, neighborhoodId: UUID, author: PostAuthor?, pinId: UUID? = nil) async -> Post? {
         guard canSubmit else { return nil }
         isSubmitting = true
 
-        do {
-            var imageUrl: String?
-            if let image = selectedImage {
-                imageUrl = try await imageService.upload(image: image, userId: userId)
-            }
-
-            let newPost = NewPost(
-                userId: userId,
-                neighborhoodId: neighborhoodId,
-                text: text.trimmingCharacters(in: .whitespacesAndNewlines),
-                imageUrl: imageUrl,
-                pinId: pinId,
-                isDailyPrompt: isDailyPrompt
-            )
-
-            let post = try await postService.createPost(newPost)
-            isSubmitting = false
-            return post
-        } catch {
-            self.error = error.localizedDescription
-            isSubmitting = false
-            return nil
+        // Best-effort image handling; nil if it can't be stored locally.
+        var imageUrl: String?
+        if let image = selectedImage {
+            imageUrl = try? await imageService.upload(image: image, userId: userId)
         }
+
+        let post = Post(
+            id: UUID(),
+            userId: userId,
+            neighborhoodId: neighborhoodId,
+            text: text.trimmingCharacters(in: .whitespacesAndNewlines),
+            imageUrl: imageUrl,
+            pinId: pinId,
+            isDailyPrompt: isDailyPrompt,
+            score: 0,
+            replyCount: 0,
+            reportCount: 0,
+            status: .live,
+            createdAt: Date(),
+            author: author
+        )
+        isSubmitting = false
+        return post
     }
 
     func reset() {

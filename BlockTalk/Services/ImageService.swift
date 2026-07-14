@@ -4,26 +4,17 @@ import UIKit
 struct ImageService {
     private let bucket = "post-images"
 
+    /// Bundled-mock: write the attached image to a temp file and return its
+    /// file:// URL so AsyncImage can render it locally (no backend storage).
+    /// [PROD-DIFF: restore the supabase.storage upload for the real build.]
     func upload(image: UIImage, userId: UUID) async throws -> String {
         guard let data = image.jpegData(compressionQuality: 0.8) else {
             throw ImageError.compressionFailed
         }
-
-        let fileName = "\(userId.uuidString)/\(UUID().uuidString).jpg"
-
-        try await supabase.storage
-            .from(bucket)
-            .upload(
-                path: fileName,
-                file: data,
-                options: .init(contentType: "image/jpeg")
-            )
-
-        let publicURL = try supabase.storage
-            .from(bucket)
-            .getPublicURL(path: fileName)
-
-        return publicURL.absoluteString
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).jpg")
+        try data.write(to: url)
+        return url.absoluteString
     }
 
     func delete(path: String) async throws {

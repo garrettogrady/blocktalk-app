@@ -6,6 +6,7 @@ struct BlockTalkApp: App {
     @State private var locationService = LocationService()
     @State private var moderation = ModerationStore()
     @State private var offline = OfflineStore()
+    @State private var localContent = LocalContentStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -26,6 +27,7 @@ struct BlockTalkApp: App {
             .environment(locationService)
             .environment(moderation)
             .environment(offline)
+            .environment(localContent)
             .preferredColorScheme(.dark)
             .task {
                 bootstrapMock()
