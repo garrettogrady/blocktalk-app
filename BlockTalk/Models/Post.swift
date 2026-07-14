@@ -99,7 +99,7 @@ extension Post {
         sample("deli_truther", 812, "someone please tell me why every single deli on Houston has the same pickles", agoMin: 60, score: 88, replies: 14),
         sample("BlockTalker", 3442, "whoever is busking on this corner — please. learn one (1) other song. it's been \"wonderwall\" for six straight weekends.", agoMin: 120, score: 88, replies: 9, pinId: Pin.essexRivington),
         sample("norfolkghost", 2118, "the guy outside Beauty & Essex who tries to sell you a \"VIP wristband\" — i feel like he's been working that exact hustle since 2014 and i respect it now", agoMin: 120, score: 64, replies: 31),
-        sample("forsyth", 1777, "three years. same Barbour jacket. same cigarette. either a ghost or me.", agoMin: 180, score: 132, replies: 14, pinId: Pin.houstonLudlow),
+        sample("forsyth", 1777, "three years. same Barbour jacket. same cigarette. either a ghost or me.", agoMin: 180, score: 330, replies: 14, pinId: Pin.houstonLudlow),
         sample("clintonst", 441, "unmarked black sedan idling on Clinton with its hazards on for 90 minutes. either a movie shoot nobody told us about or the start of a kidnapping plot.", agoMin: 180, score: 53, replies: 18),
         sample("orchard_walker", 987, "i've started recognizing the same three rats on Rivington. one of them definitely lives in the bodega.", agoMin: 240, score: 201, replies: 56),
         sample("attorney_st", 1558, "unmarked black sedan, hazards on, 90 minutes. either a movie shoot or the prologue to a kidnapping.", agoMin: 300, score: 67, replies: 8, pinId: Pin.delanceyAllen),
