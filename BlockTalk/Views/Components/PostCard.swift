@@ -48,10 +48,30 @@ struct PostCard: View {
             // Meta row
             metaRow
 
-            // (Removed the inline Apple-map snippet: an 80px map can't legally show
-            // the required Apple logo/Legal without it being clipped or ugly. The
-            // "📍 corner" badge in the meta row already conveys where it was dropped.
-            // A non-Apple static graphic could replace it later if we want the visual.)
+            // Street-comment map snippet (where the comment was dropped) — core
+            // "this exact corner" context. Tight zoom on the streets + our lime pin.
+            // Height leaves clear room for Apple's required logo/Legal at bottom-left,
+            // and we inset the clip so it never clips that attribution (App Store rule).
+            if let pin = streetPin, !isPreview, showStreetMap {
+                Map(initialPosition: .region(MKCoordinateRegion(
+                    center: pin.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.0022, longitudeDelta: 0.0019)
+                )), interactionModes: []) {
+                    Annotation("", coordinate: pin.coordinate) {
+                        ZStack {
+                            Circle().fill(Color.btLime.opacity(0.25)).frame(width: 18, height: 18)
+                            Circle().fill(Color.btLime).frame(width: 9, height: 9)
+                                .overlay(Circle().stroke(Color.btBg, lineWidth: 1.5))
+                        }
+                    }
+                }
+                .frame(height: 96)
+                .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+                .colorScheme(.dark)
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+                .allowsHitTesting(false)
+            }
 
             // Optional image — renders ABOVE the body to match the mock
             if let imageUrl = post.imageUrl, !imageUrl.isEmpty {
