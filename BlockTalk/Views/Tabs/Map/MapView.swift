@@ -85,8 +85,12 @@ struct MapTabView: View {
                     }
                 }
             }
-            .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+            .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll))
             .colorScheme(.dark)
+            // Lift Apple's required logo/Legal up so the tab bar + bottom bars
+            // don't clip it (App Store compliance).
+            .mapControls { }
+            .contentMargins(.bottom, 96, for: .automatic)
             .onMapCameraChange { context in
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
