@@ -17,7 +17,10 @@ struct SplashView: View {
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
             .mapControls { }
-            .contentMargins(.bottom, 180, for: .automatic)
+            // Keep Apple's logo/Legal at the true bottom-left of the screen, just
+            // clear of the home indicator, so it's visible but not clipped. The
+            // app's legal footer is lifted above it so they don't collide.
+            .contentMargins(.bottom, 16, for: .automatic)
             .ignoresSafeArea()
             .colorScheme(.dark)
 
@@ -82,12 +85,12 @@ struct SplashView: View {
                 }
                 #endif
 
-                // Legal text
+                // Legal text — lifted above Apple's bottom-left logo/Legal strip.
                 Text(legalText)
                     .font(BTFont.body(size: 10))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, BTSpacing.xxxl)
-                    .padding(.bottom, BTSpacing.xxl)
+                    .padding(.bottom, 46)
             }
         }
     }
