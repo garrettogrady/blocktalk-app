@@ -19,38 +19,81 @@ final class PostDetailViewModel {
         isLoading = false
     }
 
-    /// Bundled-mock: the seeded per-post thread (keyed by the post's text) plus
-    /// any replies you've added this session. [PROD-DIFF: replyService.fetchReplies.]
+    /// Bundled-mock: the seeded per-post thread (keyed by the post's text) with
+    /// any replies you've added this session grafted into the tree at the right
+    /// parent. [PROD-DIFF: replyService.fetchReplies with the nested join.]
     func loadReplies(for post: Post, store: LocalContentStore) async {
         isLoading = true
         var thread = Reply.seededThread(forPostText: post.text)
-        thread.append(contentsOf: store.replies(forPost: post.id))
+        // Re-insert session replies in send order so a reply-to-a-reply lands
+        // under its parent (which may itself be an earlier session reply).
+        for r in store.replies(forPost: post.id) {
+            insert(r, under: r.parentReplyId, into: &thread)
+        }
         replies = thread
         isLoading = false
     }
 
-    /// Bundled-mock: build the reply locally, persist it for the session, and
-    /// show it immediately. [PROD-DIFF: replyService.createReply Supabase insert.]
+    /// Bundled-mock: build the reply locally, nest it under the reply it answers
+    /// (or at the root for a top-level reply), persist it, and show it
+    /// immediately. [PROD-DIFF: replyService.createReply Supabase insert.]
     func sendReply(post: Post, userId: UUID, author: ReplyAuthor, store: LocalContentStore) {
         let trimmed = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard !LanguageCheck.containsHateSpeech(trimmed) else { return }
 
-        let depth = replyingTo != nil ? min(Reply.maxDepth, 1) : 0
         let reply = Reply(
             id: UUID(), postId: post.id, parentReplyId: replyingTo?.id, userId: userId,
-            text: trimmed, score: 0, depth: depth, createdAt: Date(),
+            text: trimmed, score: 0, depth: 0, createdAt: Date(),
             children: nil, author: author
         )
         store.addReply(reply, toPost: post.id)
-        replies.append(reply)
+        insert(reply, under: replyingTo?.id, into: &replies)
         replyText = ""
         replyingTo = nil
     }
 
-    /// Local score bump (no backend in the mock).
-    func voteOnReply(replyId: UUID, userId: UUID, direction: Int) {
-        // Session-only: replies are value types in a tree; a full re-score walk
-        // isn't needed for the demo. No-op keeps the tap from erroring.
+    /// Insert a reply into the tree: appended at the root when `parentId` is nil,
+    /// otherwise nested in the matching parent's children with depth one deeper
+    /// (capped). Depth is recomputed here so it always matches nesting. Falls
+    /// back to the root if the parent can't be found.
+    private func insert(_ reply: Reply, under parentId: UUID?, into nodes: inout [Reply]) {
+        guard let parentId else {
+            var r = reply
+            r.depth = 0
+            r.parentReplyId = nil
+            nodes.append(r)
+            return
+        }
+        if graft(reply, under: parentId, into: &nodes) { return }
+        // Parent not found — don't silently drop it; show it at the root.
+        var r = reply
+        r.depth = 0
+        r.parentReplyId = nil
+        nodes.append(r)
     }
+
+    @discardableResult
+    private func graft(_ reply: Reply, under parentId: UUID, into nodes: inout [Reply]) -> Bool {
+        for i in nodes.indices {
+            if nodes[i].id == parentId {
+                var r = reply
+                r.parentReplyId = parentId
+                r.depth = min(nodes[i].depth + 1, Reply.maxDepth)
+                nodes[i].children = (nodes[i].children ?? []) + [r]
+                return true
+            }
+            if var kids = nodes[i].children {
+                if graft(reply, under: parentId, into: &kids) {
+                    nodes[i].children = kids
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// No model mutation: VotePills owns the vote display locally (optimistic
+    /// count + toggle), same as post votes. [PROD-DIFF: replyService.vote.]
+    func voteOnReply(replyId: UUID, userId: UUID, direction: Int) {}
 }

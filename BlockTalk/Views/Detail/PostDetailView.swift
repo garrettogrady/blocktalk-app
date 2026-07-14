@@ -31,7 +31,7 @@ struct PostDetailView: View {
 
                     Divider().background(Color.btLine)
 
-                    // Reply count header
+                    // Reply count header — matches the post's count on the card.
                     Text("\(post.replyCount) REPLIES")
                         .font(BTFont.mono(size: 11))
                         .foregroundStyle(Color.btText3)
