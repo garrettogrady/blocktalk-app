@@ -1,4 +1,5 @@
 import AuthenticationServices
+import MapKit
 import SwiftUI
 
 struct SplashView: View {
@@ -6,20 +7,25 @@ struct SplashView: View {
 
     var body: some View {
         ZStack {
-            // Static on-brand backdrop (no live Apple map = no attribution logo to
-            // show, and it renders instantly instead of waiting on map tiles).
-            Color.btBg
-                .ignoresSafeArea()
-            RadialGradient(
-                colors: [Color.btLime.opacity(0.12), Color.clear],
-                center: UnitPoint(x: 0.5, y: 0.18),
-                startRadius: 0,
-                endRadius: 460
-            )
+            // MapKit background locked to Lower Manhattan. contentMargins lifts
+            // Apple's required logo/Legal up above the sign-in + legal footer so
+            // it stays fully visible and isn't clipped (App Store rule).
+            Map(initialPosition: .region(MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911),
+                span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.024)
+            )), interactionModes: []) {
+            }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls { }
+            .contentMargins(.bottom, 180, for: .automatic)
             .ignoresSafeArea()
+            .colorScheme(.dark)
+
+            // Scrim — darker at the bottom for text legibility, lighter mid-screen
+            // so the lifted Apple logo stays readable.
             LinearGradient(
-                colors: [Color.clear, Color.black.opacity(0.55)],
-                startPoint: .center,
+                colors: [Color.black.opacity(0.35), Color.black.opacity(0.65)],
+                startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
