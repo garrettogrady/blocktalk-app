@@ -294,20 +294,27 @@ struct MapTabView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
+        // Fires when the flag flips while the Map tab is already alive.
         .onChange(of: appState.pendingPinPlacement) { _, pending in
-            // Compose switched to pin mode → auto-enter drop mode
-            if pending {
-                selectedNeighborhood = nil
-                focus(on: activeNeighborhoodName)
-                viewModel.enterDropMode()
-                appState.pendingPinPlacement = false
-            }
+            if pending { enterDropFromCompose() }
         }
         .task {
             polygons = NeighborhoodPolygonLoader.load()
+            // Also handle the case where the Map tab is being created for the
+            // first time by this very hand-off — onChange never saw the flip,
+            // so honor the pending request as soon as the polygons are ready.
+            if appState.pendingPinPlacement { enterDropFromCompose() }
             await viewModel.loadNeighborhoods()
             await viewModel.loadAllPins()
         }
+    }
+
+    /// Enter drop mode in response to the compose → "drop a pin" hand-off.
+    private func enterDropFromCompose() {
+        selectedNeighborhood = nil
+        focus(on: activeNeighborhoodName)
+        viewModel.enterDropMode()
+        appState.pendingPinPlacement = false
     }
 
     // MARK: - Helpers
