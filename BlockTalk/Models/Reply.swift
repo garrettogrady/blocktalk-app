@@ -77,6 +77,16 @@ extension Reply {
     }
 
     static let threadsByPostText: [String: [Reply]] = [
+        // Hand-authored thread for the gym street comment (street posts weren't in
+        // the RN reply seed). Curated onto the feed landing.
+        "Solid gym, think they might want to look into selling deoderant in addition to pre-work out, place is a zoo": [
+            rmake("clintonst", 441, "the 6pm crowd treats the squat rack like it owes them money. i've made peace with never using it.", agoMin: 12, score: 22, depth: 0, home: "LES", [
+                rmake("henrystreet", 2341, "peace is the only gains i've made in there in months.", agoMin: 6, score: 14, depth: 1, home: "LES"),
+            ]),
+            rmake("orchard_walker", 987, "one guy has been 'about to start his set' on the same bench for twenty minutes. it's not a workout, it's a lifestyle.", agoMin: 20, score: 31, depth: 0, home: "LES"),
+            rmake("attorney_st", 1558, "the smell is load-bearing at this point. take it away and the building comes down.", agoMin: 28, score: 27, depth: 0, home: "LES"),
+            rmake("broomeghost", 2901, "they sell pre-workout at the front desk but not one stick of deodorant. bold strategy.", agoMin: 34, score: 19, depth: 0, home: "LES"),
+        ],
         "rat ran across my foot on Orchard tonight. paused. looked up at me. continued. it's HIS building actually.": [
             rmake("norfolkghost", 2118, "the pause is the most insulting part. he checked you out and concluded you were furniture.", agoMin: 4, score: 47, depth: 0, home: "LES", [rmake("attorney_st", 1558, "the pause IS the entire psychic damage. the running is a footnote.", agoMin: 2, score: 18, depth: 1, home: "LES")]),
             rmake("forsyth", 1777, "he's not paying rent. doesn't have to. he was there first. we are guests in his house.", agoMin: 7, score: 26, depth: 0, home: "LES"),
