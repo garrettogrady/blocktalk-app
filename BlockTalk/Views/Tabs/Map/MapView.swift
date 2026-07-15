@@ -23,6 +23,11 @@ struct MapTabView: View {
     // the blank-first-tap sheet that `.sheet(isPresented:)` + separate state hits.
     @State private var selectedPinDetail: PinDetailItem?
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
+    // The geographic coordinate directly under the drop reticle. Range-checking
+    // and pin placement both use THIS (not region.center) so what you aim is
+    // exactly what's checked and where the pin lands.
+    @State private var mapSize: CGSize = .zero
+    @State private var reticleCoord: CLLocationCoordinate2D?
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911),
@@ -104,6 +109,11 @@ struct MapTabView: View {
             .onMapCameraChange { context in
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
+                // Resolve the coordinate under the reticle in the SAME space the
+                // reticle is drawn, so aim == checked == dropped.
+                if mapSize != .zero {
+                    reticleCoord = proxy.convert(reticlePoint, from: .local)
+                }
             }
             // Tap to select; tap the selected one again to open its feed; tap
             // empty water/far away to deselect. Skips taps on a pin.
@@ -112,6 +122,18 @@ struct MapTabView: View {
                       let coord = proxy.convert(screenPoint, from: .local),
                       !isNearPin(coord) else { return }
                 handleTap(at: coord)
+            }
+            // Reticle lives in the MapReader's `.local` space (same as proxy),
+            // pinned to the exact point we range-check.
+            .overlay {
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { mapSize = geo.size }
+                        .onChange(of: geo.size) { _, newValue in mapSize = newValue }
+                    if viewModel.isDropMode {
+                        PinDropOverlay().position(reticlePoint)
+                    }
+                }
             }
             }
             .ignoresSafeArea() // on the MapReader so its `.local` space == tap space
@@ -168,10 +190,9 @@ struct MapTabView: View {
                 Spacer()
             }
 
-            // Drop mode overlay
+            // Drop mode overlay (the reticle itself is drawn inside the MapReader
+            // so it shares the map's coordinate space — see .overlay above).
             if viewModel.isDropMode {
-                PinDropOverlay()
-
                 VStack {
                     Spacer()
                     HStack(spacing: BTSpacing.lg) {
@@ -276,8 +297,8 @@ struct MapTabView: View {
         .sheet(isPresented: $showComposeForPin) {
             ComposeView(
                 postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
-                pinDropLocation: mapCenter,
-                pinCornerName: snappedCorner(mapCenter)
+                pinDropLocation: dropCoordinate,
+                pinCornerName: snappedCorner(dropCoordinate)
             )
         }
         .sheet(isPresented: $showPreFrame) {
@@ -354,10 +375,20 @@ struct MapTabView: View {
     /// outline you can post, outside you can't. If nothing is highlighted we
     /// don't block. Precision is only as good as the bundled polygon shape
     /// (see HANDOFF — swap in the exact NTA polygons to tighten the outline).
+    /// Screen point of the reticle ring, in the MapReader's `.local` space.
+    /// This is the single source of truth for "where the pin goes".
+    private var reticlePoint: CGPoint {
+        CGPoint(x: mapSize.width / 2, y: mapSize.height * 0.42)
+    }
+
+    /// The coordinate the pin will drop at — under the reticle (falls back to the
+    /// region center only before the reticle coordinate has resolved).
+    private var dropCoordinate: CLLocationCoordinate2D { reticleCoord ?? mapCenter }
+
     private var dropInRange: Bool {
         let highlighted = polygons.filter { isCurrentNeighborhood($0.name) }
         guard !highlighted.isEmpty else { return true }
-        return highlighted.contains { $0.contains(mapCenter) }
+        return highlighted.contains { $0.contains(dropCoordinate) }
     }
 
     private func snappedCorner(_ coord: CLLocationCoordinate2D) -> String? {
@@ -370,7 +401,7 @@ struct MapTabView: View {
     }
 
     private var dropModePill: some View {
-        let corner = snappedCorner(mapCenter)
+        let corner = snappedCorner(dropCoordinate)
         let inRange = dropInRange
         return VStack(spacing: 3) {
             Text(inRange ? "📍 SELECT A LOCATION" : "📍 OUT OF RANGE")
