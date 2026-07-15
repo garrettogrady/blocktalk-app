@@ -51,8 +51,8 @@ struct MapTabView: View {
                     ForEach(Array(polygon.rings.enumerated()), id: \.offset) { _, ring in
                         MapPolygon(coordinates: ring)
                             .stroke(
-                                isSelected || isCurrent ? Color.btLime : Color.white.opacity(0.22),
-                                lineWidth: isSelected ? 2.5 : (isCurrent ? 1.5 : 0.9)
+                                isSelected || isCurrent ? Color.btLime : Color.white.opacity(0.58),
+                                lineWidth: isSelected ? 2.5 : (isCurrent ? 1.5 : 1.7)
                             )
                             .foregroundStyle(
                                 isSelected
