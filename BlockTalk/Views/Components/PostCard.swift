@@ -32,6 +32,24 @@ struct PostCard: View {
         return localContent.pin(id: id) ?? Pin.samples.first { $0.id == id }
     }
 
+    private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }
+
+    /// Lime location pill overlaid on a street comment's photo (bottom-left).
+    @ViewBuilder private var photoPinChip: some View {
+        if post.isStreetComment, let corner = streetPin?.cornerName ?? cornerName {
+            HStack(spacing: 4) {
+                Image(systemName: "mappin.circle.fill").font(.system(size: 11))
+                Text(corner).font(BTFont.monoBold(size: 10)).tracking(0.3)
+            }
+            .foregroundStyle(Color.btBg)
+            .padding(.horizontal, BTSpacing.sm)
+            .padding(.vertical, 5)
+            .background(Color.btLime)
+            .clipShape(Capsule())
+            .padding(BTSpacing.sm)
+        }
+    }
+
     var body: some View {
         // Reporter-side hide: a post you reported collapses to a tombstone
         if !isPreview && moderation.isHidden(post.id) {
@@ -54,10 +72,10 @@ struct PostCard: View {
             metaRow
 
             // Street-comment map snippet (where the comment was dropped) — core
-            // "this exact corner" context. Tight zoom on the streets + our lime pin.
-            // Height leaves clear room for Apple's required logo/Legal at bottom-left,
-            // and we inset the clip so it never clips that attribution (App Store rule).
-            if let pin = streetPin, !isPreview, showStreetMap {
+            // "this exact corner" context. Suppressed when the post has a photo:
+            // the photo becomes the hero and the location shows as a pin chip on
+            // it instead (a stacked map + photo would be too tall).
+            if let pin = streetPin, !isPreview, showStreetMap, !hasPhoto {
                 Map(initialPosition: .region(MKCoordinateRegion(
                     center: pin.coordinate,
                     span: MKCoordinateSpan(latitudeDelta: 0.0022, longitudeDelta: 0.0019)
@@ -90,6 +108,9 @@ struct PostCard: View {
                             .frame(height: 220)
                             .clipped()
                             .cornerRadius(BTRadius.md)
+                            // Street comment + photo: location badge on the photo
+                            // so "where" stays unmistakable without a second map.
+                            .overlay(alignment: .bottomLeading) { photoPinChip }
                     case .failure:
                         EmptyView()
                     default:
