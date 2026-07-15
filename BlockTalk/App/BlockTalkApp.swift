@@ -37,6 +37,14 @@ struct BlockTalkApp: App {
                 // iOS Settings clears the gate without a relaunch (§17)
                 if phase == .active { locationService.checkPermission() }
             }
+            .onChange(of: locationService.currentNeighborhood) { _, resolved in
+                // Where you PHYSICALLY are (from GPS) is the postable zone — not
+                // the home you picked at onboarding. Once real location resolves,
+                // it wins. [PROD-DIFF: server validates presence at submit.]
+                if let resolved, locationService.permissionState == .granted {
+                    appState.physicalNeighborhood = resolved
+                }
+            }
         }
     }
 

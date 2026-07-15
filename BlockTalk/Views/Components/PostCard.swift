@@ -237,7 +237,9 @@ struct PostCard: View {
     }
 
     private func toggleBell() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        // Notification-style buzz (like a received text) for enroll/de-enroll,
+        // mirroring the Expo app's Vibration.vibrate(30) feedback.
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         enrolled.toggle()
         showToast(
             enrolled ? "you're in — we'll ping you when something moves"

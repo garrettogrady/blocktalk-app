@@ -50,6 +50,11 @@ struct FeedView: View {
                         locationRow
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.lg)
+                            .padding(.bottom, BTSpacing.md)
+
+                        // Separator under the neighborhood/search header row
+                        // (matches the Expo mock's locRow bottom border).
+                        Divider().background(Color.btLine)
 
                         // Sort/time filters
                         SortTimeFilters(

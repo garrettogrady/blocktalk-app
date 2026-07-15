@@ -125,16 +125,27 @@ struct MapTabView: View {
                         .padding(.top, BTSpacing.sm)
                 } else {
                     VStack(spacing: BTSpacing.sm) {
-                        // "You're in" pill — top-centered
+                        // Top pill — "You're in X" only makes sense once we
+                        // actually know where you are (location granted). Off →
+                        // a logical "location off" note instead of a false home.
                         HStack(spacing: BTSpacing.xs) {
-                            Circle().fill(Color.btLime).frame(width: 6, height: 6)
-                            Text("You're in \(hereShortCode)")
-                                .font(BTFont.bodySemibold(size: 12))
-                                .foregroundStyle(Color.btText)
-                            Text("·").foregroundStyle(Color.btText3)
-                            Text(viewModel.formatRadius())
-                                .font(BTFont.monoBold(size: 11))
-                                .foregroundStyle(Color.btLime)
+                            if locationService.permissionState == .granted {
+                                Circle().fill(Color.btLime).frame(width: 6, height: 6)
+                                Text("You're in \(hereShortCode)")
+                                    .font(BTFont.bodySemibold(size: 12))
+                                    .foregroundStyle(Color.btText)
+                                Text("·").foregroundStyle(Color.btText3)
+                                Text(viewModel.formatRadius())
+                                    .font(BTFont.monoBold(size: 11))
+                                    .foregroundStyle(Color.btLime)
+                            } else {
+                                Image(systemName: "location.slash.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(Color.btWarn)
+                                Text("Location off · viewing only")
+                                    .font(BTFont.bodySemibold(size: 12))
+                                    .foregroundStyle(Color.btText)
+                            }
                         }
                         .padding(.horizontal, BTSpacing.md)
                         .padding(.vertical, BTSpacing.sm)
@@ -236,25 +247,27 @@ struct MapTabView: View {
                         }
                         .padding(.bottom, BTSpacing.xxxl)
                     } else {
-                        // Location gate FAB — routes through the shared pre-frame
+                        // Location gate — same centered-capsule shape + position as
+                        // the "Drop a thought" FAB above, so the two map states are
+                        // consistent instead of a floating full-width pill.
                         Button {
                             locationGateTap(locationService, showPreFrame: $showPreFrame)
                         } label: {
                             HStack(spacing: BTSpacing.sm) {
-                                Image(systemName: "location.slash")
-                                    .font(.system(size: 14, weight: .semibold))
+                                Image(systemName: "location.slash.fill")
+                                    .font(.system(size: 15, weight: .bold))
                                 Text(locationService.permissionState == .denied
                                      ? "Open Settings · location off"
                                      : "Enable location to post")
                                     .font(BTFont.bodySemibold(size: 14))
                             }
                             .foregroundStyle(Color.btOnAccent)
-                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, BTSpacing.xl)
                             .padding(.vertical, BTSpacing.md)
                             .background(Color.btWarn)
-                            .cornerRadius(BTRadius.full)
+                            .clipShape(Capsule())
+                            .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
                         }
-                        .padding(.horizontal, BTSpacing.xxl)
                         .padding(.bottom, BTSpacing.xxxl)
                     }
                 }
