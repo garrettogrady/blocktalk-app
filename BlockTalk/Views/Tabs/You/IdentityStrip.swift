@@ -33,16 +33,13 @@ struct IdentityStrip: View {
                     HomeBadge(shortCode: homeShortCode)
                 }
 
-                // Stats
-                HStack(spacing: 0) {
-                    Text("\(postCount)").foregroundStyle(Color.btText)
-                    Text(" posts   ·   ").foregroundStyle(Color.btText2)
-                    Text("\(replyCount)").foregroundStyle(Color.btText)
-                    Text(" replies   ·   ").foregroundStyle(Color.btText2)
-                    Text("▲ \(totalScore.formatted())").foregroundStyle(Color.btText)
-                }
-                .font(BTFont.monoBold(size: 12))
-                .padding(.top, 2)
+                // Stats — one text run so it lays out on a single baseline and
+                // scales to fit instead of the pieces wrapping independently.
+                statsText
+                    .font(BTFont.monoBold(size: 12))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.top, 2)
             }
 
             Spacer(minLength: 0)
@@ -52,6 +49,17 @@ struct IdentityStrip: View {
         .background(Color.btSurface)
         .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLine, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+    }
+
+    /// Single concatenated run: value (bright) · label (dim) · separator (dimmest).
+    private var statsText: Text {
+        Text("\(postCount)").foregroundStyle(Color.btText)
+        + Text(" posts").foregroundStyle(Color.btText2)
+        + Text("  ·  ").foregroundStyle(Color.btText3)
+        + Text("\(replyCount)").foregroundStyle(Color.btText)
+        + Text(" replies").foregroundStyle(Color.btText2)
+        + Text("  ·  ").foregroundStyle(Color.btText3)
+        + Text("▲ \(totalScore.formatted())").foregroundStyle(Color.btText)
     }
 }
 
