@@ -1,71 +1,106 @@
+import CoreLocation
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct ComposeView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
+    @Environment(OfflineStore.self) private var offline
+    @Environment(LocalContentStore.self) private var localContent
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ComposeViewModel()
     @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showAttachDialog = false
+    @State private var showCamera = false
+    @State private var showLibrary = false
+    @State private var pinCleared = false
     @FocusState private var textFocused: Bool
+
+    /// Pin can be toggled off locally (the ≡ footer button) without closing
+    private var effectivePin: CLLocationCoordinate2D? { pinCleared ? nil : pinDropLocation }
+    /// Daily-prompt / NYC-wide compose locks its scope — no feed↔pin toggle
+    private var canToggleMode: Bool { !nycWide }
 
     /// The neighborhood this post will be submitted to
     var postingNeighborhood: Neighborhood?
     /// If set, creates a pin at this location before posting
     var pinDropLocation: CLLocationCoordinate2D?
+    /// Snapped corner name for the dropped pin (from the Map)
+    var pinCornerName: String?
+    /// NYC-wide daily-prompt compose (from the Daily Prompt Feed)
+    var nycWide: Bool = false
+
+    @State private var resolvedStreet: String?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Scope row
-                scopeRow
-
-                Divider().background(Color.btLine)
-
-                // Text editor
                 ScrollView {
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        TextEditor(text: $viewModel.text)
-                            .font(BTFont.body(size: 16))
-                            .foregroundStyle(Color.btText)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 200)
-                            .focused($textFocused)
+                        // Scope row
+                        scopeRow
 
-                        // Selected image preview
+                        // Image preview — ABOVE the input, per the mock
                         if let image = viewModel.selectedImage {
                             ZStack(alignment: .topTrailing) {
                                 Image(uiImage: image)
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(maxHeight: 200)
-                                    .cornerRadius(BTRadius.md)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 200)
                                     .clipped()
+                                    .cornerRadius(BTRadius.md)
 
                                 Button {
                                     viewModel.selectedImage = nil
                                 } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 22))
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(Color.btText)
-                                        .background(Circle().fill(Color.btBg.opacity(0.6)))
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(Color.black.opacity(0.7)))
                                 }
+                                .buttonStyle(.plain)
                                 .padding(BTSpacing.sm)
                             }
                         }
 
-                        // Hate speech warning
+                        // Text editor — text flips pink on a hate-speech hit
+                        TextEditor(text: $viewModel.text)
+                            .font(BTFont.body(size: 16))
+                            .foregroundStyle(viewModel.hateSpeechDetected ? Color.btPink : Color.btText)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 160)
+                            .focused($textFocused)
+                            .overlay(alignment: .topLeading) {
+                                if viewModel.text.isEmpty {
+                                    Text(nycWide ? "Answer the prompt…" : "what's on your block?")
+                                        .font(BTFont.body(size: 16))
+                                        .foregroundStyle(Color.btText3)
+                                        .padding(.top, 8)
+                                        .padding(.leading, 5)
+                                        .allowsHitTesting(false)
+                                }
+                            }
+
+                        // Hate-speech warning
                         if viewModel.hateSpeechDetected {
-                            HStack(spacing: BTSpacing.sm) {
-                                Image(systemName: "exclamationmark.triangle.fill")
+                            HStack(alignment: .top, spacing: BTSpacing.sm) {
+                                Image(systemName: "exclamationmark.octagon")
+                                    .font(.system(size: 13))
                                     .foregroundStyle(Color.btPink)
-                                Text("This post may contain hate speech and cannot be submitted.")
-                                    .font(BTFont.body(size: 13))
+                                Text("Watch your language. BlockTalk doesn't allow hate speech.")
+                                    .font(BTFont.bodySemibold(size: 12.5))
                                     .foregroundStyle(Color.btPink)
                             }
                             .padding(BTSpacing.md)
-                            .background(Color.btPink.opacity(0.1))
-                            .cornerRadius(BTRadius.md)
+                            .background(Color.btPink.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: BTRadius.md)
+                                    .stroke(Color.btPink.opacity(0.4), lineWidth: 1)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
                         }
                     }
                     .padding(.horizontal, BTSpacing.lg)
@@ -74,7 +109,6 @@ struct ComposeView: View {
 
                 Divider().background(Color.btLine)
 
-                // Bottom bar
                 bottomBar
             }
             .background(Color.btBg)
@@ -82,98 +116,168 @@ struct ComposeView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        appState.composeDraft = ""
                         dismiss()
                     }
                     .foregroundStyle(Color.btText2)
                 }
-
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Post") {
-                        submitPost()
-                    }
-                    .font(BTFont.bodySemibold(size: 16))
-                    .foregroundStyle(viewModel.canSubmit ? Color.btLime : Color.btMuted)
-                    .disabled(!viewModel.canSubmit)
+                    Button("Post") { submitPost() }
+                        .font(BTFont.bodySemibold(size: 16))
+                        .foregroundStyle(viewModel.canSubmit ? Color.btLime : Color.btMuted)
+                        .disabled(!viewModel.canSubmit)
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .onAppear {
-                textFocused = true
+            .confirmationDialog("Add a photo", isPresented: $showAttachDialog, titleVisibility: .hidden) {
+                Button("Take Photo") {
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) { showCamera = true }
+                }
+                Button("Choose from Library") { showLibrary = true }
+                Button("Cancel", role: .cancel) {}
             }
-        }
-    }
-
-    // MARK: - Scope Row
-
-    private var scopeRow: some View {
-        HStack(spacing: BTSpacing.md) {
-            // Neighborhood
-            HStack(spacing: BTSpacing.xs) {
-                Image(systemName: "location.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.btLime)
-                Text("Posting to \(resolvedNeighborhoodName)")
-                    .font(BTFont.body(size: 13))
-                    .foregroundStyle(Color.btText2)
-            }
-            .padding(.horizontal, BTSpacing.md)
-            .padding(.vertical, BTSpacing.sm)
-            .background(Color.btSurface)
-            .cornerRadius(BTRadius.full)
-
-            // Status
-            HStack(spacing: BTSpacing.xs) {
-                Circle()
-                    .fill(Color.btLime)
-                    .frame(width: 6, height: 6)
-                Text("IN-RANGE")
-                    .font(BTFont.mono(size: 11))
-                    .foregroundStyle(Color.btLime)
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, BTSpacing.lg)
-        .padding(.vertical, BTSpacing.md)
-    }
-
-    // MARK: - Bottom Bar
-
-    private var bottomBar: some View {
-        HStack(spacing: BTSpacing.lg) {
-            // Image picker
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                Image(systemName: "photo")
-                    .font(.system(size: 18))
-                    .foregroundStyle(Color.btText2)
-            }
+            .photosPicker(isPresented: $showLibrary, selection: $selectedPhotoItem, matching: .images)
             .onChange(of: selectedPhotoItem) { _, newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
                         viewModel.selectedImage = image
+                        refocusInput()
                     }
+                }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPicker { image in
+                    viewModel.selectedImage = image
+                    refocusInput()
+                }
+                .ignoresSafeArea()
+            }
+            .onAppear {
+                // Rehydrate a stashed draft after the compose→map→compose round-trip
+                if viewModel.text.isEmpty { viewModel.text = appState.composeDraft }
+                textFocused = true
+                // No snapped corner → reverse-geocode to nearest street (never show coords)
+                if pinCornerName == nil, let coord = pinDropLocation { resolveStreet(coord) }
+            }
+            .onChange(of: viewModel.text) { _, newValue in
+                appState.composeDraft = newValue
+            }
+        }
+    }
+
+    // MARK: - Scope Row (regular / NYC-wide / pin)
+
+    private var scopeRow: some View {
+        HStack(spacing: BTSpacing.sm) {
+            Circle().fill(Color.btLime).frame(width: 6, height: 6)
+            scopeLabel
+            Spacer(minLength: BTSpacing.sm)
+            if let status = statusText {
+                Text(status)
+                    .font(BTFont.monoBold(size: 9.5))
+                    .tracking(0.6)
+                    .foregroundStyle(offline.isOffline ? Color.btWarn : Color.btLime)
+            }
+        }
+        .padding(.horizontal, BTSpacing.md)
+        .padding(.vertical, BTSpacing.sm)
+        .background(Color.btSurface)
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.md)
+                .stroke(Color.btLine, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+    }
+
+    private var scopeLabel: some View {
+        let base = Text("Posting to ").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
+        if effectivePin != nil {
+            let place = pinCornerName ?? resolvedStreet ?? "locating…"
+            return base
+                + Text("📍 DROPPED PIN").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
+                + Text(" · ").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
+                + Text(place).font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btLime)
+        } else if nycWide {
+            return base
+                + Text("TODAY'S PROMPT").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
+                + Text(" · NYC-WIDE").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
+        } else {
+            return base
+                + Text(resolvedNeighborhoodName).font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
+        }
+    }
+
+    private var statusText: String? {
+        if effectivePin != nil { return nil }
+        if offline.isOffline { return "📡 QUEUED LOCALLY" }
+        return nycWide ? "▲ IN NYC" : "▲ IN-RANGE"
+    }
+
+    // MARK: - Bottom Bar
+
+    private var bottomBar: some View {
+        HStack(spacing: BTSpacing.md) {
+            footerIcon("camera", active: viewModel.selectedImage != nil) { showAttachDialog = true }
+
+            // Feed ↔ pin-drop mode toggle (hidden in daily-prompt / NYC-wide)
+            if canToggleMode {
+                if effectivePin != nil {
+                    // ≡ — clear the pin, back to feed mode (no map round-trip)
+                    footerIcon("line.3.horizontal") { pinCleared = true }
+                } else {
+                    // 📍 — stash draft, open Map in drop mode, reopen with the pin
+                    footerIcon("mappin") { switchToPinMode() }
                 }
             }
 
             Spacer()
 
-            // Character counter
-            if viewModel.showCounter {
-                Text("\(viewModel.characterCount)/\(ComposeViewModel.postLimit)")
-                    .font(BTFont.mono(size: 12))
-                    .foregroundStyle(
-                        viewModel.isOverLimit ? Color.btPink : Color.btWarn
-                    )
-            }
+            // Character counter — always visible
+            Text("\(viewModel.characterCount.formatted()) / \(ComposeViewModel.postLimit.formatted())")
+                .font(BTFont.monoBold(size: 11))
+                .foregroundStyle(counterColor)
         }
         .padding(.horizontal, BTSpacing.lg)
         .padding(.vertical, BTSpacing.md)
     }
 
+    private func footerIcon(_ systemName: String, active: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14))
+                .foregroundStyle(active ? Color.btLime : Color.btText2)
+                .frame(width: 32, height: 32)
+                .background(active ? Color.btLime.opacity(0.1) : Color.btSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9)
+                        .stroke(active ? Color.btLime.opacity(0.3) : Color.btLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var counterColor: Color {
+        if viewModel.isOverLimit { return .btPink }
+        if viewModel.characterCount >= ComposeViewModel.postWarnAt { return .btWarn }
+        return .btText3
+    }
+
     // MARK: - Helpers
 
-    /// The neighborhood ID to post to
+    private func refocusInput() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { textFocused = true }
+    }
+
+    private func resolveStreet(_ coord: CLLocationCoordinate2D) {
+        CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: coord.latitude, longitude: coord.longitude)) { placemarks, _ in
+            if let p = placemarks?.first {
+                resolvedStreet = p.thoroughfare.map { "near \($0)" } ?? p.name
+            }
+        }
+    }
+
     private var resolvedPostingNeighborhoodId: UUID? {
         postingNeighborhood?.id
             ?? locationService.currentNeighborhood?.id
@@ -197,29 +301,104 @@ struct ComposeView: View {
             print("Cannot post: no neighborhood resolved")
             return
         }
+
+        // Offline: queue the post locally instead of sending (§16). Pin posts
+        // queue too but hold the pin off the map until send.
+        if offline.isOffline {
+            let body = viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let queued = Post(
+                id: UUID(), userId: userId, neighborhoodId: neighborhoodId,
+                text: body, isDailyPrompt: false, score: 0, replyCount: 0,
+                reportCount: 0, status: .live, createdAt: Date()
+            )
+            offline.enqueue(queued)
+            appState.composeDraft = ""
+            appState.selectedTab = 0
+            dismiss()
+            return
+        }
+
+        // Embed the poster's identity so the created card renders correctly.
+        let author = PostAuthor(
+            username: appState.currentUser?.username,
+            userNumber: appState.currentUser?.userNumber,
+            home: .init(shortCode: appState.physicalNeighborhood?.shortCode
+                        ?? appState.viewingNeighborhood?.shortCode ?? "LES")
+        )
+
         Task {
-            // If this is a pin drop, create the pin first
-            if let pinLocation = pinDropLocation {
-                let pinService = PinService()
-                do {
-                    let pin = try await pinService.createPin(
-                        userId: userId,
-                        coordinate: pinLocation,
-                        cornerName: nil,
-                        neighborhoodId: neighborhoodId
-                    )
-                    if let _ = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, pinId: pin.id) {
-                        dismiss()
-                    }
-                } catch {
-                    print("Failed to create pin: \(error)")
-                    viewModel.error = error.localizedDescription
+            if let pinLocation = effectivePin {
+                // Street comment: build the pin locally (bundled-mock, no backend).
+                let pin = Pin(
+                    id: UUID(),
+                    userId: userId,
+                    latitude: pinLocation.latitude,
+                    longitude: pinLocation.longitude,
+                    cornerName: pinCornerName ?? resolvedStreet,
+                    neighborhoodId: neighborhoodId,
+                    createdAt: Date()
+                )
+                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
+                    localContent.add(post: post, pin: pin)
+                    routeAfterPost()
                 }
             } else {
-                if let _ = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId) {
-                    dismiss()
+                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author) {
+                    localContent.add(post: post)
+                    routeAfterPost()
                 }
             }
+        }
+    }
+
+    /// Post-submit routing follows the post type: pin → Map, feed → Feed,
+    /// NYC-wide prompt answers skip routing.
+    private func routeAfterPost() {
+        appState.composeDraft = ""
+        if effectivePin != nil {
+            appState.selectedTab = 1
+        } else if !nycWide {
+            appState.selectedTab = 0
+        }
+        dismiss()
+    }
+
+    private func switchToPinMode() {
+        appState.composeDraft = viewModel.text   // stash the draft
+        appState.pendingPinPlacement = true       // Map will auto-enter drop mode
+        appState.selectedTab = 1
+        dismiss()
+    }
+}
+
+// MARK: - Camera Picker (UIImagePickerController wrapper)
+
+struct CameraPicker: UIViewControllerRepresentable {
+    var onImage: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraPicker
+        init(_ parent: CameraPicker) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage { parent.onImage(image) }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }

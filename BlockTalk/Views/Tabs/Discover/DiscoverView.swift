@@ -11,6 +11,14 @@ struct DiscoverView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
+                    // Title + search (grouped tight)
+                    VStack(alignment: .leading, spacing: BTSpacing.md) {
+                        Text("Discover")
+                            .font(BTFont.display(size: 30))
+                            .foregroundStyle(Color.btText)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.sm)
+
                     // Search bar
                     Button {
                         showSearch = true
@@ -19,7 +27,7 @@ struct DiscoverView: View {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 15))
                                 .foregroundStyle(Color.btText3)
-                            Text("Search posts across NYC...")
+                            Text("Search across NYC")
                                 .font(BTFont.body(size: 15))
                                 .foregroundStyle(Color.btText3)
                             Spacer()
@@ -33,34 +41,43 @@ struct DiscoverView: View {
                         )
                     }
                     .padding(.horizontal, BTSpacing.lg)
+                    }
 
                     // Trending section
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        Text("TRENDING")
-                            .font(BTFont.mono(size: 11))
-                            .foregroundStyle(Color.btText3)
+                        Text("🔥 Trending in NYC")
+                            .font(BTFont.bodyBold(size: 16))
+                            .foregroundStyle(Color.btText)
                             .padding(.horizontal, BTSpacing.lg)
 
                         if let topPost = viewModel.trendingPosts.first {
                             TrendingCard(post: topPost)
                                 .padding(.horizontal, BTSpacing.lg)
                         }
+
+                        // #2–10 as regular post cards
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(viewModel.trendingPosts.dropFirst())) { post in
+                                NavigationLink(value: post) {
+                                    PostCard(post: post)
+                                }
+                                .buttonStyle(.plain)
+                                Divider().background(Color.btLine)
+                            }
+                        }
                     }
 
                     // Borough cards horizontal scroll
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        Text("BOROUGHS")
-                            .font(BTFont.mono(size: 11))
-                            .foregroundStyle(Color.btText3)
+                        Text("🗺 Top by Borough")
+                            .font(BTFont.bodyBold(size: 16))
+                            .foregroundStyle(Color.btText)
                             .padding(.horizontal, BTSpacing.lg)
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: BTSpacing.md) {
-                                ForEach(boroughs, id: \.self) { borough in
-                                    BoroughCard(
-                                        borough: borough,
-                                        posts: viewModel.boroughPosts[borough] ?? []
-                                    )
+                                ForEach(viewModel.boroughCards) { card in
+                                    BoroughCard(borough: card.borough, posts: card.posts)
                                 }
                             }
                             .padding(.horizontal, BTSpacing.lg)
@@ -69,27 +86,27 @@ struct DiscoverView: View {
 
                     // Random neighborhoods list
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        Text("EXPLORE NEIGHBORHOODS")
-                            .font(BTFont.mono(size: 11))
-                            .foregroundStyle(Color.btText3)
+                        Text("🎲 Random Neighborhoods")
+                            .font(BTFont.bodyBold(size: 16))
+                            .foregroundStyle(Color.btText)
                             .padding(.horizontal, BTSpacing.lg)
 
-                        ForEach(viewModel.randomNeighborhoods) { neighborhood in
-                            neighborhoodRow(neighborhood)
+                        ForEach(viewModel.neighborhoods) { n in
+                            neighborhoodRow(n)
                                 .padding(.horizontal, BTSpacing.lg)
                         }
                     }
 
                     Spacer(minLength: BTSpacing.xxxl)
                 }
-                .padding(.top, BTSpacing.md)
             }
             .background(Color.btBg)
-            .navigationTitle("Discover")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSearch) {
-                SearchView()
+                SearchView(scope: .global)
+            }
+            .navigationDestination(for: Post.self) { post in
+                PostDetailView(post: post)
             }
             .task {
                 await viewModel.load()
@@ -97,30 +114,29 @@ struct DiscoverView: View {
         }
     }
 
-    private func neighborhoodRow(_ neighborhood: Neighborhood) -> some View {
+    private func neighborhoodRow(_ n: DiscoverNeighborhood) -> some View {
         HStack(spacing: BTSpacing.md) {
-            Text(neighborhood.shortCode)
-                .font(BTFont.monoBold(size: 12))
-                .foregroundStyle(Color.btLime)
-                .frame(width: 80, alignment: .leading)
-
-            Text(neighborhood.name)
-                .font(BTFont.bodyMedium(size: 15))
-                .foregroundStyle(Color.btText)
-
+            VStack(alignment: .leading, spacing: 2) {
+                Text(n.name)
+                    .font(BTFont.bodySemibold(size: 15))
+                    .foregroundStyle(Color.btText)
+                Text("\(n.borough) · \(n.talking) TALKING")
+                    .font(BTFont.monoBold(size: 9))
+                    .tracking(0.5)
+                    .foregroundStyle(Color.btText3)
+            }
             Spacer()
-
-            Text(neighborhood.borough)
-                .font(BTFont.body(size: 12))
-                .foregroundStyle(Color.btText3)
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11))
-                .foregroundStyle(Color.btText3)
+            Text("OPEN →")
+                .font(BTFont.bodySemibold(size: 12))
+                .foregroundStyle(Color.btLime)
         }
         .padding(BTSpacing.md)
         .background(Color.btSurface)
         .cornerRadius(BTRadius.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.md)
+                .stroke(Color.btLine, lineWidth: 1)
+        )
     }
 }
 

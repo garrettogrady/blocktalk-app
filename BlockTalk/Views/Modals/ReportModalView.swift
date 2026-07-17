@@ -2,6 +2,11 @@ import SwiftUI
 
 struct ReportModalView: View {
     let postId: UUID
+    /// "post" or "reply" — used in the header copy (matches the RN modal).
+    var targetLabel: String = "post"
+    /// Called on successful submit with the reason's short string, so the
+    /// presenting card can flash the "reported for {short} · we'll review" toast.
+    var onReported: ((String) -> Void)?
 
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
@@ -10,6 +15,7 @@ struct ReportModalView: View {
     @State private var freeText = ""
     @State private var isSubmitting = false
     @State private var error: String?
+    @FocusState private var freeTextFocused: Bool
 
     private let freeTextMin = 10
     private let freeTextMax = 140
@@ -25,12 +31,22 @@ struct ReportModalView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
-                    Text("Why are you reporting this post?")
-                        .font(BTFont.bodySemibold(size: 17))
-                        .foregroundStyle(Color.btText)
-                        .padding(.top, BTSpacing.xxl)
+                    VStack(alignment: .leading, spacing: BTSpacing.sm) {
+                        Text("Why are you reporting this \(targetLabel)?")
+                            .font(BTFont.display(size: 22))
+                            .foregroundStyle(Color.btText)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Only report content that is hateful, racist, or personally identifies someone.")
+                            .font(BTFont.body(size: 13))
+                            .foregroundStyle(Color.btText2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.top, BTSpacing.xxl)
 
                     // 6 reason picker
                     VStack(spacing: BTSpacing.sm) {
@@ -50,8 +66,9 @@ struct ReportModalView: View {
                                 .font(BTFont.body(size: 15))
                                 .foregroundStyle(Color.btText)
                                 .scrollContentBackground(.hidden)
+                                .focused($freeTextFocused)
                                 .padding(BTSpacing.md)
-                                .frame(minHeight: 80)
+                                .frame(minHeight: 110)
                                 .background(Color.btSurface)
                                 .cornerRadius(BTRadius.md)
                                 .overlay(
@@ -74,6 +91,7 @@ struct ReportModalView: View {
                                     )
                             }
                         }
+                        .id("freetext")
                     }
 
                     // Error
@@ -82,31 +100,52 @@ struct ReportModalView: View {
                             .font(BTFont.body(size: 13))
                             .foregroundStyle(Color.btPink)
                     }
-
-                    // Report Post button
-                    Button {
-                        submitReport()
-                    } label: {
-                        HStack {
-                            if isSubmitting {
-                                ProgressView()
-                                    .tint(Color.btText)
-                            }
-                            Text("Report Post")
-                                .font(BTFont.bodySemibold(size: 16))
-                        }
-                        .foregroundStyle(canSubmit ? Color.btText : Color.btText3)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, BTSpacing.lg)
-                        .background(canSubmit ? Color.btPink : Color.btMuted)
-                        .cornerRadius(BTRadius.md)
-                    }
-                    .disabled(!canSubmit)
                 }
                 .padding(.horizontal, BTSpacing.xxl)
+                .padding(.bottom, BTSpacing.lg)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: freeTextFocused) { _, focused in
+                if focused {
+                    withAnimation { proxy.scrollTo("freetext", anchor: .bottom) }
+                }
+            }
+            .onChange(of: selectedReason) { _, reason in
+                if reason == .other {
+                    // Give the editor a beat to appear, then reveal + focus it.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation { proxy.scrollTo("freetext", anchor: .bottom) }
+                        freeTextFocused = true
+                    }
+                }
+            }
             }
             .background(Color.btBg.ignoresSafeArea())
-            .navigationTitle("Report")
+            .safeAreaInset(edge: .bottom) {
+                // Report CTA pinned above the keyboard so it's never buried.
+                Button {
+                    submitReport()
+                } label: {
+                    HStack {
+                        if isSubmitting {
+                            ProgressView().tint(Color.btText)
+                        }
+                        Text("Report \(targetLabel.capitalized)")
+                            .font(BTFont.bodySemibold(size: 16))
+                    }
+                    .foregroundStyle(canSubmit ? Color.btText : Color.btText3)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, BTSpacing.lg)
+                    .background(canSubmit ? Color.btPink : Color.btMuted)
+                    .cornerRadius(BTRadius.md)
+                }
+                .disabled(!canSubmit)
+                .padding(.horizontal, BTSpacing.xxl)
+                .padding(.vertical, BTSpacing.md)
+                .frame(maxWidth: .infinity)
+                .background(Color.btBg.ignoresSafeArea(.container, edges: .bottom))
+            }
+            .navigationTitle("Report \(targetLabel.capitalized)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -144,9 +183,13 @@ struct ReportModalView: View {
                     Text(reason.label)
                         .font(BTFont.bodyMedium(size: 15))
                         .foregroundStyle(Color.btText)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(reason.desc)
                         .font(BTFont.body(size: 12))
                         .foregroundStyle(Color.btText3)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Spacer()
@@ -170,27 +213,11 @@ struct ReportModalView: View {
     // MARK: - Submit
 
     private func submitReport() {
-        guard let reason = selectedReason,
-              let userId = appState.currentUser?.id
-        else { return }
-
-        isSubmitting = true
-        let postService = PostService()
-
-        Task {
-            do {
-                try await postService.report(
-                    postId: postId,
-                    reporterId: userId,
-                    reason: reason.rawValue,
-                    freeText: reason == .other ? freeText : nil
-                )
-                dismiss()
-            } catch {
-                self.error = error.localizedDescription
-                isSubmitting = false
-            }
-        }
+        guard let reason = selectedReason else { return }
+        // Local mock: no backend write (Supabase RLS blocks anonymous inserts).
+        // The moderation store handles the hide/tombstone; this just confirms.
+        onReported?(reason.short)
+        dismiss()
     }
 }
 

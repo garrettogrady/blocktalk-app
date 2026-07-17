@@ -6,10 +6,22 @@ struct PinDetailView: View {
     let post: Post
 
     @Environment(AppState.self) private var appState
+    @Environment(LocationService.self) private var location
+    @Environment(LocalContentStore.self) private var localContent
     @State private var viewModel = PostDetailViewModel()
+
+    private var replyAuthor: ReplyAuthor {
+        ReplyAuthor(
+            username: appState.currentUser?.username ?? "BlockTalker",
+            userNumber: appState.currentUser?.userNumber ?? 0,
+            homeShortCode: appState.physicalNeighborhood?.shortCode ?? "LES"
+        )
+    }
+    @State private var showPreFrame = false
     @FocusState private var replyFocused: Bool
 
     private let replyLimit = 500
+    private let replyWarnAt = 350
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -19,8 +31,9 @@ struct PinDetailView: View {
                     mapSnippet
                         .frame(height: 200)
 
-                    // Featured pin post
-                    PostCard(post: post)
+                    // Featured pin post — hide its inline mini-map; the
+                    // full-size map above already shows this corner.
+                    PostCard(post: post, showStreetMap: false)
 
                     Divider().background(Color.btLine)
 
@@ -30,18 +43,16 @@ struct PinDetailView: View {
                             ReplyNode(
                                 reply: reply,
                                 onReplyTap: { replyId, username in
-                                    viewModel.replyingTo = (id: replyId, username: username)
-                                    replyFocused = true
+                                    if location.permissionState == .granted {
+                                        viewModel.replyingTo = (id: replyId, username: username)
+                                        replyFocused = true
+                                    } else {
+                                        locationGateTap(location, showPreFrame: $showPreFrame)
+                                    }
                                 },
                                 onVote: { replyId, direction in
                                     guard let userId = appState.currentUser?.id else { return }
-                                    Task {
-                                        await viewModel.voteOnReply(
-                                            replyId: replyId,
-                                            userId: userId,
-                                            direction: direction
-                                        )
-                                    }
+                                    viewModel.voteOnReply(replyId: replyId, userId: userId, direction: direction)
                                 }
                             )
                         }
@@ -51,23 +62,38 @@ struct PinDetailView: View {
                 }
             }
 
-            // Reply compose bar
-            replyComposeBar
+            // Reply compose bar — replaced by the location gate when ungated
+            if location.permissionState == .granted {
+                replyComposeBar
+            } else {
+                LocationGateBar(label: "Enable location to reply on this corner", showPreFrame: $showPreFrame)
+            }
         }
         .background(Color.btBg)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPreFrame) {
+            LocationPreFrameSheet()
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 if let cornerName = pin.cornerName {
-                    Text(cornerName)
+                    Text("Pin · \(cornerName)")
                         .font(BTFont.bodySemibold(size: 16))
                         .foregroundStyle(Color.btText)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    ShareHelper.sharePost(post)
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .foregroundStyle(Color.btText2)
                 }
             }
         }
         .task {
             viewModel.post = post
-            await viewModel.loadReplies(postId: post.id)
+            await viewModel.loadReplies(for: post, store: localContent)
         }
     }
 
@@ -133,32 +159,67 @@ struct PinDetailView: View {
                 .padding(.top, BTSpacing.sm)
             }
 
+            // Hate-speech warning
+            if viewModel.replyHasHate {
+                HStack(spacing: BTSpacing.xs) {
+                    Image(systemName: "exclamationmark.octagon")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.btPink)
+                    Text("Watch your language. BlockTalk doesn't allow hate speech.")
+                        .font(BTFont.bodySemibold(size: 12))
+                        .foregroundStyle(Color.btPink)
+                    Spacer()
+                }
+                .padding(.horizontal, BTSpacing.lg)
+                .padding(.top, BTSpacing.sm)
+            }
+
             HStack(alignment: .bottom, spacing: BTSpacing.md) {
-                TextField("Reply...", text: $viewModel.replyText, axis: .vertical)
+                TextField("Reply on this corner…", text: $viewModel.replyText, axis: .vertical)
                     .font(BTFont.body(size: 15))
-                    .foregroundStyle(Color.btText)
+                    .foregroundStyle(viewModel.replyHasHate ? Color.btPink : Color.btText)
                     .lineLimit(1...5)
                     .focused($replyFocused)
-
-                Button {
-                    guard let userId = appState.currentUser?.id else { return }
-                    Task {
-                        await viewModel.sendReply(postId: post.id, userId: userId)
+                    .onChange(of: viewModel.replyText) { _, v in
+                        if v.count > replyLimit { viewModel.replyText = String(v.prefix(replyLimit)) }
                     }
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(
-                            viewModel.replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? Color.btMuted : Color.btLime
-                        )
+
+                VStack(alignment: .trailing, spacing: BTSpacing.xs) {
+                    if viewModel.replyText.count >= replyWarnAt {
+                        Text("\(viewModel.replyText.count)/\(replyLimit)")
+                            .font(BTFont.mono(size: 10))
+                            .foregroundStyle(replyCounterColor)
+                    }
+                    Button {
+                        guard let userId = appState.currentUser?.id else { return }
+                        replyFocused = false
+                        viewModel.sendReply(post: post, userId: userId, author: replyAuthor, store: localContent)
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(canSendReply ? Color.btLime : Color.btMuted)
+                    }
+                    .disabled(!canSendReply)
                 }
-                .disabled(viewModel.replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(.horizontal, BTSpacing.lg)
             .padding(.vertical, BTSpacing.md)
         }
-        .background(Color.btSurface)
+        .background {
+            Color.btSurface.ignoresSafeArea(.container, edges: .bottom)
+        }
+    }
+
+    private var canSendReply: Bool {
+        let trimmed = viewModel.replyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && viewModel.replyText.count <= replyLimit && !viewModel.replyHasHate
+    }
+
+    private var replyCounterColor: Color {
+        let n = viewModel.replyText.count
+        if n >= replyLimit { return .btPink }
+        if n >= 450 { return .btWarn }
+        return .btText3
     }
 }
 

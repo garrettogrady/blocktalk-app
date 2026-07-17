@@ -4,6 +4,10 @@ import SwiftUI
 struct BlockTalkApp: App {
     @State private var appState = AppState()
     @State private var locationService = LocationService()
+    @State private var moderation = ModerationStore()
+    @State private var offline = OfflineStore()
+    @State private var localContent = LocalContentStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -21,32 +25,38 @@ struct BlockTalkApp: App {
             }
             .environment(appState)
             .environment(locationService)
+            .environment(moderation)
+            .environment(offline)
+            .environment(localContent)
             .preferredColorScheme(.dark)
             .task {
-                await restoreSession()
+                bootstrapMock()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                // Recheck permission on foreground so flipping the toggle in
+                // iOS Settings clears the gate without a relaunch (§17)
+                if phase == .active { locationService.checkPermission() }
+            }
+            .onChange(of: locationService.currentNeighborhood) { _, resolved in
+                // Where you PHYSICALLY are (from GPS) is the postable zone — not
+                // the home you picked at onboarding. Once real location resolves,
+                // it wins. [PROD-DIFF: server validates presence at submit.]
+                if let resolved, locationService.permissionState == .granted {
+                    appState.physicalNeighborhood = resolved
+                }
             }
         }
     }
 
-    private func restoreSession() async {
-        do {
-            let session = try await supabase.auth.session
-            appState.session = session
-
-            // Check if user profile exists
-            let users: [BlockTalkUser] = try await supabase.from("users")
-                .select()
-                .eq("id", value: session.user.id.uuidString)
-                .execute()
-                .value
-
-            if let user = users.first {
-                appState.currentUser = user
-                appState.advanceTo(.app)
-            }
-            // If no profile yet, stay on splash — user will sign in and go through onboarding
-        } catch {
-            // No existing session — stay on splash
+    /// Bundled-mock boot: no auth/backend — drop straight into a populated app
+    /// with the sample user + LES. (Onboarding is still reachable via Sign Out.)
+    private func bootstrapMock() {
+        if appState.currentUser == nil {
+            appState.currentUser = .sample
+            appState.viewingNeighborhood = .les
+            appState.physicalNeighborhood = .les   // mock: you're home in LES
+            appState.hasResolvedInitialNeighborhood = true
+            appState.stage = .app
         }
     }
 }

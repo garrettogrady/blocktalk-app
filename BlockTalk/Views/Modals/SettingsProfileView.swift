@@ -15,10 +15,11 @@ struct SettingsProfileView: View {
                         .foregroundStyle(Color.btText)
                     Spacer()
                     if let user = appState.currentUser {
-                        Text("#\(String(format: "%04d", user.userNumber))")
+                        Text("#\(user.userNumber.formatted(.number))")
                             .font(BTFont.mono(size: 14))
                             .foregroundStyle(Color.btText2)
                     }
+                    chip("LOCKED")
                 }
 
                 // Username
@@ -32,6 +33,7 @@ struct SettingsProfileView: View {
                             .font(BTFont.bodyMedium(size: 14))
                             .foregroundStyle(Color.btText2)
                     }
+                    chip("LOCKED")
                 }
 
                 // Neighborhood with UNLOCKS chip
@@ -58,24 +60,9 @@ struct SettingsProfileView: View {
                 Text("IDENTITY")
                     .font(BTFont.mono(size: 11))
                     .foregroundStyle(Color.btText3)
-            }
-            .listRowBackground(Color.btSurface)
-            .listRowSeparatorTint(Color.btLine)
-
-            // Device section
-            Section {
-                HStack {
-                    Text("Apple ID")
-                        .font(BTFont.bodyMedium(size: 15))
-                        .foregroundStyle(Color.btText)
-                    Spacer()
-                    Text("Connected")
-                        .font(BTFont.body(size: 14))
-                        .foregroundStyle(Color.btLime)
-                }
-            } header: {
-                Text("DEVICE")
-                    .font(BTFont.mono(size: 11))
+            } footer: {
+                Text("Must be unique. Once set, it cannot be changed.")
+                    .font(BTFont.body(size: 12))
                     .foregroundStyle(Color.btText3)
             }
             .listRowBackground(Color.btSurface)
@@ -109,14 +96,25 @@ struct SettingsProfileView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .alert("Delete Account", isPresented: $showDeleteConfirm) {
+        .alert("Delete your BlockTalk account?", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                // Handle account deletion
+            Button("Delete Account", role: .destructive) {
+                appState.signOut()
             }
         } message: {
-            Text("This action is permanent. All your posts, replies, and data will be removed.")
+            Text("Any posts you've made will remain on the platform under the BlockTalker placeholder.")
         }
+    }
+
+    private func chip(_ text: String, tone: Color = .btText3) -> some View {
+        Text(text)
+            .font(BTFont.monoBold(size: 9))
+            .tracking(0.8)
+            .foregroundStyle(tone)
+            .padding(.horizontal, BTSpacing.sm)
+            .padding(.vertical, 2)
+            .background(tone.opacity(0.15))
+            .clipShape(Capsule())
     }
 }
 

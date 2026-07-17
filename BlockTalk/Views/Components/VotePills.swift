@@ -1,84 +1,65 @@
 import SwiftUI
 
+// Vote logic identical on every vote surface (§8): score hidden until you vote;
+// after the first tap on either arrow BOTH counts appear and stay visible even
+// if you un-vote; counts are independent, never netted. Down-count derivation:
+// max(0, round(score × 0.06)). Users can vote on their own posts.
 struct VotePills: View {
     var score: Int
     var onUpvote: () -> Void
     var onDownvote: () -> Void
 
-    @State private var userVote: Int = 0 // -1, 0, 1
-    @State private var hasVoted = false
+    @State private var vote: Int = 0        // -1, 0, 1
+    @State private var hasEverVoted = false
 
-    private var displayUp: Int {
-        max(0, score + (userVote == 1 ? 1 : 0))
-    }
-
-    private var displayDown: Int {
-        max(0, abs(min(0, score)) + (userVote == -1 ? 1 : 0))
-    }
+    private var upBase: Int { max(0, score) }
+    private var downBase: Int { max(0, Int((Double(score) * 0.06).rounded())) }
+    private var upCount: Int { upBase + (vote == 1 ? 1 : 0) }
+    private var downCount: Int { downBase + (vote == -1 ? 1 : 0) }
 
     var body: some View {
         HStack(spacing: BTSpacing.xs) {
-            // Upvote button
-            Button {
-                let impact = UIImpactFeedbackGenerator(style: .light)
-                impact.impactOccurred()
-
-                if userVote == 1 {
-                    userVote = 0
-                } else {
-                    userVote = 1
-                    onUpvote()
-                }
-                hasVoted = true
-            } label: {
-                HStack(spacing: BTSpacing.xs) {
-                    Image(systemName: userVote == 1 ? "arrow.up.circle.fill" : "arrow.up.circle")
-                        .font(.system(size: 14))
-                    if hasVoted {
-                        Text("\(displayUp)")
-                            .font(BTFont.mono(size: 12))
-                    }
-                }
-                .foregroundStyle(userVote == 1 ? Color.btLime : Color.btText3)
-                .padding(.horizontal, BTSpacing.sm)
-                .padding(.vertical, BTSpacing.xs)
-                .background(
-                    userVote == 1
-                        ? Color.btLime.opacity(0.12) : Color.btSurface2
-                )
-                .cornerRadius(BTRadius.full)
-            }
-
-            // Downvote button (visible after first vote)
-            if hasVoted || userVote != 0 {
-                Button {
-                    let impact = UIImpactFeedbackGenerator(style: .light)
-                    impact.impactOccurred()
-
-                    if userVote == -1 {
-                        userVote = 0
-                    } else {
-                        userVote = -1
-                        onDownvote()
-                    }
-                } label: {
-                    HStack(spacing: BTSpacing.xs) {
-                        Image(systemName: userVote == -1 ? "arrow.down.circle.fill" : "arrow.down.circle")
-                            .font(.system(size: 14))
-                        Text("\(displayDown)")
-                            .font(BTFont.mono(size: 12))
-                    }
-                    .foregroundStyle(userVote == -1 ? Color.btPink : Color.btText3)
-                    .padding(.horizontal, BTSpacing.sm)
-                    .padding(.vertical, BTSpacing.xs)
-                    .background(
-                        userVote == -1
-                            ? Color.btPink.opacity(0.12) : Color.btSurface2
-                    )
-                    .cornerRadius(BTRadius.full)
-                }
-            }
+            pill(glyph: "▲", color: .btLime, active: vote == 1,
+                 count: hasEverVoted ? upCount : nil, action: tapUp)
+            pill(glyph: "▽", color: .btPink, active: vote == -1,
+                 count: hasEverVoted ? downCount : nil, action: tapDown)
         }
+        .animation(.easeOut(duration: 0.16), value: hasEverVoted)
+        .animation(.easeOut(duration: 0.16), value: vote)
+    }
+
+    private func tapUp() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if vote == 1 { vote = 0 } else { vote = 1; onUpvote() }
+        hasEverVoted = true
+    }
+
+    private func tapDown() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if vote == -1 { vote = 0 } else { vote = -1; onDownvote() }
+        hasEverVoted = true
+    }
+
+    private func pill(glyph: String, color: Color, active: Bool, count: Int?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Text(glyph)
+                    .font(BTFont.bodyBold(size: 11))
+                    .foregroundStyle(color)
+                if let count {
+                    Text("\(count)")
+                        .font(BTFont.monoBold(size: 11))
+                        .foregroundStyle(color)
+                        .contentTransition(.numericText())
+                }
+            }
+            .frame(height: 30)
+            .padding(.horizontal, 11)
+            .background(active ? color.opacity(0.10) : Color.btSurface)
+            .overlay(Capsule().stroke(active ? color.opacity(0.45) : Color.btLine, lineWidth: 1))
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 

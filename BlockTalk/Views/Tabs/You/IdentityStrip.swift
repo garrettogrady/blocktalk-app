@@ -5,76 +5,61 @@ struct IdentityStrip: View {
     var postCount: Int = 0
     var replyCount: Int = 0
     var totalScore: Int = 0
+    var homeShortCode: String = "LES"
 
     var body: some View {
-        VStack(spacing: BTSpacing.lg) {
-            // Avatar + identity info
-            HStack(spacing: BTSpacing.lg) {
-                // Lime circle avatar with initial
-                ZStack {
-                    Circle()
-                        .fill(Color.btLime)
-                        .frame(width: 56, height: 56)
-
+        HStack(alignment: .top, spacing: BTSpacing.lg) {
+            // Lime squircle avatar with initial
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.btLime)
+                .frame(width: 56, height: 56)
+                .overlay(
                     Text(String(user.username.prefix(1)).uppercased())
-                        .font(BTFont.display(size: 24))
-                        .foregroundStyle(Color.btBg)
-                }
+                        .font(BTFont.display(size: 26))
+                        .foregroundStyle(Color.btOnAccent)
+                )
 
-                VStack(alignment: .leading, spacing: BTSpacing.xs) {
-                    // User number in mono
-                    Text("#\(String(format: "%04d", user.userNumber))")
-                        .font(BTFont.mono(size: 13))
-                        .foregroundStyle(Color.btText3)
+            VStack(alignment: .leading, spacing: 4) {
+                // User number is the headline (lime)
+                Text("#\(user.userNumber.formatted(.number))")
+                    .font(BTFont.monoBold(size: 22))
+                    .foregroundStyle(Color.btLime)
 
-                    // @username
+                // @username · home badge
+                HStack(spacing: BTSpacing.xs) {
                     Text("@\(user.username)")
-                        .font(BTFont.bodySemibold(size: 18))
-                        .foregroundStyle(Color.btText)
-
-                    // Home badge
-                    if user.homeNeighborhoodId != nil {
-                        HomeBadge(shortCode: "HOME")
-                    }
+                        .font(BTFont.bodySemibold(size: 13))
+                        .foregroundStyle(Color.btText2)
+                    HomeBadge(shortCode: homeShortCode)
                 }
 
-                Spacer()
+                // Stats — one text run so it lays out on a single baseline and
+                // scales to fit instead of the pieces wrapping independently.
+                statsText
+                    .font(BTFont.monoBold(size: 12))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .padding(.top, 2)
             }
 
-            // Stats line
-            HStack(spacing: BTSpacing.xs) {
-                Text("\(postCount) posts")
-                    .font(BTFont.body(size: 13))
-                    .foregroundStyle(Color.btText2)
-
-                Text("·")
-                    .foregroundStyle(Color.btText3)
-
-                Text("\(replyCount) replies")
-                    .font(BTFont.body(size: 13))
-                    .foregroundStyle(Color.btText2)
-
-                Text("·")
-                    .foregroundStyle(Color.btText3)
-
-                HStack(spacing: 2) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 10, weight: .semibold))
-                    Text("\(totalScore)")
-                        .font(BTFont.body(size: 13))
-                }
-                .foregroundStyle(Color.btText2)
-
-                Spacer()
-            }
+            Spacer(minLength: 0)
         }
         .padding(BTSpacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.btSurface)
-        .cornerRadius(BTRadius.lg)
-        .overlay(
-            RoundedRectangle(cornerRadius: BTRadius.lg)
-                .stroke(Color.btLine, lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+    }
+
+    /// Single concatenated run: value (bright) · label (dim) · separator (dimmest).
+    private var statsText: Text {
+        Text("\(postCount)").foregroundStyle(Color.btText)
+        + Text(" posts").foregroundStyle(Color.btText2)
+        + Text("  ·  ").foregroundStyle(Color.btText3)
+        + Text("\(replyCount)").foregroundStyle(Color.btText)
+        + Text(" replies").foregroundStyle(Color.btText2)
+        + Text("  ·  ").foregroundStyle(Color.btText3)
+        + Text("▲ \(totalScore.formatted())").foregroundStyle(Color.btText)
     }
 }
 

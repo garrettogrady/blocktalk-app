@@ -3,6 +3,9 @@ import SwiftUI
 struct AppealView: View {
     let removedPostText: String
     let violationReason: String
+    /// True when reopening a post that was already appealed — shows the locked
+    /// "Already submitted. Only one appeal per post." success variant.
+    var alreadyAppealed: Bool = false
 
     @Environment(\.dismiss) private var dismiss
     @State private var appealText = ""
@@ -21,7 +24,7 @@ struct AppealView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xxl) {
-                    if showSuccess {
+                    if showSuccess || alreadyAppealed {
                         successState
                     } else {
                         formState
@@ -31,6 +34,11 @@ struct AppealView: View {
                 .padding(.top, BTSpacing.xxl)
             }
             .background(Color.btBg.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) {
+                if !showSuccess && !alreadyAppealed {
+                    submitBar
+                }
+            }
             .navigationTitle("Appeal Removal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -116,44 +124,62 @@ struct AppealView: View {
                     .font(BTFont.body(size: 13))
                     .foregroundStyle(Color.btText3)
             }
-
-            // Submit button
-            Button {
-                submit()
-            } label: {
-                HStack {
-                    if isSubmitting {
-                        ProgressView()
-                            .tint(Color.btBg)
-                    }
-                    Text("Submit Appeal")
-                        .font(BTFont.bodySemibold(size: 16))
-                }
-                .foregroundStyle(Color.btBg)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, BTSpacing.lg)
-                .background(canSubmit ? Color.btLime : Color.btMuted)
-                .cornerRadius(BTRadius.md)
-            }
-            .disabled(!canSubmit)
         }
+    }
+
+    // MARK: - Submit bar (bottom-anchored)
+
+    private var submitBar: some View {
+        Button {
+            submit()
+        } label: {
+            HStack {
+                if isSubmitting {
+                    ProgressView().tint(Color.btBg)
+                }
+                Text("Submit Appeal")
+                    .font(BTFont.bodySemibold(size: 16))
+            }
+            .foregroundStyle(Color.btBg)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, BTSpacing.lg)
+            .background(canSubmit ? Color.btLime : Color.btMuted)
+            .cornerRadius(BTRadius.md)
+        }
+        .disabled(!canSubmit)
+        .padding(.horizontal, BTSpacing.xxl)
+        .padding(.vertical, BTSpacing.md)
+        .frame(maxWidth: .infinity)
+        .background(Color.btBg.ignoresSafeArea(.container, edges: .bottom))
     }
 
     // MARK: - Success
 
     private var successState: some View {
-        VStack(spacing: BTSpacing.xl) {
+        // `showSuccess` = just submitted this session; otherwise it's the
+        // already-appealed lock.
+        let sent = showSuccess
+        return VStack(spacing: BTSpacing.xl) {
             Spacer(minLength: 80)
 
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(Color.btLime)
+            Image(systemName: "clock")
+                .font(.system(size: 34, weight: .medium))
+                .foregroundStyle(Color.btHouse)
+                .frame(width: 64, height: 64)
+                .background(Color.btHouse.opacity(0.12))
+                .clipShape(Circle())
 
-            Text("Appeal submitted")
+            Text(sent ? "Submitted." : "Already submitted.")
                 .font(BTFont.bodySemibold(size: 18))
                 .foregroundStyle(Color.btText)
 
-            Text("We'll review your appeal within 48 hours. You'll receive a notification with the result.")
+            (Text(sent
+                  ? "A human will review within "
+                  : "You already appealed this one. A human is reviewing within ")
+                + Text("48 hours").font(BTFont.bodySemibold(size: 15))
+                + Text(sent
+                       ? ". You'll get a push notification either way."
+                       : ". You'll get a push notification either way. Only one appeal per post."))
                 .font(BTFont.body(size: 15))
                 .foregroundStyle(Color.btText2)
                 .multilineTextAlignment(.center)

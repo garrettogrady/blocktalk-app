@@ -79,6 +79,16 @@ struct FeedbackView: View {
                     )
             }
 
+            // Privacy note
+            HStack(alignment: .top, spacing: BTSpacing.sm) {
+                Image(systemName: "lock")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.btText3)
+                Text("Your user # is attached so we can follow up if needed. Nothing else.")
+                    .font(BTFont.body(size: 12))
+                    .foregroundStyle(Color.btText3)
+            }
+
             Spacer()
 
             // Submit button
@@ -100,7 +110,7 @@ struct FeedbackView: View {
                 .cornerRadius(BTRadius.md)
             }
             .disabled(!canSubmit)
-            .padding(.bottom, BTSpacing.xxxl)
+            .padding(.bottom, BTSpacing.md)
         }
     }
 
@@ -114,13 +124,14 @@ struct FeedbackView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(Color.btLime)
 
-            Text("Thanks for the feedback!")
+            Text("Got it.")
                 .font(BTFont.bodySemibold(size: 18))
                 .foregroundStyle(Color.btText)
 
-            Text("We read every message.")
+            Text("We read every message. We don't reply individually — but if it changes something, you'll see it.")
                 .font(BTFont.body(size: 15))
                 .foregroundStyle(Color.btText2)
+                .multilineTextAlignment(.center)
 
             Spacer()
 

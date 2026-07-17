@@ -12,14 +12,37 @@ struct NeighborhoodPolygon: Identifiable {
         rings.map { MKPolygon(coordinates: $0, count: $0.count) }
     }
 
-    /// Center point (average of all coordinates in the first ring)
+    /// Label centroid — average of ALL points across ALL rings (matches Expo's
+    /// centroidOf). Averaging only the first ring put the label on a tiny
+    /// detached piece (LES's label drifted toward the river/Brooklyn).
     var center: CLLocationCoordinate2D {
-        guard let ring = rings.first, !ring.isEmpty else {
-            return CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
+        var lat = 0.0, lng = 0.0, n = 0
+        for ring in rings {
+            for p in ring { lat += p.latitude; lng += p.longitude; n += 1 }
         }
-        let lat = ring.map(\.latitude).reduce(0, +) / Double(ring.count)
-        let lng = ring.map(\.longitude).reduce(0, +) / Double(ring.count)
-        return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        guard n > 0 else { return CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060) }
+        return CLLocationCoordinate2D(latitude: lat / Double(n), longitude: lng / Double(n))
+    }
+
+    /// Ray-casting point-in-polygon over any ring (used for the pin-drop geofence)
+    func contains(_ coord: CLLocationCoordinate2D) -> Bool {
+        rings.contains { Self.pointInRing(coord, $0) }
+    }
+
+    static func pointInRing(_ p: CLLocationCoordinate2D, _ ring: [CLLocationCoordinate2D]) -> Bool {
+        guard ring.count > 2 else { return false }
+        var inside = false
+        var j = ring.count - 1
+        for i in 0..<ring.count {
+            let (xi, yi) = (ring[i].longitude, ring[i].latitude)
+            let (xj, yj) = (ring[j].longitude, ring[j].latitude)
+            if ((yi > p.latitude) != (yj > p.latitude)) &&
+                (p.longitude < (xj - xi) * (p.latitude - yi) / (yj - yi) + xi) {
+                inside.toggle()
+            }
+            j = i
+        }
+        return inside
     }
 }
 
@@ -51,8 +74,15 @@ enum NeighborhoodPolygonLoader {
                 }
             }
 
-            guard !rings.isEmpty else { return nil }
-            return NeighborhoodPolygon(name: name, rings: rings)
+            // Drop tiny detached slivers (NTA artifacts) — keep the main shape
+            // + any genuinely large secondary part. Otherwise LES etc. render a
+            // confusing disconnected fragment near the waterfront.
+            let maxCount = rings.map(\.count).max() ?? 0
+            let threshold = max(4, Int(Double(maxCount) * 0.3))
+            let kept = rings.filter { $0.count >= threshold }
+
+            guard !kept.isEmpty else { return nil }
+            return NeighborhoodPolygon(name: name, rings: kept)
         }
     }
 }

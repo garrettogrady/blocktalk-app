@@ -2,9 +2,11 @@ import SwiftUI
 
 struct YouView: View {
     @Environment(AppState.self) private var appState
+    @Environment(OfflineStore.self) private var offline
     @State private var showNotifications = false
     @State private var showSettings = false
     @State private var showFeedback = false
+    @State private var showSignOutConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -12,7 +14,7 @@ struct YouView: View {
                 VStack(spacing: BTSpacing.xxl) {
                     // Identity strip
                     if let user = appState.currentUser {
-                        IdentityStrip(user: user)
+                        IdentityStrip(user: user, postCount: 38, replyCount: 142, totalScore: 1847)
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.md)
                     }
@@ -29,13 +31,19 @@ struct YouView: View {
                     footerActions
                         .padding(.horizontal, BTSpacing.lg)
 
+                    // 🧪 Offline demo debug card
+                    offlineDemoCard
+                        .padding(.horizontal, BTSpacing.lg)
+
+                    // 🧪 Onboarding replay (debug)
+                    onboardingDemoCard
+                        .padding(.horizontal, BTSpacing.lg)
+
                     Spacer(minLength: BTSpacing.xxxl)
                 }
             }
             .background(Color.btBg)
-            .navigationTitle("You")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showNotifications) {
                 NotificationsView()
             }
@@ -47,6 +55,12 @@ struct YouView: View {
             .sheet(isPresented: $showFeedback) {
                 FeedbackView()
             }
+            .alert("Sign out of BlockTalk?", isPresented: $showSignOutConfirm) {
+                Button("Cancel", role: .cancel) {}
+                Button("Sign Out", role: .destructive) { appState.signOut() }
+            } message: {
+                Text("You'll need to sign back in with Apple to continue.")
+            }
         }
     }
 
@@ -56,29 +70,58 @@ struct YouView: View {
         Button {
             showNotifications = true
         } label: {
-            HStack(spacing: BTSpacing.md) {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 16))
+            VStack(alignment: .leading, spacing: BTSpacing.md) {
+                HStack(spacing: BTSpacing.sm) {
+                    Text("📬 NOTIFICATIONS")
+                        .font(BTFont.monoBold(size: 10))
+                        .tracking(1)
+                        .foregroundStyle(Color.btText3)
+                    if BTNotification.unreadCount > 0 {
+                        Text("\(BTNotification.unreadCount) NEW")
+                            .font(BTFont.monoBold(size: 9))
+                            .foregroundStyle(Color.btOnAccent)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color.btPink).clipShape(Capsule())
+                    }
+                    Spacer()
+                }
+
+                ForEach(BTNotification.samples.prefix(2)) { notif in
+                    HStack(alignment: .top, spacing: BTSpacing.sm) {
+                        Circle()
+                            .fill(notif.unread ? Color.btLime : Color.clear)
+                            .frame(width: 6, height: 6)
+                            .padding(.top, 5)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(notif.title)
+                                .font(BTFont.bodySemibold(size: 13))
+                                .foregroundStyle(Color.btText)
+                                .lineLimit(1)
+                            if let p = notif.preview {
+                                Text(p)
+                                    .font(BTFont.body(size: 12))
+                                    .foregroundStyle(Color.btText2)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+
+                Text("VIEW ALL (\(BTNotification.samples.count)) →")
+                    .font(BTFont.bodySemibold(size: 12))
                     .foregroundStyle(Color.btLime)
-
-                Text("Notifications")
-                    .font(BTFont.bodyMedium(size: 15))
-                    .foregroundStyle(Color.btText)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.btText3)
             }
             .padding(BTSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.btSurface)
-            .cornerRadius(BTRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: BTRadius.md)
                     .stroke(Color.btLine, lineWidth: 1)
             )
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Footer Actions
@@ -90,13 +133,13 @@ struct YouView: View {
             }
             Divider().background(Color.btLine)
 
-            footerButton(icon: "envelope", title: "Send Feedback") {
+            footerButton(icon: "envelope", title: "Feedback") {
                 showFeedback = true
             }
             Divider().background(Color.btLine)
 
             footerButton(icon: "rectangle.portrait.and.arrow.right", title: "Sign Out", isDestructive: true) {
-                appState.signOut()
+                showSignOutConfirm = true
             }
         }
         .background(Color.btSurface)
@@ -105,6 +148,80 @@ struct YouView: View {
             RoundedRectangle(cornerRadius: BTRadius.md)
                 .stroke(Color.btLine, lineWidth: 1)
         )
+    }
+
+    // MARK: - Onboarding Replay (debug)
+
+    private var onboardingDemoCard: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.md) {
+            Text("🧪 ONBOARDING")
+                .font(BTFont.monoBold(size: 11))
+                .tracking(1)
+                .foregroundStyle(Color.btText3)
+
+            debugButton("Replay onboarding", icon: "arrow.uturn.backward.circle", tint: .btLime) {
+                appState.forceOnboarding = true
+                appState.advanceTo(.splash)
+            }
+
+            Text("Starts at the landing screen and walks the full splash → profile → rule flow.")
+                .font(BTFont.body(size: 11))
+                .foregroundStyle(Color.btText3)
+        }
+        .padding(BTSpacing.lg)
+        .background(Color.btSurface)
+        .cornerRadius(BTRadius.md)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+    }
+
+    // MARK: - Offline Demo (debug)
+
+    private var offlineDemoCard: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.md) {
+            Text("🧪 OFFLINE DEMO")
+                .font(BTFont.monoBold(size: 11))
+                .tracking(1)
+                .foregroundStyle(Color.btText3)
+
+            debugButton(
+                offline.isOffline ? "Go back online (flushes queue)" : "Toggle offline",
+                icon: offline.isOffline ? "wifi" : "wifi.slash",
+                tint: offline.isOffline ? .btLime : .btWarn
+            ) { offline.toggleOffline() }
+
+            debugButton(
+                "Force-expire pending (\(offline.pending.count))",
+                icon: "clock.badge.exclamationmark",
+                tint: .btPink,
+                disabled: offline.pending.isEmpty
+            ) { offline.forceExpire() }
+
+            debugButton("Reset offline state", icon: "arrow.counterclockwise", tint: .btText2) {
+                offline.reset()
+            }
+
+            Text("Posts made offline queue for \(Int(OfflineStore.graceSeconds))s, then discard.")
+                .font(BTFont.body(size: 11))
+                .foregroundStyle(Color.btText3)
+        }
+        .padding(BTSpacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.btSurface)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+    }
+
+    private func debugButton(_ title: String, icon: String, tint: Color, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: icon).font(.system(size: 13)).frame(width: 20)
+                Text(title).font(BTFont.bodyMedium(size: 14))
+                Spacer()
+            }
+            .foregroundStyle(disabled ? Color.btText3 : tint)
+            .padding(.vertical, BTSpacing.xs)
+        }
+        .disabled(disabled)
     }
 
     private func footerButton(icon: String, title: String, isDestructive: Bool = false, action: @escaping () -> Void) -> some View {

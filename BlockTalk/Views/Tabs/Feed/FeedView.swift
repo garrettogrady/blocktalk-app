@@ -1,11 +1,28 @@
+import Combine
 import SwiftUI
 
 struct FeedView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
+    @Environment(OfflineStore.self) private var offline
+    @Environment(LocalContentStore.self) private var localContent
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
+    @State private var showPreFrame = false
+    @State private var showSearch = false
+
+    /// Posts the user created this session for the neighborhood being viewed.
+    private var myPosts: [Post] {
+        guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
+        return localContent.posts(in: viewingId)
+    }
+
+    private var isViewingHome: Bool {
+        guard let homeId = appState.currentUser?.homeNeighborhoodId,
+              let viewingId = appState.viewingNeighborhood?.id else { return false }
+        return homeId == viewingId
+    }
 
     var body: some View {
         NavigationStack {
@@ -13,19 +30,31 @@ struct FeedView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Location gate banner at top when location not granted
-                        LocationGateBanner()
+                        LocationGateBanner(showPreFrame: $showPreFrame)
 
-                        // Daily prompt card
+                        // Browsing a neighborhood you're not physically in — read
+                        // freely, but posting is locked to where you actually are.
+                        viewingElsewhereBanner
+
+                        // Offline banner
+                        if offline.isOffline {
+                            OfflineBanner(pendingPostCount: offline.pending.count)
+                        }
+
+                        // Daily prompt card — full-width strip
                         if let prompt = viewModel.dailyPrompt {
-                            DailyPromptCard(prompt: prompt)
-                                .padding(.horizontal, BTSpacing.lg)
-                                .padding(.top, BTSpacing.md)
+                            DailyPromptCard(prompt: prompt, answerCount: 1842)
                         }
 
                         // Location / neighborhood row
                         locationRow
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.lg)
+                            .padding(.bottom, BTSpacing.md)
+
+                        // Separator under the neighborhood/search header row
+                        // (matches the Expo mock's locRow bottom border).
+                        Divider().background(Color.btLine)
 
                         // Sort/time filters
                         SortTimeFilters(
@@ -34,6 +63,55 @@ struct FeedView: View {
                         )
                         .padding(.horizontal, BTSpacing.lg)
                         .padding(.top, BTSpacing.md)
+
+                        // Offline: discarded (top) → pending → flushed, above the feed
+                        if !offline.discarded.isEmpty {
+                            VStack(spacing: BTSpacing.md) {
+                                ForEach(offline.discarded) { q in
+                                    DiscardedPostRow(post: q.post) { offline.dismissDiscarded(q.id) }
+                                }
+                            }
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.md)
+                        }
+
+                        if !offline.pending.isEmpty || !offline.flushed.isEmpty {
+                            LazyVStack(spacing: 0) {
+                                ForEach(offline.pending) { q in
+                                    PostCard(post: q.post, pending: true,
+                                             username: appState.currentUser?.username ?? "BlockTalker",
+                                             userNumber: appState.currentUser?.userNumber ?? 0,
+                                             homeShortCode: appState.viewingNeighborhood?.shortCode)
+                                    Divider().background(Color.btLine)
+                                }
+                                ForEach(offline.flushed) { post in
+                                    NavigationLink(value: post) {
+                                        PostCard(post: post,
+                                                 username: appState.currentUser?.username ?? "BlockTalker",
+                                                 userNumber: appState.currentUser?.userNumber ?? 0,
+                                                 homeShortCode: appState.viewingNeighborhood?.shortCode)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().background(Color.btLine)
+                                }
+                            }
+                            .padding(.top, BTSpacing.sm)
+                        }
+
+                        // Posts you created this session (bundled-mock, no
+                        // backend) — shown on top of the sample feed.
+                        if !myPosts.isEmpty {
+                            LazyVStack(spacing: 0) {
+                                ForEach(myPosts) { post in
+                                    NavigationLink(value: post) {
+                                        PostCard(post: post)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().background(Color.btLine)
+                                }
+                            }
+                            .padding(.top, BTSpacing.sm)
+                        }
 
                         // Posts
                         if viewModel.isLoading {
@@ -75,33 +153,26 @@ struct FeedView: View {
                 .refreshable {
                     await viewModel.refresh()
                 }
+                .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+                    // Age pending posts past the grace window into discarded
+                    offline.expireStale()
+                }
 
-                // Bottom bar: compose if location granted, location gate if not
-                if locationService.permissionState == .granted {
+                // Bottom bar: location gate if not granted; compose if you're
+                // viewing the block you're physically in; otherwise a browse-only
+                // notice (you can read here but only post where you actually are).
+                if locationService.permissionState != .granted {
+                    LocationGateBar(showPreFrame: $showPreFrame)
+                } else if appState.canPostInViewing {
                     ComposeBarView {
                         showCompose = true
                     }
                 } else {
-                    LocationGate()
+                    browseOnlyBar
                 }
             }
             .background(Color.btBg)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 0) {
-                        Text("block")
-                            .font(BTFont.display(size: 20))
-                            .foregroundStyle(Color.btText)
-                        Text(".")
-                            .font(BTFont.display(size: 20))
-                            .foregroundStyle(Color.btLime)
-                        Text("talk")
-                            .font(BTFont.display(size: 20))
-                            .foregroundStyle(Color.btText)
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Post.self) { post in
                 PostDetailView(post: post)
             }
@@ -114,6 +185,7 @@ struct FeedView: View {
                 }
                 // Sync viewModel with appState on appear
                 viewModel.viewingNeighborhood = appState.viewingNeighborhood
+                await viewModel.loadDailyPrompt()
                 if viewModel.posts.isEmpty {
                     await viewModel.loadPosts()
                 }
@@ -134,42 +206,149 @@ struct FeedView: View {
                     Task { await viewModel.loadPosts() }
                 }
             }
-            .sheet(isPresented: $showNeighborhoodPicker) {
-                NeighborhoodPickerView(currentValue: appState.viewingNeighborhood) { neighborhood in
+            .fullScreenCover(isPresented: $showNeighborhoodPicker) {
+                NeighborhoodPickerView(
+                    currentValue: appState.viewingNeighborhood,
+                    title: "Viewing Neighborhood",
+                    confirmCta: { "View \($0)" }
+                ) { neighborhood in
                     appState.viewingNeighborhood = neighborhood
                     viewModel.viewingNeighborhood = neighborhood
                     Task { await viewModel.loadPosts() }
                 }
             }
+            .sheet(isPresented: $showPreFrame) {
+                LocationPreFrameSheet()
+            }
+            .fullScreenCover(isPresented: $showSearch) {
+                SearchView(scope: .neighborhood, neighborhood: appState.viewingNeighborhood)
+            }
         }
+    }
+
+    // MARK: - Location locking
+
+    /// Thin banner shown when the viewed feed isn't the block you're in.
+    @ViewBuilder private var viewingElsewhereBanner: some View {
+        if locationService.permissionState == .granted,
+           let home = appState.physicalNeighborhood,
+           let viewing = appState.viewingNeighborhood,
+           !appState.canPostInViewing {
+            Button {
+                appState.viewingNeighborhood = home
+            } label: {
+                HStack(spacing: BTSpacing.xs) {
+                    Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
+                    (Text("browsing \(viewing.name) · you can only post in ")
+                     + Text(home.name).font(BTFont.bodyBold(size: 10.5)))
+                        .font(BTFont.bodyBold(size: 10.5))
+                        .tracking(0.2)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text("go back ›").font(BTFont.monoBold(size: 9)).tracking(0.5)
+                }
+                .foregroundStyle(Color.btHouse)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, BTSpacing.lg)
+                .padding(.vertical, 7)
+                .background(Color.btHouse.opacity(0.1))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// Replaces the compose bar when you're viewing a block you're not in —
+    /// you can read, but posting is locked to where you actually are.
+    private var browseOnlyBar: some View {
+        Button {
+            if let home = appState.physicalNeighborhood { appState.viewingNeighborhood = home }
+        } label: {
+            HStack(spacing: BTSpacing.sm) {
+                HStack(spacing: BTSpacing.sm) {
+                    Image(systemName: "eye").font(.system(size: 14)).foregroundStyle(Color.btHouse)
+                    Text("browsing only · post in \(appState.physicalNeighborhood?.name ?? "your block")")
+                        .font(BTFont.bodySemibold(size: 12))
+                        .foregroundStyle(Color.btText)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .frame(height: 38)
+                .padding(.horizontal, BTSpacing.md)
+                .background(Color.btSurface)
+                .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btHouse.opacity(0.35), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.btOnAccent)
+                    .frame(width: 38, height: 38)
+                    .background(Color.btHouse)
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+            }
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background {
+                Color.btBg.overlay(Color.btHouse.opacity(0.06))
+                    .ignoresSafeArea(.container, edges: .bottom)
+            }
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color.btHouse.opacity(0.35)).frame(height: 1)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Location Row
 
     private var locationRow: some View {
-        Button {
-            showNeighborhoodPicker = true
-        } label: {
-            HStack(spacing: BTSpacing.sm) {
-                Text("VIEWING")
-                    .font(BTFont.mono(size: 10))
-                    .foregroundStyle(Color.btText3)
+        HStack(spacing: BTSpacing.sm) {
+            Button {
+                showNeighborhoodPicker = true
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("VIEWING")
+                        .font(BTFont.mono(size: 10))
+                        .foregroundStyle(Color.btText3)
 
-                Image(systemName: "house.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.btHouse)
+                    HStack(spacing: BTSpacing.sm) {
+                        // 🏠 only when viewing == home neighborhood
+                        if isViewingHome {
+                            Image(systemName: "house.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.btHouse)
+                        }
 
-                Text(appState.viewingNeighborhood?.name ?? "Locating...")
-                    .font(BTFont.display(size: 18))
-                    .foregroundStyle(Color.btText)
+                        Text(appState.viewingNeighborhood?.name ?? "Locating...")
+                            .font(BTFont.display(size: 18))
+                            .foregroundStyle(Color.btText)
 
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.btText3)
-
-                Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.btText3)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, BTSpacing.sm)
             }
-            .padding(.vertical, BTSpacing.sm)
+            .buttonStyle(.plain)
+
+            // 38×38 within-neighborhood search
+            Button {
+                showSearch = true
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Color.btText2)
+                    .frame(width: 38, height: 38)
+                    .background(Color.btSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: BTRadius.md)
+                            .stroke(Color.btLine, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+            }
+            .buttonStyle(.plain)
         }
     }
 

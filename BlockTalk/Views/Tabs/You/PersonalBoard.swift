@@ -5,7 +5,9 @@ struct PersonalBoard: View {
 
     enum BoardTab: String, CaseIterable {
         case created = "Created"
-        case interacted = "Interacted"
+        case interacted = "Interacted With"
+
+        var count: Int { self == .created ? 38 : 204 }
     }
 
     @State private var selectedTab: BoardTab = .created
@@ -22,17 +24,18 @@ struct PersonalBoard: View {
                             selectedTab = tab
                         }
                     } label: {
-                        Text(tab.rawValue)
-                            .font(BTFont.bodySemibold(size: 14))
-                            .foregroundStyle(
-                                selectedTab == tab ? Color.btBg : Color.btText2
-                            )
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, BTSpacing.sm)
-                            .background(
-                                selectedTab == tab ? Color.btLime : Color.clear
-                            )
-                            .cornerRadius(BTRadius.sm)
+                        HStack(spacing: BTSpacing.xs) {
+                            Text(tab.rawValue)
+                                .font(BTFont.bodySemibold(size: 14))
+                            Text("\(tab.count)")
+                                .font(BTFont.monoBold(size: 12))
+                                .opacity(0.7)
+                        }
+                        .foregroundStyle(selectedTab == tab ? Color.btOnAccent : Color.btText2)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, BTSpacing.sm)
+                        .background(selectedTab == tab ? Color.btLime : Color.clear)
+                        .cornerRadius(BTRadius.sm)
                     }
                 }
             }
@@ -52,6 +55,13 @@ struct PersonalBoard: View {
                         Divider().background(Color.btLine)
                     }
                 }
+            }
+        }
+        .onAppear {
+            // Bundled mock — counts (38/204) intentionally exceed visible posts (3/2)
+            if createdPosts.isEmpty {
+                createdPosts = Array(Post.sampleFeed.prefix(3))
+                interactedPosts = Array(Post.sampleFeed.dropFirst(8).prefix(2))
             }
         }
     }

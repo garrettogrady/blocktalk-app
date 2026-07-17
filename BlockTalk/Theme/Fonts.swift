@@ -10,9 +10,9 @@ enum BTFont {
         .custom("SpaceGrotesk-Medium", size: size, relativeTo: .title2)
     }
 
-    // Inter (variable font)
+    // Inter
     static func body(size: CGFloat) -> Font {
-        .custom("Inter", size: size, relativeTo: .body)
+        .custom("Inter-Regular", size: size, relativeTo: .body)
     }
 
     static func bodyMedium(size: CGFloat) -> Font {
