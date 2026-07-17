@@ -1,4 +1,5 @@
 import CoreLocation
+import MapKit
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -15,6 +16,9 @@ struct ComposeView: View {
     @State private var showCamera = false
     @State private var showLibrary = false
     @State private var pinCleared = false
+    // Optional business the street comment is tagged to (Apple Maps POI).
+    @State private var taggedPlace: TaggedPlace?
+    @State private var showPlacePicker = false
     @FocusState private var textFocused: Bool
 
     /// Pin can be toggled off locally (the ≡ footer button) without closing
@@ -40,6 +44,11 @@ struct ComposeView: View {
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
                         // Scope row
                         scopeRow
+
+                        // Tag a business — street comments only
+                        if effectivePin != nil {
+                            tagPlaceRow
+                        }
 
                         // Image preview — ABOVE the input, per the mock
                         if let image = viewModel.selectedImage {
@@ -153,6 +162,14 @@ struct ComposeView: View {
                 }
                 .ignoresSafeArea()
             }
+            .sheet(isPresented: $showPlacePicker) {
+                if let coord = effectivePin {
+                    PlacePickerSheet(center: coord, selected: taggedPlace) { place in
+                        taggedPlace = place
+                    }
+                    .presentationDetents([.large])
+                }
+            }
             .onAppear {
                 // Rehydrate a stashed draft after the compose→map→compose round-trip
                 if viewModel.text.isEmpty { viewModel.text = appState.composeDraft }
@@ -164,6 +181,53 @@ struct ComposeView: View {
                 appState.composeDraft = newValue
             }
         }
+    }
+
+    // MARK: - Tag a place (business)
+
+    private var tagPlaceRow: some View {
+        Button {
+            textFocused = false
+            showPlacePicker = true
+        } label: {
+            HStack(spacing: BTSpacing.sm) {
+                if let place = taggedPlace {
+                    Image(systemName: place.symbol)
+                        .font(.system(size: 13)).foregroundStyle(Color.btLime)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(place.name)
+                            .font(BTFont.bodySemibold(size: 13)).foregroundStyle(Color.btText).lineLimit(1)
+                        Text(place.category)
+                            .font(BTFont.mono(size: 10)).foregroundStyle(Color.btText3)
+                    }
+                    Spacer(minLength: 0)
+                    Button { taggedPlace = nil } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16)).foregroundStyle(Color.btText3)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Image(systemName: "storefront")
+                        .font(.system(size: 14)).foregroundStyle(Color.btText2)
+                    Text("Tag a business here")
+                        .font(BTFont.bodySemibold(size: 13)).foregroundStyle(Color.btText2)
+                    Text("optional")
+                        .font(BTFont.mono(size: 9.5)).foregroundStyle(Color.btText3)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.btText3)
+                }
+            }
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.vertical, BTSpacing.sm)
+            .background(taggedPlace != nil ? Color.btLime.opacity(0.06) : Color.btSurface)
+            .overlay(
+                RoundedRectangle(cornerRadius: BTRadius.md)
+                    .stroke(taggedPlace != nil ? Color.btLime.opacity(0.3) : Color.btLine, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Scope Row (regular / NYC-wide / pin)
@@ -336,7 +400,10 @@ struct ComposeView: View {
                     longitude: pinLocation.longitude,
                     cornerName: pinCornerName ?? resolvedStreet,
                     neighborhoodId: neighborhoodId,
-                    createdAt: Date()
+                    createdAt: Date(),
+                    placeName: taggedPlace?.name,
+                    placeCategory: taggedPlace?.category,
+                    placeSymbol: taggedPlace?.symbol
                 )
                 if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
                     localContent.add(post: post, pin: pin)
@@ -368,6 +435,221 @@ struct ComposeView: View {
         appState.pendingPinPlacement = true       // Map will auto-enter drop mode
         appState.selectedTab = 1
         dismiss()
+    }
+}
+
+// MARK: - Tagged place (a business a street comment is attached to)
+
+struct TaggedPlace: Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let category: String
+    let symbol: String
+    let latitude: Double
+    let longitude: Double
+    var coordinate: CLLocationCoordinate2D { .init(latitude: latitude, longitude: longitude) }
+    static func == (a: TaggedPlace, b: TaggedPlace) -> Bool { a.id == b.id }
+}
+
+/// Apple POI category → friendly label + SF Symbol.
+func placeCategoryDisplay(_ c: MKPointOfInterestCategory?) -> (label: String, symbol: String) {
+    switch c {
+    case .some(.restaurant):            return ("Restaurant", "fork.knife")
+    case .some(.cafe):                  return ("Café", "cup.and.saucer.fill")
+    case .some(.bakery):                return ("Bakery", "birthday.cake.fill")
+    case .some(.brewery), .some(.winery): return ("Brewery", "mug.fill")
+    case .some(.nightlife):             return ("Bar", "wineglass.fill")
+    case .some(.foodMarket):            return ("Market", "cart.fill")
+    case .some(.store):                 return ("Shop", "bag.fill")
+    case .some(.fitnessCenter):         return ("Gym", "dumbbell.fill")
+    case .some(.park), .some(.nationalPark): return ("Park", "tree.fill")
+    case .some(.museum):                return ("Museum", "building.columns.fill")
+    case .some(.theater), .some(.movieTheater): return ("Theater", "theatermasks.fill")
+    case .some(.hotel):                 return ("Hotel", "bed.double.fill")
+    case .some(.pharmacy):              return ("Pharmacy", "cross.case.fill")
+    case .some(.bank), .some(.atm):     return ("Bank", "banknote.fill")
+    case .some(.library):               return ("Library", "books.vertical.fill")
+    case .some(.laundry):               return ("Laundry", "washer.fill")
+    default:                            return ("Place", "mappin.circle.fill")
+    }
+}
+
+// MARK: - Place Picker (Apple Maps POI search)
+
+struct PlacePickerSheet: View {
+    let center: CLLocationCoordinate2D
+    var selected: TaggedPlace?
+    var onPick: (TaggedPlace?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var results: [TaggedPlace] = []
+    @State private var loading = false
+
+    // Bias the nearby search toward actual businesses.
+    private let businessCategories: [MKPointOfInterestCategory] = [
+        .restaurant, .cafe, .bakery, .nightlife, .foodMarket, .store,
+        .fitnessCenter, .brewery, .winery, .pharmacy, .hotel,
+        .theater, .movieTheater, .museum, .bank,
+    ]
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                searchField
+                Divider().background(Color.btLine)
+
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        noPlaceRow
+                        Divider().background(Color.btLine).padding(.leading, BTSpacing.lg)
+
+                        if loading && results.isEmpty {
+                            ProgressView().tint(Color.btText3)
+                                .frame(maxWidth: .infinity).padding(.top, BTSpacing.xxxl)
+                        } else if results.isEmpty {
+                            Text(query.isEmpty ? "No places found nearby." : "Nothing matches \u{201C}\(query)\u{201D}.")
+                                .font(BTFont.body(size: 13)).foregroundStyle(Color.btText3)
+                                .frame(maxWidth: .infinity).padding(.top, BTSpacing.xxxl)
+                        } else {
+                            ForEach(results) { place in
+                                placeRow(place)
+                                Divider().background(Color.btLine).padding(.leading, 68)
+                            }
+                        }
+                    }
+                }
+            }
+            .background(Color.btBg)
+            .navigationTitle("Tag a place")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.foregroundStyle(Color.btText2)
+                }
+            }
+        }
+        .task(id: query) {
+            let q = query.trimmingCharacters(in: .whitespaces)
+            if q.isEmpty {
+                await runNearby()
+            } else {
+                try? await Task.sleep(for: .milliseconds(300))
+                if Task.isCancelled { return }
+                await runSearch(q)
+            }
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: BTSpacing.sm) {
+            Image(systemName: "magnifyingglass").font(.system(size: 14)).foregroundStyle(Color.btText3)
+            TextField("Search a business or place", text: $query)
+                .font(BTFont.body(size: 15)).foregroundStyle(Color.btText)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.words)
+            if !query.isEmpty {
+                Button { query = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 15)).foregroundStyle(Color.btText3)
+                }
+            }
+        }
+        .padding(.horizontal, BTSpacing.md).padding(.vertical, 11)
+        .background(Color.btSurface)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        .padding(BTSpacing.lg)
+    }
+
+    private var noPlaceRow: some View {
+        Button {
+            onPick(nil); dismiss()
+        } label: {
+            HStack(spacing: BTSpacing.md) {
+                Image(systemName: "mappin")
+                    .font(.system(size: 15)).foregroundStyle(Color.btText2)
+                    .frame(width: 40, height: 40)
+                    .background(Color.btSurface).clipShape(RoundedRectangle(cornerRadius: 11))
+                Text("No business — just the pin")
+                    .font(BTFont.bodySemibold(size: 14)).foregroundStyle(Color.btText2)
+                Spacer(minLength: 0)
+                if selected == nil {
+                    Image(systemName: "checkmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.btLime)
+                }
+            }
+            .padding(.vertical, 8).padding(.horizontal, BTSpacing.lg)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func placeRow(_ place: TaggedPlace) -> some View {
+        Button {
+            onPick(place); dismiss()
+        } label: {
+            HStack(spacing: BTSpacing.md) {
+                Image(systemName: place.symbol)
+                    .font(.system(size: 16)).foregroundStyle(Color.btLime)
+                    .frame(width: 40, height: 40)
+                    .background(Color.btLime.opacity(0.10))
+                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.btLime.opacity(0.22), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 11))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(place.name)
+                        .font(BTFont.bodySemibold(size: 15)).foregroundStyle(Color.btText).lineLimit(1)
+                    Text("\(place.category) · \(distanceString(place))")
+                        .font(BTFont.mono(size: 11)).foregroundStyle(Color.btText3)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: selected?.name == place.name ? "checkmark" : "plus")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.btLime)
+            }
+            .padding(.vertical, 8).padding(.horizontal, BTSpacing.lg)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func distanceString(_ place: TaggedPlace) -> String {
+        let meters = CLLocation(latitude: center.latitude, longitude: center.longitude)
+            .distance(from: CLLocation(latitude: place.latitude, longitude: place.longitude))
+        let feet = meters * 3.28084
+        if feet < 1000 { return "\(Int((feet / 10).rounded()) * 10) ft" }
+        return String(format: "%.1f mi", meters / 1609.34)
+    }
+
+    private func mapItemToPlace(_ item: MKMapItem) -> TaggedPlace? {
+        guard let name = item.name else { return nil }
+        let (label, symbol) = placeCategoryDisplay(item.pointOfInterestCategory)
+        let c = item.placemark.coordinate
+        return TaggedPlace(name: name, category: label, symbol: symbol,
+                           latitude: c.latitude, longitude: c.longitude)
+    }
+
+    private func runNearby() async {
+        loading = true
+        let req = MKLocalPointsOfInterestRequest(center: center, radius: 400)
+        req.pointOfInterestFilter = MKPointOfInterestFilter(including: businessCategories)
+        do {
+            let resp = try await MKLocalSearch(request: req).start()
+            results = resp.mapItems.compactMap(mapItemToPlace)
+        } catch {
+            results = []
+        }
+        loading = false
+    }
+
+    private func runSearch(_ q: String) async {
+        loading = true
+        let req = MKLocalSearch.Request()
+        req.naturalLanguageQuery = q
+        req.region = MKCoordinateRegion(center: center, latitudinalMeters: 1600, longitudinalMeters: 1600)
+        do {
+            let resp = try await MKLocalSearch(request: req).start()
+            results = resp.mapItems.compactMap(mapItemToPlace)
+        } catch {
+            results = []
+        }
+        loading = false
     }
 }
 
