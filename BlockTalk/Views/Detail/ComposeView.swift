@@ -493,10 +493,19 @@ struct PlacePickerSheet: View {
         .theater, .movieTheater, .museum, .bank,
     ]
 
+    // A tagged business must actually be AT the pin — cap how far it can be
+    // (~500 ft covers GPS slop + being on this block). Nothing farther is
+    // taggable, so you can't attach a comment to a place across the neighborhood.
+    private let maxPlaceMeters: CLLocationDistance = 150
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 searchField
+                Text("Only places at your pin · closest first")
+                    .font(BTFont.mono(size: 10)).foregroundStyle(Color.btText3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, BTSpacing.lg).padding(.bottom, BTSpacing.sm)
                 Divider().background(Color.btLine)
 
                 ScrollView {
@@ -508,9 +517,12 @@ struct PlacePickerSheet: View {
                             ProgressView().tint(Color.btText3)
                                 .frame(maxWidth: .infinity).padding(.top, BTSpacing.xxxl)
                         } else if results.isEmpty {
-                            Text(query.isEmpty ? "No places found nearby." : "Nothing matches \u{201C}\(query)\u{201D}.")
+                            Text(query.isEmpty
+                                 ? "No businesses right at your pin."
+                                 : "\u{201C}\(query)\u{201D} isn\u{2019}t at your pin — only places here can be tagged.")
                                 .font(BTFont.body(size: 13)).foregroundStyle(Color.btText3)
-                                .frame(maxWidth: .infinity).padding(.top, BTSpacing.xxxl)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity).padding(.horizontal, BTSpacing.xl).padding(.top, BTSpacing.xxxl)
                         } else {
                             ForEach(results) { place in
                                 placeRow(place)
@@ -625,13 +637,27 @@ struct PlacePickerSheet: View {
                            latitude: c.latitude, longitude: c.longitude)
     }
 
+    private func meters(to place: TaggedPlace) -> CLLocationDistance {
+        CLLocation(latitude: center.latitude, longitude: center.longitude)
+            .distance(from: CLLocation(latitude: place.latitude, longitude: place.longitude))
+    }
+
+    /// Keep only places actually at the pin, closest first.
+    private func withinRange(_ places: [TaggedPlace]) -> [TaggedPlace] {
+        places
+            .filter { meters(to: $0) <= maxPlaceMeters }
+            .sorted { meters(to: $0) < meters(to: $1) }
+    }
+
     private func runNearby() async {
         loading = true
-        let req = MKLocalPointsOfInterestRequest(center: center, radius: 400)
+        // Apple only returns POIs inside this radius, so the request itself
+        // enforces the cap; we still sort closest-first.
+        let req = MKLocalPointsOfInterestRequest(center: center, radius: maxPlaceMeters)
         req.pointOfInterestFilter = MKPointOfInterestFilter(including: businessCategories)
         do {
             let resp = try await MKLocalSearch(request: req).start()
-            results = resp.mapItems.compactMap(mapItemToPlace)
+            results = withinRange(resp.mapItems.compactMap(mapItemToPlace))
         } catch {
             results = []
         }
@@ -640,12 +666,17 @@ struct PlacePickerSheet: View {
 
     private func runSearch(_ q: String) async {
         loading = true
+        // A text query's region is only a bias, not a hard limit — Apple can
+        // return matches far away. Search a tight box AND filter by real
+        // distance so you can't tag a business that isn't at your pin.
         let req = MKLocalSearch.Request()
         req.naturalLanguageQuery = q
-        req.region = MKCoordinateRegion(center: center, latitudinalMeters: 1600, longitudinalMeters: 1600)
+        req.region = MKCoordinateRegion(center: center,
+                                        latitudinalMeters: maxPlaceMeters * 2,
+                                        longitudinalMeters: maxPlaceMeters * 2)
         do {
             let resp = try await MKLocalSearch(request: req).start()
-            results = resp.mapItems.compactMap(mapItemToPlace)
+            results = withinRange(resp.mapItems.compactMap(mapItemToPlace))
         } catch {
             results = []
         }
