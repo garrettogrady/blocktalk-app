@@ -35,11 +35,14 @@ struct PostCard: View {
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }
 
     /// Lime location pill overlaid on a street comment's photo (bottom-left).
+    /// Prefers a tagged business name over the raw corner.
     @ViewBuilder private var photoPinChip: some View {
-        if post.isStreetComment, let corner = streetPin?.cornerName ?? cornerName {
+        if post.isStreetComment,
+           let label = streetPin?.placeName ?? streetPin?.cornerName ?? cornerName {
             HStack(spacing: 4) {
-                Image(systemName: "mappin.circle.fill").font(.system(size: 11))
-                Text(corner).font(BTFont.monoBold(size: 10)).tracking(0.3)
+                Image(systemName: streetPin?.placeName != nil ? (streetPin?.placeSymbol ?? "mappin.circle.fill") : "mappin.circle.fill")
+                    .font(.system(size: 11))
+                Text(label).font(BTFont.monoBold(size: 10)).tracking(0.3)
             }
             .foregroundStyle(Color.btBg)
             .padding(.horizontal, BTSpacing.sm)
@@ -48,6 +51,21 @@ struct PostCard: View {
             .clipShape(Capsule())
             .padding(BTSpacing.sm)
         }
+    }
+
+    /// Meta-row chip for a street comment tagged to a business (name only, no
+    /// logo — nominative identification, comment-language not review-language).
+    private func businessChip(_ name: String, symbol: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: symbol).font(.system(size: 9))
+            Text(name).font(BTFont.monoBold(size: 10)).lineLimit(1)
+        }
+        .foregroundStyle(Color.btLime)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(Color.btLime.opacity(0.10))
+        .overlay(Capsule().stroke(Color.btLime.opacity(0.28), lineWidth: 1))
+        .clipShape(Capsule())
     }
 
     var body: some View {
@@ -178,8 +196,11 @@ struct PostCard: View {
                 HomeBadge(shortCode: shortCode)
             }
 
-            // Corner badge only on street comments with a resolved corner name
-            if let corner = streetPin?.cornerName ?? cornerName {
+            // A tagged business takes the place of the corner name; otherwise
+            // the corner badge (street comments only).
+            if let place = streetPin?.placeName {
+                businessChip(place, symbol: streetPin?.placeSymbol ?? "mappin.circle.fill")
+            } else if let corner = streetPin?.cornerName ?? cornerName {
                 PinBadge(cornerName: corner)
             }
 

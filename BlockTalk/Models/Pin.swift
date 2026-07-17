@@ -10,6 +10,13 @@ struct Pin: Codable, Identifiable, Sendable {
     let neighborhoodId: UUID
     var createdAt: Date?
 
+    // Optional business the comment is tagged to (from Apple Maps POI at post
+    // time). [PROD-DIFF: Apple's terms forbid warehousing their place database —
+    // store a neutral place key + re-fetch display data live for production.]
+    var placeName: String? = nil
+    var placeCategory: String? = nil
+    var placeSymbol: String? = nil
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
