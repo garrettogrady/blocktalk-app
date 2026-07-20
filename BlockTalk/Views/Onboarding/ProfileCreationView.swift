@@ -51,7 +51,9 @@ struct ProfileCreationView: View {
             continueBar
         }
         .background(Color.btBg.ignoresSafeArea())
-        .sheet(isPresented: $showNeighborhoodPicker) {
+        // Full-screen cover, not a sheet: a page sheet leaves this screen peeking
+        // behind the top, which shows through when the search field is focused.
+        .fullScreenCover(isPresented: $showNeighborhoodPicker) {
             NeighborhoodPickerView(
                 currentValue: viewModel.selectedNeighborhood,
                 confirmCta: { "Use \($0)" }
