@@ -37,25 +37,19 @@ struct ProfileCreationView: View {
         VStack(spacing: 0) {
             stepBar
 
-            GeometryReader { geo in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: BTSpacing.xl) {
-                        heading
-                        neighborhoodSection   // required — the anchor
-                        usernameSection       // optional — secondary
-                        Spacer(minLength: BTSpacing.xl)
-                        privacyNote           // reinforces the anonymity promise
-                        previewCard           // "this is all anyone sees" — the payoff, anchored above the CTA
-                    }
-                    // Fill the viewport so the Spacer pushes the preview to the
-                    // bottom instead of leaving a void below the form.
-                    .frame(minHeight: geo.size.height, alignment: .top)
-                    .padding(.horizontal, BTSpacing.xxl)
-                    .padding(.top, BTSpacing.lg)
-                    .padding(.bottom, BTSpacing.lg)
+            ScrollView {
+                VStack(alignment: .leading, spacing: BTSpacing.xl) {
+                    heading
+                    neighborhoodSection   // required — the anchor
+                    usernameSection       // optional — secondary
+                    anonymityBlock        // anonymity + PII, said once and hard
+                    previewCard           // labeled example, mapped back to your name + number
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .padding(.horizontal, BTSpacing.xxl)
+                .padding(.top, BTSpacing.lg)
+                .padding(.bottom, BTSpacing.xxl)
             }
+            .scrollDismissesKeyboard(.interactively)
 
             continueBar
         }
@@ -193,25 +187,34 @@ struct ProfileCreationView: View {
             if let msg = usernameError {
                 Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
             } else {
-                Text("skip it and you're **BlockTalker** · change it anytime in Settings")
+                Text("Choose carefully. Once you set it, you can't change it.")
                     .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
             }
         }
     }
 
-    // MARK: - Anonymity reassurance (fills the space + sets up the preview)
+    // MARK: - Anonymity (said once, hard, friendly) — carries the PII warning
 
-    private var privacyNote: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("You're anonymous.")
-                .font(BTFont.display(size: 19))
+    private var anonymityBlock: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("You're anonymous. Keep it that way.")
+                .font(BTFont.display(size: 20))
                 .foregroundStyle(Color.btText)
                 .tracking(-0.3)
-            Text("No email, no real name, no photo — just your number and neighborhood.")
-                .font(BTFont.body(size: 13.5))
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Don't put your real name, or anything that could point back to you, in your username.")
+                .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)
-                .lineSpacing(3)
+                .lineSpacing(4)
         }
+        .padding(BTSpacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.btWarn.opacity(0.06))
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.lg)
+                .stroke(Color.btWarn.opacity(0.3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
     }
 
     // MARK: - Live "this is all anyone sees" preview (the result)
@@ -247,7 +250,26 @@ struct ProfileCreationView: View {
             .background(Color.btLime.opacity(0.05))
             .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.35), lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+
+            // Placeholder note + map the card back to the two things that are yours.
+            VStack(alignment: .leading, spacing: 7) {
+                Text("The post is just an example. What's actually yours:")
+                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
+                mapLine("@\(displayName)", color: Color.btText,
+                        desc: "the username you pick (or BlockTalker).")
+                mapLine("#\(userNumber)", color: Color.btLime,
+                        desc: "your user number. It's assigned to you and never changes.")
+            }
+            .padding(.top, 4)
         }
+    }
+
+    /// One legend row: a card token (colored to match the card) + what it is.
+    private func mapLine(_ token: String, color: Color, desc: String) -> some View {
+        (Text(token + "  ").font(BTFont.monoBold(size: 12.5)).foregroundColor(color)
+         + Text(desc).font(BTFont.body(size: 12.5)).foregroundColor(Color.btText2))
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private var homeBadge: some View {

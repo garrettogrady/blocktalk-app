@@ -29,36 +29,36 @@ struct ToneRulesView: View {
                     .fixedSize()
             }
 
-            Spacer()
+            Spacer(minLength: BTSpacing.xl)
 
-            // The one rule
+            // The one rule — big enough that skimming still lands it
             VStack(alignment: .leading, spacing: 0) {
                 Text("ONE RULE")
-                    .font(BTFont.mono(size: 12))
+                    .font(BTFont.monoBold(size: 13))
                     .foregroundStyle(Color.btPink)
                     .tracking(3)
                     .padding(.bottom, BTSpacing.lg)
 
                 Text("Anonymity isn't a hall pass.")
-                    .font(BTFont.display(size: 32))
+                    .font(BTFont.display(size: 44))
                     .foregroundStyle(Color.btText)
-                    .tracking(-0.8)
-                    .lineSpacing(6)
-                    .padding(.bottom, BTSpacing.lg)
+                    .tracking(-1)
+                    .lineSpacing(4)
+                    .padding(.bottom, BTSpacing.xl)
 
                 Text("Hate speech, racism, and identifying individuals will get you banned.")
-                    .font(BTFont.body(size: 16))
+                    .font(BTFont.body(size: 20))
                     .foregroundStyle(Color.btText2)
                     .lineSpacing(8)
 
                 Text("Everything else is fair game.")
-                    .font(BTFont.bodyBold(size: 16))
+                    .font(BTFont.bodyBold(size: 20))
                     .foregroundStyle(Color.btText)
                     .lineSpacing(8)
-                    .padding(.top, BTSpacing.sm)
+                    .padding(.top, BTSpacing.md)
             }
 
-            Spacer()
+            Spacer(minLength: BTSpacing.xl)
 
             // CTA — the tap is the acknowledgment record; then set up your profile
             Button {

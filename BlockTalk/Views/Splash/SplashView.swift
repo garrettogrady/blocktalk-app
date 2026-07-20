@@ -51,24 +51,12 @@ struct SplashView: View {
                 .minimumScaleFactor(0.6)
                 .padding(.bottom, BTSpacing.sm)
 
-                // Value prop — big enough that a first-timer instantly gets it
+                // The one line that says what the app is
                 Text("anonymous NYC commentary")
-                    .font(BTFont.displayMedium(size: 21))
+                    .font(BTFont.displayMedium(size: 22))
                     .foregroundStyle(Color.btText)
                     .tracking(-0.2)
-                    .padding(.bottom, 6)
-                Text("neighborhood-locked · post where you stand")
-                    .font(BTFont.body(size: 12.5))
-                    .foregroundStyle(Color.btText2)
-                    .tracking(0.4)
                     .padding(.bottom, BTSpacing.xxxl)
-
-                // Labels the card below as a sample so it's not mistaken for a control
-                Text("this is what a post looks like")
-                    .font(BTFont.mono(size: 10.5))
-                    .foregroundStyle(Color.btText3)
-                    .tracking(0.4)
-                    .padding(.bottom, BTSpacing.sm)
 
                 // Hero card with sample post
                 heroCard
