@@ -51,12 +51,24 @@ struct SplashView: View {
                 .minimumScaleFactor(0.6)
                 .padding(.bottom, BTSpacing.sm)
 
-                // Subheader
-                Text("anonymous · neighborhood-locked · NYC")
-                    .font(BTFont.bodyBold(size: 11))
+                // Value prop — big enough that a first-timer instantly gets it
+                Text("anonymous NYC commentary")
+                    .font(BTFont.displayMedium(size: 21))
                     .foregroundStyle(Color.btText)
-                    .tracking(1.6)
+                    .tracking(-0.2)
+                    .padding(.bottom, 6)
+                Text("neighborhood-locked · post where you stand")
+                    .font(BTFont.body(size: 12.5))
+                    .foregroundStyle(Color.btText2)
+                    .tracking(0.4)
                     .padding(.bottom, BTSpacing.xxxl)
+
+                // Labels the card below as a sample so it's not mistaken for a control
+                Text("this is what a post looks like")
+                    .font(BTFont.mono(size: 10.5))
+                    .foregroundStyle(Color.btText3)
+                    .tracking(0.4)
+                    .padding(.bottom, BTSpacing.sm)
 
                 // Hero card with sample post
                 heroCard
@@ -194,7 +206,7 @@ struct SplashView: View {
 
     private func startOnboarding() {
         appState.forceOnboarding = false
-        appState.advanceTo(.profile)
+        appState.advanceTo(.tone)   // the one rule comes first, then profile
     }
 
     // MARK: - Sign In Handler
@@ -221,8 +233,8 @@ struct SplashView: View {
                             appState.currentUser = user
                             appState.advanceTo(.app)
                         } else {
-                            // New user — go to profile creation
-                            appState.advanceTo(.profile)
+                            // New user — the one rule first, then profile creation
+                            appState.advanceTo(.tone)
                         }
                     } catch {
                         print("Sign in error: \(error)")

@@ -37,18 +37,25 @@ struct ProfileCreationView: View {
         VStack(spacing: 0) {
             stepBar
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: BTSpacing.xl) {
-                    heading
-                    neighborhoodSection   // required — the anchor
-                    usernameSection       // optional — secondary
-                    previewCard           // "this is all anyone sees" — the result
-                    Spacer(minLength: BTSpacing.sm)
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: BTSpacing.xl) {
+                        heading
+                        neighborhoodSection   // required — the anchor
+                        usernameSection       // optional — secondary
+                        Spacer(minLength: BTSpacing.xl)
+                        privacyNote           // reinforces the anonymity promise
+                        previewCard           // "this is all anyone sees" — the payoff, anchored above the CTA
+                    }
+                    // Fill the viewport so the Spacer pushes the preview to the
+                    // bottom instead of leaving a void below the form.
+                    .frame(minHeight: geo.size.height, alignment: .top)
+                    .padding(.horizontal, BTSpacing.xxl)
+                    .padding(.top, BTSpacing.lg)
+                    .padding(.bottom, BTSpacing.lg)
                 }
-                .padding(.horizontal, BTSpacing.xxl)
-                .padding(.top, BTSpacing.lg)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
 
             continueBar
         }
@@ -72,11 +79,11 @@ struct ProfileCreationView: View {
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2).fill(Color.btSurface2).frame(height: 3)
                     RoundedRectangle(cornerRadius: 2).fill(Color.btLime)
-                        .frame(width: geo.size.width * 0.66, height: 3)
+                        .frame(width: geo.size.width, height: 3)
                 }
             }
             .frame(height: 3)
-            Text("02 / 03")
+            Text("02 / 02")
                 .font(BTFont.mono(size: 10)).foregroundStyle(Color.btText3).tracking(1).fixedSize()
         }
         .padding(.top, BTSpacing.sm)
@@ -87,7 +94,7 @@ struct ProfileCreationView: View {
 
     private var heading: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("you're in.")
+            Text("Profile creation")
                 .font(BTFont.display(size: 30))
                 .foregroundStyle(Color.btText)
                 .tracking(-0.6)
@@ -189,6 +196,21 @@ struct ProfileCreationView: View {
                 Text("skip it and you're **BlockTalker** · change it anytime in Settings")
                     .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
             }
+        }
+    }
+
+    // MARK: - Anonymity reassurance (fills the space + sets up the preview)
+
+    private var privacyNote: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("You're anonymous.")
+                .font(BTFont.display(size: 19))
+                .foregroundStyle(Color.btText)
+                .tracking(-0.3)
+            Text("No email, no real name, no photo — just your number and neighborhood.")
+                .font(BTFont.body(size: 13.5))
+                .foregroundStyle(Color.btText2)
+                .lineSpacing(3)
         }
     }
 
@@ -326,7 +348,8 @@ struct ProfileCreationView: View {
         if appState.currentUser == nil { appState.currentUser = .sample }
         appState.viewingNeighborhood = neighborhood
         appState.physicalNeighborhood = neighborhood   // mock: your home is where you are
-        appState.advanceTo(.tone)
+        appState.selectedTab = 0   // land on the Feed
+        appState.advanceTo(.app)
     }
 }
 

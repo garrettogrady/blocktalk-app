@@ -17,12 +17,12 @@ struct ToneRulesView: View {
                             .frame(height: 3)
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Color.btLime)
-                            .frame(width: geo.size.width, height: 3)
+                            .frame(width: geo.size.width * 0.5, height: 3)
                     }
                 }
                 .frame(height: 3)
 
-                Text("03 / 03")
+                Text("01 / 02")
                     .font(BTFont.mono(size: 10))
                     .foregroundStyle(Color.btText3)
                     .tracking(1)
@@ -60,12 +60,9 @@ struct ToneRulesView: View {
 
             Spacer()
 
-            // CTA — the tap is the acknowledgment record
+            // CTA — the tap is the acknowledgment record; then set up your profile
             Button {
-                // Bundled-mock: ensure a user exists when entering via onboarding
-                if appState.currentUser == nil { appState.currentUser = .sample }
-                appState.selectedTab = 0   // land on the Feed, not wherever we came from
-                appState.advanceTo(.app)
+                appState.advanceTo(.profile)
             } label: {
                 Text("I get it")
                     .font(BTFont.bodyBold(size: 14))
