@@ -329,13 +329,13 @@ struct ProfileCreationView: View {
     }
 
     private func fieldLabel(_ text: String, tag: String, tagColor: Color) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Text(text)
-                .font(BTFont.bodyBold(size: 11.5)).foregroundStyle(Color.btText2).tracking(1.6)
+                .font(BTFont.bodyBold(size: 13)).foregroundStyle(Color.btText).tracking(1.4)
             Text(tag)
-                .font(BTFont.monoBold(size: 8.5)).tracking(0.8).foregroundStyle(tagColor)
-                .padding(.horizontal, 5).padding(.vertical, 1.5)
-                .background(tagColor.opacity(0.14)).clipShape(Capsule())
+                .font(BTFont.monoBold(size: 9.5)).tracking(0.9).foregroundStyle(tagColor)
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(tagColor.opacity(0.18)).clipShape(Capsule())
         }
     }
 
