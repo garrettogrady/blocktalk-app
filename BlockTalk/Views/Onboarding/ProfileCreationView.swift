@@ -7,8 +7,6 @@ struct ProfileCreationView: View {
     @FocusState private var usernameFieldFocused: Bool
 
     private let userNumber = "4,827"
-    // Universally-NYC + neighborhood-agnostic so it reads true on any block.
-    private let examplePost = "the bodega cat has seen everything and will tell you nothing."
 
     /// The name shown in the preview + CTA — falls back to the default when blank.
     private var displayName: String {
@@ -37,18 +35,24 @@ struct ProfileCreationView: View {
         VStack(spacing: 0) {
             stepBar
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: BTSpacing.xl) {
-                    heading
-                    neighborhoodSection   // required — the anchor
-                    usernameSection       // optional; carries the permanence + anonymity coaching
-                    previewCard           // the payoff: what the world sees, plus your number
-                }
-                .padding(.horizontal, BTSpacing.xxl)
-                .padding(.top, BTSpacing.lg)
-                .padding(.bottom, BTSpacing.xxl)
+            // Not a ScrollView: the content is short enough to fit, so we let
+            // it fill the height and float the preview down to sit just above
+            // the CTA. SwiftUI's keyboard avoidance lifts the username field.
+            VStack(alignment: .leading, spacing: 0) {
+                heading
+                Spacer().frame(height: BTSpacing.lg)
+                userNumberBanner      // your assigned ID, up front
+                Spacer(minLength: BTSpacing.xl)   // flexible — splits the slack
+                neighborhoodSection   // required — the anchor
+                Spacer().frame(height: BTSpacing.lg)
+                usernameSection       // optional
+                Spacer(minLength: BTSpacing.xl)   // flexible — floats preview down
+                previewCard           // the payoff: your public identity, nothing else
             }
-            .scrollDismissesKeyboard(.interactively)
+            .padding(.horizontal, BTSpacing.xxl)
+            .padding(.top, BTSpacing.lg)
+            .padding(.bottom, BTSpacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             continueBar
         }
@@ -95,6 +99,21 @@ struct ProfileCreationView: View {
                 .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
+        }
+    }
+
+    // MARK: - User number (assigned, up front)
+
+    private var userNumberBanner: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            (Text("You're user ")
+                .font(BTFont.display(size: 21)).foregroundColor(Color.btText)
+             + Text("#\(userNumber)")
+                .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
+                .tracking(-0.2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Your ID on every post. You didn't pick it, and it never changes.")
+                .font(BTFont.body(size: 13)).foregroundStyle(Color.btText2).lineSpacing(3)
         }
     }
 
@@ -200,10 +219,10 @@ struct ProfileCreationView: View {
 
     private var usernameGuide: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("You can't change this later, so pick carefully.")
+            Text("You can set a username later, or stay as BlockTalker.")
                 .font(BTFont.bodySemibold(size: 13))
                 .foregroundStyle(Color.btText)
-            Text("You're anonymous. Keep it that way. Don't use your real name, or anything that points back to you.")
+            Text("You're anonymous here. Don't use your real name, or anything that points back to you.")
                 .font(BTFont.body(size: 13))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
@@ -227,47 +246,20 @@ struct ProfileCreationView: View {
             Text("THIS IS ALL ANYONE SEES")
                 .font(BTFont.monoBold(size: 9)).tracking(1.4).foregroundStyle(Color.btText3)
 
-            VStack(alignment: .leading, spacing: BTSpacing.sm) {
-                HStack(spacing: 6) {
-                    Text("@\(displayName)")
-                        .font(BTFont.bodySemibold(size: 12)).foregroundStyle(Color.btText).lineLimit(1)
-                    Text("#\(userNumber)")
-                        .font(BTFont.monoBold(size: 12)).foregroundStyle(Color.btLime)
-                    homeBadge
-                    Text("· now").font(BTFont.mono(size: 11)).foregroundStyle(Color.btText3)
-                    Spacer(minLength: 0)
-                }
-
-                Text(examplePost)
-                    .font(BTFont.body(size: 13)).foregroundStyle(Color.btText).lineSpacing(3)
-
-                HStack(spacing: 6) {
-                    fakePill("▲"); fakePill("▽")
-                    Spacer()
-                    (Text("0").foregroundStyle(Color.btText) + Text(" replies").foregroundStyle(Color.btText2))
-                        .font(BTFont.monoBold(size: 11))
-                }
-                .opacity(0.55)
+            HStack(spacing: BTSpacing.sm) {
+                Text("@\(displayName)")
+                    .font(BTFont.bodySemibold(size: 15)).foregroundStyle(Color.btText).lineLimit(1)
+                Text("#\(userNumber)")
+                    .font(BTFont.monoBold(size: 14)).foregroundStyle(Color.btLime)
+                homeBadge
+                Spacer(minLength: 0)
             }
             .padding(BTSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.btLime.opacity(0.05))
             .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.35), lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
-
-            // The only thing the preview teaches that isn't self-evident: the
-            // number. They didn't pick it and they'll see it on every post.
-            mapLine("#\(userNumber)", color: Color.btLime,
-                    desc: "is your ID. We assign it, it's on every post, and it never changes.")
-                .padding(.top, 6)
         }
-    }
-
-    /// One legend row: a card token (colored to match the card) + what it is.
-    private func mapLine(_ token: String, color: Color, desc: String) -> some View {
-        (Text(token + "  ").font(BTFont.monoBold(size: 12.5)).foregroundColor(color)
-         + Text(desc).font(BTFont.body(size: 12.5)).foregroundColor(Color.btText2))
-            .lineSpacing(2)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private var homeBadge: some View {
@@ -283,16 +275,6 @@ struct ProfileCreationView: View {
             .background(Color.btSurface2)
             .clipShape(Capsule())
         }
-    }
-
-    private func fakePill(_ glyph: String) -> some View {
-        Text(glyph)
-            .font(BTFont.bodyBold(size: 11))
-            .foregroundStyle(glyph == "▲" ? Color.btLime : Color.btPink)
-            .frame(width: 30, height: 30)
-            .background(Color.btSurface)
-            .overlay(RoundedRectangle(cornerRadius: BTRadius.sm).stroke(Color.btLine, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
     }
 
     // MARK: - Continue (smart CTA)
