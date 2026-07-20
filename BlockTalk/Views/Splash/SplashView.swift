@@ -56,6 +56,7 @@ struct SplashView: View {
                     .font(BTFont.displayMedium(size: 22))
                     .foregroundStyle(Color.btText)
                     .tracking(-0.2)
+                    .offset(y: -8)
                     .padding(.bottom, BTSpacing.xxxl)
 
                 // Hero card with sample post
