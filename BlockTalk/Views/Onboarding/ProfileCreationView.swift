@@ -89,7 +89,7 @@ struct ProfileCreationView: View {
                 .font(BTFont.display(size: 30))
                 .foregroundStyle(Color.btText)
                 .tracking(-0.6)
-            Text("set your neighborhood. everything else is optional.")
+            Text("Set your neighborhood. Everything else is optional.")
                 .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
@@ -100,9 +100,9 @@ struct ProfileCreationView: View {
 
     private var userNumberBanner: some View {
         VStack(alignment: .leading, spacing: 4) {
-            (Text("You're user ")
-                .font(BTFont.display(size: 21)).foregroundColor(Color.btText)
-             + Text("#\(userNumber)")
+            (Text("You are user number: ")
+                .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
+             + Text(userNumber)
                 .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
                 .tracking(-0.2)
                 .fixedSize(horizontal: false, vertical: true)
