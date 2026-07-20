@@ -99,16 +99,12 @@ struct ProfileCreationView: View {
     // MARK: - User number (assigned, up front)
 
     private var userNumberBanner: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            (Text("You are user number: ")
-                .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
-             + Text(userNumber)
-                .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
-                .tracking(-0.2)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Your ID on every post. You didn't pick it, and it never changes.")
-                .font(BTFont.body(size: 13)).foregroundStyle(Color.btText2).lineSpacing(3)
-        }
+        (Text("You are user: ")
+            .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
+         + Text(userNumber)
+            .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
+            .tracking(-0.2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Home neighborhood (the anchor)
