@@ -41,9 +41,8 @@ struct ProfileCreationView: View {
                 VStack(alignment: .leading, spacing: BTSpacing.xl) {
                     heading
                     neighborhoodSection   // required — the anchor
-                    usernameSection       // optional — secondary
-                    anonymityBlock        // anonymity + PII, said once and hard
-                    previewCard           // labeled example, mapped back to your name + number
+                    usernameSection       // optional; carries the permanence + anonymity coaching
+                    previewCard           // the payoff: what the world sees, plus your number
                 }
                 .padding(.horizontal, BTSpacing.xxl)
                 .padding(.top, BTSpacing.lg)
@@ -136,6 +135,11 @@ struct ProfileCreationView: View {
                         .stroke(Color.btLime.opacity(viewModel.selectedNeighborhood == nil ? 0.5 : 0.4), lineWidth: 1)
                 )
             }
+
+            // Says what picking a hood actually does — otherwise it's asked for
+            // three times (heading, label, badge) and never explained.
+            Text("Your badge, and the home feed you land in.")
+                .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
         }
     }
 
@@ -187,34 +191,33 @@ struct ProfileCreationView: View {
             if let msg = usernameError {
                 Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
             } else {
-                Text("Choose carefully. Once you set it, you can't change it.")
-                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
+                usernameGuide
             }
         }
     }
 
-    // MARK: - Anonymity (said once, hard, friendly) — carries the PII warning
+    // MARK: - Username coaching (permanence + anonymity, said once, welded to the field)
 
-    private var anonymityBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("You're anonymous. Keep it that way.")
-                .font(BTFont.display(size: 20))
+    private var usernameGuide: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("You can't change this later, so pick carefully.")
+                .font(BTFont.bodySemibold(size: 13))
                 .foregroundStyle(Color.btText)
-                .tracking(-0.3)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Don't put your real name, or anything that could point back to you, in your username.")
-                .font(BTFont.body(size: 14))
+            Text("You're anonymous. Keep it that way. Don't use your real name, or anything that points back to you.")
+                .font(BTFont.body(size: 13))
                 .foregroundStyle(Color.btText2)
-                .lineSpacing(4)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(BTSpacing.lg)
+        .padding(BTSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.btWarn.opacity(0.06))
         .overlay(
-            RoundedRectangle(cornerRadius: BTRadius.lg)
+            RoundedRectangle(cornerRadius: BTRadius.md)
                 .stroke(Color.btWarn.opacity(0.3), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        .padding(.top, 2)
     }
 
     // MARK: - Live "this is all anyone sees" preview (the result)
@@ -251,16 +254,11 @@ struct ProfileCreationView: View {
             .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.35), lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
 
-            // Placeholder note + map the card back to the two things that are yours.
-            VStack(alignment: .leading, spacing: 7) {
-                Text("The post is just an example. What's actually yours:")
-                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
-                mapLine("@\(displayName)", color: Color.btText,
-                        desc: "the username you pick (or BlockTalker).")
-                mapLine("#\(userNumber)", color: Color.btLime,
-                        desc: "your user number. It's assigned to you and never changes.")
-            }
-            .padding(.top, 4)
+            // The only thing the preview teaches that isn't self-evident: the
+            // number. They didn't pick it and they'll see it on every post.
+            mapLine("#\(userNumber)", color: Color.btLime,
+                    desc: "is your ID. We assign it, it's on every post, and it never changes.")
+                .padding(.top, 6)
         }
     }
 
