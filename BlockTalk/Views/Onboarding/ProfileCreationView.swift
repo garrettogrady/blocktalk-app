@@ -35,23 +35,17 @@ struct ProfileCreationView: View {
         VStack(spacing: 0) {
             stepBar
 
-            // Not a ScrollView: the content is short enough to fit, so we let
-            // it fill the height and float the preview down to sit just above
-            // the CTA. SwiftUI's keyboard avoidance lifts the username field.
-            VStack(alignment: .leading, spacing: 0) {
+            // Even top-aligned rhythm. Content is short enough to fit without a
+            // ScrollView; SwiftUI's keyboard avoidance lifts the username field.
+            VStack(alignment: .leading, spacing: BTSpacing.xl) {
                 heading
-                Spacer().frame(height: BTSpacing.lg)
                 userNumberBanner      // your assigned ID, up front
-                Spacer(minLength: BTSpacing.xl)   // flexible — splits the slack
                 neighborhoodSection   // required — the anchor
-                Spacer().frame(height: BTSpacing.lg)
                 usernameSection       // optional
-                Spacer(minLength: BTSpacing.xl)   // flexible — floats preview down
                 previewCard           // the payoff: your public identity, nothing else
             }
             .padding(.horizontal, BTSpacing.xxl)
             .padding(.top, BTSpacing.lg)
-            .padding(.bottom, BTSpacing.md)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             continueBar
