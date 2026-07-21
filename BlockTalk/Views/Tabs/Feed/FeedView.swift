@@ -11,6 +11,9 @@ struct FeedView: View {
     @State private var showNeighborhoodPicker = false
     @State private var showPreFrame = false
     @State private var showSearch = false
+    /// One-time nudge toward the map — the sexiest feature, otherwise buried in
+    /// tab 2. Dismissible so it never becomes permanent chrome.
+    @AppStorage("hasSeenMapTip") private var hasSeenMapTip = false
 
     /// Posts the user created this session for the neighborhood being viewed.
     private var myPosts: [Post] {
@@ -49,8 +52,8 @@ struct FeedView: View {
                         // Location / neighborhood row
                         locationRow
                             .padding(.horizontal, BTSpacing.lg)
-                            .padding(.top, BTSpacing.lg)
-                            .padding(.bottom, BTSpacing.md)
+                            .padding(.top, BTSpacing.md)
+                            .padding(.bottom, BTSpacing.sm)
 
                         // Separator under the neighborhood/search header row
                         // (matches the Expo mock's locRow bottom border).
@@ -62,7 +65,14 @@ struct FeedView: View {
                             timeFilter: $viewModel.timeFilter
                         )
                         .padding(.horizontal, BTSpacing.lg)
-                        .padding(.top, BTSpacing.md)
+                        .padding(.top, BTSpacing.sm)
+
+                        // One-time map nudge
+                        if !hasSeenMapTip {
+                            mapTip
+                                .padding(.horizontal, BTSpacing.lg)
+                                .padding(.top, BTSpacing.md)
+                        }
 
                         // Offline: discarded (top) → pending → flushed, above the feed
                         if !offline.discarded.isEmpty {
@@ -224,6 +234,44 @@ struct FeedView: View {
                 SearchView(scope: .neighborhood, neighborhood: appState.viewingNeighborhood)
             }
         }
+    }
+
+    // MARK: - Map nudge
+
+    /// Slim, one-time teaser pointing at the map — where street comments live on
+    /// the real corner. Tapping opens the Map tab; the × just dismisses it.
+    private var mapTip: some View {
+        Button {
+            hasSeenMapTip = true
+            appState.selectedTab = 1
+        } label: {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.btHouse)
+                (Text("Street comments live on the map. ")
+                    .font(BTFont.bodySemibold(size: 12)).foregroundColor(.btText)
+                 + Text("See the actual corners →")
+                    .font(BTFont.body(size: 12)).foregroundColor(.btText2))
+                    .lineLimit(2)
+                Spacer(minLength: BTSpacing.sm)
+                Button {
+                    hasSeenMapTip = true
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.btText3)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.btHouse.opacity(0.08))
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btHouse.opacity(0.28), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Location locking

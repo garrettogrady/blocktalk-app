@@ -86,3 +86,88 @@ struct ToneRulesView: View {
     ToneRulesView()
         .environment(AppState())
 }
+
+// MARK: - How it works (the one crisp beat)
+
+/// A single explainer shown once, right after sign-in, so the thing that makes
+/// blocktalk different — presence-locked posting — is framed as the magic
+/// before it's ever hit as a restriction.
+struct HowItWorksView: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("HOW IT WORKS")
+                .font(BTFont.monoBold(size: 13))
+                .foregroundStyle(Color.btLime)
+                .tracking(3)
+                .padding(.bottom, BTSpacing.lg)
+
+            Text("Talk about where you actually are.")
+                .font(BTFont.display(size: 34))
+                .foregroundStyle(Color.btText)
+                .tracking(-0.8)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, BTSpacing.xxxl)
+
+            row("mappin.and.ellipse", Color.btLime,
+                "Post where you stand.",
+                "You can only post in the block you're physically on. Real presence, real talk.")
+
+            row("eye", Color.btHouse,
+                "Read anywhere.",
+                "Browse any neighborhood in the city. Reading and voting work from your couch.")
+
+            row("map.fill", Color.btPink,
+                "Drop it on the map.",
+                "Tag the exact corner something happened. Your comment lives on the spot.")
+
+            Spacer(minLength: BTSpacing.xl)
+
+            Button {
+                appState.advanceTo(.tone)
+            } label: {
+                Text("Got it")
+                    .font(BTFont.bodyBold(size: 14))
+                    .foregroundStyle(Color.btOnAccent)
+                    .tracking(0.4)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.btLime)
+                    .cornerRadius(BTRadius.lg)
+            }
+        }
+        .padding(.horizontal, BTSpacing.xxl)
+        .padding(.top, BTSpacing.xxxl)
+        .padding(.bottom, BTSpacing.lg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.btBg.ignoresSafeArea())
+    }
+
+    private func row(_ symbol: String, _ tint: Color, _ title: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: BTSpacing.lg) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 26, height: 26)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(BTFont.bodyBold(size: 17))
+                    .foregroundStyle(Color.btText)
+                Text(body)
+                    .font(BTFont.body(size: 14))
+                    .foregroundStyle(Color.btText2)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.bottom, BTSpacing.xl)
+    }
+}
+
+#Preview("How it works") {
+    HowItWorksView()
+        .environment(AppState())
+}

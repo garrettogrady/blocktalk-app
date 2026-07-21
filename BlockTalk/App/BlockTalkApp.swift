@@ -15,6 +15,8 @@ struct BlockTalkApp: App {
                 switch appState.stage {
                 case .splash:
                     SplashView()
+                case .how:
+                    HowItWorksView()
                 case .profile:
                     ProfileCreationView()
                 case .tone:
@@ -29,6 +31,21 @@ struct BlockTalkApp: App {
             .environment(offline)
             .environment(localContent)
             .preferredColorScheme(.dark)
+            // A shared post opens full-screen over everything — read first, then
+            // join. This is the highest-intent arrival, so content leads.
+            .fullScreenCover(item: Binding(
+                get: { appState.deepLinkedPost },
+                set: { appState.deepLinkedPost = $0 }
+            )) { post in
+                SharedPostView(post: post)
+                    .environment(appState)
+                    .environment(locationService)
+                    .environment(moderation)
+                    .environment(offline)
+                    .environment(localContent)
+                    .preferredColorScheme(.dark)
+            }
+            .onOpenURL { url in handleDeepLink(url) }
             .task {
                 bootstrapMock()
             }
@@ -46,6 +63,26 @@ struct BlockTalkApp: App {
                 }
             }
         }
+    }
+
+    /// Route an incoming link to the post it points at. Handles both the custom
+    /// scheme (blocktalk://p/<id>) and the shareable https form
+    /// (https://blocktalk.nyc/p/<id>) — same path shape, so one parser covers both.
+    /// [PROD: the https form needs an apple-app-site-association file hosted on
+    /// blocktalk.nyc to open from Messages; the custom scheme works today.]
+    private func handleDeepLink(_ url: URL) {
+        let segments = url.pathComponents.filter { $0 != "/" }
+        let idString: String?
+        if url.host == "p" {                                   // blocktalk://p/<id>
+            idString = segments.first
+        } else if let i = segments.firstIndex(of: "p"), i + 1 < segments.count {
+            idString = segments[i + 1]                          // .../p/<id>
+        } else {
+            idString = segments.last
+        }
+        guard let idString, let id = UUID(uuidString: idString),
+              let post = Post.find(id: id) ?? localContent.post(id: id) else { return }
+        appState.deepLinkedPost = post
     }
 
     /// Bundled-mock boot: no auth/backend — drop straight into a populated app

@@ -148,8 +148,9 @@ struct ProfileCreationView: View {
             }
 
             // Says what picking a hood actually does — otherwise it's asked for
-            // three times (heading, label, badge) and never explained.
-            Text("Your badge, and the home feed you land in.")
+            // three times (heading, label, badge) and never explained. Clarifies
+            // it's your base, separate from where you post (which is GPS-gated).
+            Text("Your badge and home feed. You still post wherever you stand.")
                 .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
         }
     }

@@ -15,7 +15,7 @@ struct DailyPromptCard: View {
                 showPromptFeed = true
             }
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 // Head: label + live countdown
                 HStack {
                     HStack(spacing: 6) {
@@ -37,29 +37,23 @@ struct DailyPromptCard: View {
                     }
                 }
 
-                // Question
+                // Question + compact stats on one line — slimmer so real posts
+                // lead the feed instead of sitting below a tall prompt card.
                 Text(prompt.question)
                     .font(BTFont.display(size: 14))
                     .foregroundStyle(Color.btText)
-                    .lineSpacing(5)
+                    .lineSpacing(4)
                     .multilineTextAlignment(.leading)
 
-                // Stats + CTA
-                HStack {
-                    (Text(answerCount.formatted())
-                        .font(BTFont.monoBold(size: 11))
-                        .foregroundColor(.btLime)
-                     + Text(" answers so far")
-                        .font(BTFont.body(size: 11))
-                        .foregroundColor(.btText2))
-                    Spacer()
-                    Text("Open prompt feed →")
-                        .font(BTFont.bodySemibold(size: 11))
-                        .foregroundStyle(Color.btLime)
-                }
+                (Text(answerCount.formatted())
+                    .font(BTFont.monoBold(size: 10.5))
+                    .foregroundColor(.btLime)
+                 + Text(" answers · tap to join →")
+                    .font(BTFont.body(size: 10.5))
+                    .foregroundColor(.btText2))
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.btLime.opacity(0.06))
             .overlay(alignment: .bottom) {

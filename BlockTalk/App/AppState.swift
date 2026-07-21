@@ -4,6 +4,7 @@ import Supabase
 
 enum AppStage {
     case splash
+    case how
     case profile
     case tone
     case app
@@ -43,6 +44,11 @@ final class AppState {
     /// Debug: force the splash to lead into onboarding (bypasses the
     /// returning-user skip) so "Replay onboarding" can show the full flow.
     var forceOnboarding = false
+
+    /// A post opened via a shared link (blocktalk://p/<id>). When set, it's
+    /// presented full-screen over whatever's on screen — so a recipient reads
+    /// the post that hooked them before (or instead of) onboarding.
+    var deepLinkedPost: Post?
 
     func advanceTo(_ stage: AppStage) {
         withAnimation {
@@ -186,6 +192,7 @@ final class LocalContentStore {
 
     func pin(id: UUID) -> Pin? { pins.first { $0.id == id } }
     func post(forPinId pinId: UUID) -> Post? { posts.first { $0.pinId == pinId } }
+    func post(id: UUID) -> Post? { posts.first { $0.id == id } }
 
     func reset() {
         posts = []

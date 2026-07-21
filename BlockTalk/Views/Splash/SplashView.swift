@@ -195,7 +195,7 @@ struct SplashView: View {
 
     private func startOnboarding() {
         appState.forceOnboarding = false
-        appState.advanceTo(.tone)   // the one rule comes first, then profile
+        appState.advanceTo(.how)   // how it works → the one rule → profile
     }
 
     // MARK: - Sign In Handler
@@ -222,8 +222,8 @@ struct SplashView: View {
                             appState.currentUser = user
                             appState.advanceTo(.app)
                         } else {
-                            // New user — the one rule first, then profile creation
-                            appState.advanceTo(.tone)
+                            // New user — how it works, then the rule, then profile
+                            appState.advanceTo(.how)
                         }
                     } catch {
                         print("Sign in error: \(error)")
