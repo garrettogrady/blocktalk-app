@@ -86,10 +86,15 @@ struct MapTabView: View {
                 // Pin annotations (bundled samples + anything created this session)
                 ForEach(viewModel.pins + localContent.pins) { pin in
                     Annotation("", coordinate: pin.coordinate) {
-                        PulsatingPinView()
-                            .onTapGesture {
-                                openPinDetail(pin)
-                            }
+                        // Route 2: business-tagged pins are house-blue with their
+                        // category glyph; plain corners stay lime dots.
+                        PulsatingPinView(
+                            tint: pin.placeName != nil ? Color.btHouse : Color.btLime,
+                            symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil
+                        )
+                        .onTapGesture {
+                            openPinDetail(pin)
+                        }
                     }
                 }
 
@@ -317,7 +322,7 @@ struct MapTabView: View {
                                 HStack(spacing: BTSpacing.xs) {
                                     Image(systemName: "arrow.left")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text("Pin · \(detail.pin.cornerName ?? "Drop")")
+                                    Text("Pin · \(detail.pin.placeName ?? detail.pin.cornerName ?? "Drop")")
                                         .font(BTFont.bodySemibold(size: 16))
                                 }
                                 .foregroundStyle(Color.btText)
@@ -602,6 +607,10 @@ struct MapTabView: View {
 // MARK: - Pulsating Pin
 
 struct PulsatingPinView: View {
+    /// Lime for corner comments, house-blue for business-tagged (Route 2).
+    var tint: Color = .btLime
+    /// SF Symbol shown inside the core when the pin is a tagged business.
+    var symbol: String? = nil
     @State private var isPulsing = false
 
     var body: some View {
@@ -614,7 +623,7 @@ struct PulsatingPinView: View {
 
             // Outer pulse ring
             Circle()
-                .fill(Color.btLime.opacity(0.15))
+                .fill(tint.opacity(0.15))
                 .frame(width: 32, height: 32)
                 .scaleEffect(isPulsing ? 1.6 : 1.0)
                 .opacity(isPulsing ? 0 : 0.6)
@@ -622,14 +631,22 @@ struct PulsatingPinView: View {
 
             // Inner glow
             Circle()
-                .fill(Color.btLime.opacity(0.3))
+                .fill(tint.opacity(0.3))
                 .frame(width: 24, height: 24)
                 .allowsHitTesting(false)
 
-            // Core dot
+            // Core dot — a plain dot for corners, or a glyph-bearing marker for
+            // tagged businesses so the map reads by type at a glance.
             Circle()
-                .fill(Color.btLime)
-                .frame(width: 10, height: 10)
+                .fill(tint)
+                .frame(width: symbol != nil ? 18 : 10, height: symbol != nil ? 18 : 10)
+                .overlay {
+                    if let symbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.btBg)
+                    }
+                }
                 .allowsHitTesting(false)
         }
         .onAppear {

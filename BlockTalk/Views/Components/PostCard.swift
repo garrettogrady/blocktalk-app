@@ -34,6 +34,11 @@ struct PostCard: View {
 
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }
 
+    /// Route 2 color coding: a street comment tagged to a business is house-blue
+    /// ("a place"); a plain corner comment stays lime.
+    private var isBusinessTagged: Bool { streetPin?.placeName != nil }
+    private var tagColor: Color { isBusinessTagged ? Color.btHouse : Color.btLime }
+
     /// Lime location pill overlaid on a street comment's photo (bottom-left).
     /// Prefers a tagged business name over the raw corner.
     @ViewBuilder private var photoPinChip: some View {
@@ -47,7 +52,7 @@ struct PostCard: View {
             .foregroundStyle(Color.btBg)
             .padding(.horizontal, BTSpacing.sm)
             .padding(.vertical, 5)
-            .background(Color.btLime)
+            .background(tagColor)
             .clipShape(Capsule())
             .padding(BTSpacing.sm)
         }
@@ -60,11 +65,11 @@ struct PostCard: View {
             Image(systemName: symbol).font(.system(size: 9))
             Text(name).font(BTFont.monoBold(size: 10)).lineLimit(1)
         }
-        .foregroundStyle(Color.btLime)
+        .foregroundStyle(Color.btHouse)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background(Color.btLime.opacity(0.10))
-        .overlay(Capsule().stroke(Color.btLime.opacity(0.28), lineWidth: 1))
+        .background(Color.btHouse.opacity(0.12))
+        .overlay(Capsule().stroke(Color.btHouse.opacity(0.32), lineWidth: 1))
         .clipShape(Capsule())
     }
 
@@ -100,8 +105,8 @@ struct PostCard: View {
                 )), interactionModes: []) {
                     Annotation("", coordinate: pin.coordinate) {
                         ZStack {
-                            Circle().fill(Color.btLime.opacity(0.25)).frame(width: 18, height: 18)
-                            Circle().fill(Color.btLime).frame(width: 9, height: 9)
+                            Circle().fill(tagColor.opacity(0.25)).frame(width: 18, height: 18)
+                            Circle().fill(tagColor).frame(width: 9, height: 9)
                                 .overlay(Circle().stroke(Color.btBg, lineWidth: 1.5))
                         }
                     }

@@ -45,11 +45,23 @@ extension Pin {
             createdAt: Date().addingTimeInterval(-3600))
     }
 
+    /// A corner that's also tagged to a business — renders house-blue (Route 2).
+    private static func makeBiz(_ id: UUID, _ corner: String, _ lat: Double, _ lng: Double,
+                                place: String, category: String, symbol: String) -> Pin {
+        var pin = make(id, corner, lat, lng)
+        pin.placeName = place
+        pin.placeCategory = category
+        pin.placeSymbol = symbol
+        return pin
+    }
+
     static let samples: [Pin] = [
         make(essexRivington, "Essex & Rivington", 40.7196, -73.9878),
         make(stantonNorfolk, "Stanton & Norfolk", 40.7211, -73.9871),
         make(houstonLudlow, "Houston & Ludlow", 40.7222, -73.9877),
         make(delanceyAllen, "Delancey & Allen", 40.7186, -73.9898),
-        make(clintonDelancey, "Clinton & Delancey", 40.7181, -73.9862),
+        // The gym street comment — tagged to a business, so it shows house-blue.
+        makeBiz(clintonDelancey, "Clinton & Delancey", 40.7181, -73.9862,
+                place: "Blink Fitness", category: "gym", symbol: "dumbbell.fill"),
     ]
 }
