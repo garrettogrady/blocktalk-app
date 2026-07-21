@@ -12,11 +12,17 @@ struct SplashView: View {
     private let showStreetPins = true
 
     // A few LES corners, south of the map center so the pins sit in the open
-    // lower-middle of the screen (below the logo, above sign-in).
-    private let streetPinCoords: [CLLocationCoordinate2D] = [
-        .init(latitude: 40.7139, longitude: -73.9862),
-        .init(latitude: 40.7122, longitude: -73.9901),
-        .init(latitude: 40.7151, longitude: -73.9835),
+    // lower-middle of the screen (below the logo, above sign-in). One is a
+    // business-tagged gym (house-blue, dumbbell) to preview Route 2.
+    private struct LandingPin {
+        let coord: CLLocationCoordinate2D
+        let tint: Color
+        let symbol: String?
+    }
+    private let landingPins: [LandingPin] = [
+        .init(coord: .init(latitude: 40.7139, longitude: -73.9862), tint: .btLime, symbol: nil),
+        .init(coord: .init(latitude: 40.7122, longitude: -73.9901), tint: .btLime, symbol: nil),
+        .init(coord: .init(latitude: 40.7151, longitude: -73.9835), tint: .btHouse, symbol: "dumbbell.fill"),
     ]
 
     var body: some View {
@@ -29,9 +35,9 @@ struct SplashView: View {
                 span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.024)
             )), interactionModes: []) {
                 if showStreetPins {
-                    ForEach(Array(streetPinCoords.enumerated()), id: \.offset) { i, coord in
-                        Annotation("", coordinate: coord) {
-                            PulsingStreetPin(delay: Double(i) * 0.55)
+                    ForEach(Array(landingPins.enumerated()), id: \.offset) { i, p in
+                        Annotation("", coordinate: p.coord) {
+                            PulsingStreetPin(tint: p.tint, symbol: p.symbol, delay: Double(i) * 0.55)
                         }
                     }
                 }
@@ -270,21 +276,30 @@ struct SplashView: View {
 /// A street-comment pin for the landing map: a solid lime dot with a ring that
 /// pulses outward, staggered per pin via `delay`.
 private struct PulsingStreetPin: View {
+    var tint: Color = .btLime
+    var symbol: String? = nil
     var delay: Double = 0
     @State private var animate = false
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.btLime.opacity(0.35))
+                .fill(tint.opacity(0.35))
                 .frame(width: 40, height: 40)
                 .scaleEffect(animate ? 1.7 : 0.5)
                 .opacity(animate ? 0 : 0.7)
             Circle()
-                .fill(Color.btLime)
-                .frame(width: 11, height: 11)
+                .fill(tint)
+                .frame(width: symbol != nil ? 20 : 11, height: symbol != nil ? 20 : 11)
+                .overlay {
+                    if let symbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.btBg)
+                    }
+                }
                 .overlay(Circle().stroke(Color.black.opacity(0.55), lineWidth: 1.5))
-                .shadow(color: Color.btLime.opacity(0.6), radius: 5)
+                .shadow(color: tint.opacity(0.6), radius: 5)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 2).repeatForever(autoreverses: false).delay(delay)) {

@@ -474,6 +474,44 @@ func placeCategoryDisplay(_ c: MKPointOfInterestCategory?) -> (label: String, sy
     }
 }
 
+/// Apple's `pointOfInterestCategory` is often nil for text-search hits (typing a
+/// business name), which would leave every typed place a generic pin. When the
+/// category tells us nothing, infer a type from keywords in the name.
+func inferPlaceFromName(_ name: String) -> (label: String, symbol: String)? {
+    let n = name.lowercased()
+    func has(_ words: [String]) -> Bool { words.contains { n.contains($0) } }
+
+    if has(["gym", "fitness", "crossfit", "pilates", "yoga", "climbing", "barre",
+            "spin studio", "cycle", "boxing", "martial"]) { return ("Gym", "dumbbell.fill") }
+    if has(["coffee", "café", "cafe", "espresso", "roaster"]) { return ("Café", "cup.and.saucer.fill") }
+    if has(["pizza", "pizzeria"]) { return ("Restaurant", "fork.knife") }
+    if has(["bakery", "bagel", "patisserie", "bread", "donut", "doughnut"]) { return ("Bakery", "birthday.cake.fill") }
+    if has(["restaurant", "kitchen", "grill", "taco", "taqueria", "sushi", "ramen",
+            "thai", "noodle", "diner", "bistro", "trattoria", "deli"]) { return ("Restaurant", "fork.knife") }
+    if has(["bar", "pub", "tavern", "lounge", "cocktail"]) { return ("Bar", "wineglass.fill") }
+    if has(["brewery", "beer", "taproom"]) { return ("Brewery", "mug.fill") }
+    if has(["wine", "winery", "vintner"]) { return ("Wine", "wineglass.fill") }
+    if has(["pharmacy", "drug", "chemist", "rx"]) { return ("Pharmacy", "cross.case.fill") }
+    if has(["laundry", "laundromat", "cleaners", "dry clean"]) { return ("Laundry", "washer.fill") }
+    if has(["barber", "salon", "nails", "spa", "beauty", "hair"]) { return ("Salon", "scissors") }
+    if has(["hotel", "inn", "suites", "hostel"]) { return ("Hotel", "bed.double.fill") }
+    if has(["bank", "atm", "credit union"]) { return ("Bank", "banknote.fill") }
+    if has(["market", "grocery", "bodega", "mart", "grocer"]) { return ("Market", "cart.fill") }
+    if has(["books", "bookstore", "library"]) { return ("Books", "books.vertical.fill") }
+    if has(["museum", "gallery"]) { return ("Museum", "building.columns.fill") }
+    if has(["theater", "theatre", "cinema"]) { return ("Theater", "theatermasks.fill") }
+    if has(["park", "garden"]) { return ("Park", "tree.fill") }
+    return nil
+}
+
+/// Resolve a place's label + symbol: trust Apple's category when it's specific,
+/// otherwise fall back to name keywords, otherwise a generic pin.
+func placeDisplay(name: String, category: MKPointOfInterestCategory?) -> (label: String, symbol: String) {
+    let byCategory = placeCategoryDisplay(category)
+    if byCategory.symbol != "mappin.circle.fill" { return byCategory }   // Apple was specific
+    return inferPlaceFromName(name) ?? byCategory
+}
+
 // MARK: - Place Picker (Apple Maps POI search)
 
 struct PlacePickerSheet: View {
@@ -631,7 +669,7 @@ struct PlacePickerSheet: View {
 
     private func mapItemToPlace(_ item: MKMapItem) -> TaggedPlace? {
         guard let name = item.name else { return nil }
-        let (label, symbol) = placeCategoryDisplay(item.pointOfInterestCategory)
+        let (label, symbol) = placeDisplay(name: name, category: item.pointOfInterestCategory)
         let c = item.placemark.coordinate
         return TaggedPlace(name: name, category: label, symbol: symbol,
                            latitude: c.latitude, longitude: c.longitude)
