@@ -5,6 +5,20 @@ import SwiftUI
 struct SplashView: View {
     @Environment(AppState.self) private var appState
 
+    // Landing composition — flip these two to swap the hero. Easy revert:
+    // set showHeroCard = true / showStreetPins = false to restore the
+    // sample-post card. [Matt: keep reversible]
+    private let showHeroCard = false
+    private let showStreetPins = true
+
+    // A few LES corners, south of the map center so the pins sit in the open
+    // lower-middle of the screen (below the logo, above sign-in).
+    private let streetPinCoords: [CLLocationCoordinate2D] = [
+        .init(latitude: 40.7139, longitude: -73.9862),
+        .init(latitude: 40.7122, longitude: -73.9901),
+        .init(latitude: 40.7151, longitude: -73.9835),
+    ]
+
     var body: some View {
         ZStack {
             // MapKit background locked to Lower Manhattan. contentMargins lifts
@@ -14,6 +28,13 @@ struct SplashView: View {
                 center: CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911),
                 span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.024)
             )), interactionModes: []) {
+                if showStreetPins {
+                    ForEach(Array(streetPinCoords.enumerated()), id: \.offset) { i, coord in
+                        Annotation("", coordinate: coord) {
+                            PulsingStreetPin(delay: Double(i) * 0.55)
+                        }
+                    }
+                }
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
             .mapControls { }
@@ -59,9 +80,12 @@ struct SplashView: View {
                     .offset(y: -13)
                     .padding(.bottom, BTSpacing.xxxl)
 
-                // Hero card with sample post
-                heroCard
-                    .padding(.bottom, BTSpacing.xxxl)
+                // Hero card with sample post — hidden for now in favor of the
+                // pulsing street pins on the map. Flip showHeroCard to restore.
+                if showHeroCard {
+                    heroCard
+                        .padding(.bottom, BTSpacing.xxxl)
+                }
 
                 Spacer()
 
@@ -239,4 +263,33 @@ struct SplashView: View {
 #Preview {
     SplashView()
         .environment(AppState())
+}
+
+// MARK: - Pulsing street pin (landing map)
+
+/// A street-comment pin for the landing map: a solid lime dot with a ring that
+/// pulses outward, staggered per pin via `delay`.
+private struct PulsingStreetPin: View {
+    var delay: Double = 0
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.btLime.opacity(0.35))
+                .frame(width: 40, height: 40)
+                .scaleEffect(animate ? 1.7 : 0.5)
+                .opacity(animate ? 0 : 0.7)
+            Circle()
+                .fill(Color.btLime)
+                .frame(width: 11, height: 11)
+                .overlay(Circle().stroke(Color.black.opacity(0.55), lineWidth: 1.5))
+                .shadow(color: Color.btLime.opacity(0.6), radius: 5)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 2).repeatForever(autoreverses: false).delay(delay)) {
+                animate = true
+            }
+        }
+    }
 }

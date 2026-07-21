@@ -113,15 +113,15 @@ struct HowItWorksView: View {
 
             row("mappin.and.ellipse", Color.btLime,
                 "Post where you stand.",
-                "You can only post in the block you're physically on. Real presence, real talk.")
+                "You can only post in the neighborhood you're physically in. Real presence, authentic commentary.")
 
             row("eye", Color.btHouse,
                 "Read anywhere.",
-                "Browse any neighborhood in the city. Reading and voting work from your couch.")
+                "Browse any neighborhood in the city. Reading and voting work from anywhere.")
 
             row("map.fill", Color.btPink,
                 "Drop it on the map.",
-                "Tag the exact corner something happened. Your comment lives on the spot.")
+                "Tag the exact corner or business where something happened. Your comment lives on the spot.")
 
             Spacer(minLength: BTSpacing.xl)
 
