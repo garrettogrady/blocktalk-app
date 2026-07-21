@@ -524,17 +524,19 @@ struct PlacePickerSheet: View {
     @State private var results: [TaggedPlace] = []
     @State private var loading = false
 
-    // Bias the nearby search toward actual businesses.
-    private let businessCategories: [MKPointOfInterestCategory] = [
-        .restaurant, .cafe, .bakery, .nightlife, .foodMarket, .store,
-        .fitnessCenter, .brewery, .winery, .pharmacy, .hotel,
-        .theater, .movieTheater, .museum, .bank,
+    // Show every real storefront, only dropping transit/parking/infrastructure.
+    // A whitelist silently hid businesses Apple filed under an odd category
+    // (e.g. a climbing gym that isn't tagged .fitnessCenter).
+    private let excludedCategories: [MKPointOfInterestCategory] = [
+        .publicTransport, .parking, .gasStation, .evCharger,
+        .airport, .campground, .marina,
     ]
 
-    // A tagged business must actually be AT the pin — cap how far it can be
-    // (~500 ft covers GPS slop + being on this block). Nothing farther is
-    // taggable, so you can't attach a comment to a place across the neighborhood.
-    private let maxPlaceMeters: CLLocationDistance = 150
+    // A tagged business must be right at the pin — ~200 ft keeps it to "this
+    // corner" so a dense block doesn't list the whole neighborhood. Closest
+    // first, and capped, so the place you're standing on leads.
+    private let maxPlaceMeters: CLLocationDistance = 65
+    private let maxResults = 12
 
     var body: some View {
         NavigationStack {
@@ -680,11 +682,13 @@ struct PlacePickerSheet: View {
             .distance(from: CLLocation(latitude: place.latitude, longitude: place.longitude))
     }
 
-    /// Keep only places actually at the pin, closest first.
+    /// Keep only places actually at the pin, closest first, capped so a dense
+    /// block shows the nearest handful rather than everything in range.
     private func withinRange(_ places: [TaggedPlace]) -> [TaggedPlace] {
-        places
+        Array(places
             .filter { meters(to: $0) <= maxPlaceMeters }
             .sorted { meters(to: $0) < meters(to: $1) }
+            .prefix(maxResults))
     }
 
     private func runNearby() async {
@@ -692,7 +696,7 @@ struct PlacePickerSheet: View {
         // Apple only returns POIs inside this radius, so the request itself
         // enforces the cap; we still sort closest-first.
         let req = MKLocalPointsOfInterestRequest(center: center, radius: maxPlaceMeters)
-        req.pointOfInterestFilter = MKPointOfInterestFilter(including: businessCategories)
+        req.pointOfInterestFilter = MKPointOfInterestFilter(excluding: excludedCategories)
         do {
             let resp = try await MKLocalSearch(request: req).start()
             results = withinRange(resp.mapItems.compactMap(mapItemToPlace))
