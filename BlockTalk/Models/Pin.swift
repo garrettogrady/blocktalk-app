@@ -61,8 +61,8 @@ extension Pin {
         make(houstonLudlow, "Houston & Ludlow", 40.7222, -73.9877),
         make(delanceyAllen, "Delancey & Allen", 40.7186, -73.9898),
         // The gym street comment — tagged to a business, so it shows house-blue.
-        // SE corner of Clinton & Delancey.
-        makeBiz(clintonDelancey, "Clinton & Delancey", 40.71850, -73.98432,
+        // Vital is on the NW corner of Clinton & Broome.
+        makeBiz(clintonDelancey, "Clinton & Broome", 40.71785, -73.98428,
                 place: "Vital", category: "gym", symbol: "dumbbell.fill"),
     ]
 }

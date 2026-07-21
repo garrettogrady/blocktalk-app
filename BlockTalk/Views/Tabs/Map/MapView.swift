@@ -112,11 +112,22 @@ struct MapTabView: View {
             .mapControls { }
             .contentMargins(.bottom, 96, for: .automatic)
             .onMapCameraChange { context in
+                // Only churn state while dropping a pin. Doing this on every
+                // camera frame while just browsing re-rendered every annotation
+                // continuously, which made the pins visibly jitter/drift.
+                guard viewModel.isDropMode else { return }
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
                 // Resolve the coordinate under the reticle in the SAME space the
                 // reticle is drawn, so aim == checked == dropped.
                 if mapSize != .zero {
+                    reticleCoord = proxy.convert(reticlePoint, from: .local)
+                }
+            }
+            // Resolve the reticle the instant drop mode starts, since the camera
+            // handler above now only runs while dropping.
+            .onChange(of: viewModel.isDropMode) { _, dropping in
+                if dropping, mapSize != .zero {
                     reticleCoord = proxy.convert(reticlePoint, from: .local)
                 }
             }

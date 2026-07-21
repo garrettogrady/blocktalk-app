@@ -285,15 +285,16 @@ struct FeedView: View {
             Button {
                 appState.viewingNeighborhood = home
             } label: {
-                HStack(spacing: BTSpacing.xs) {
+                HStack(alignment: .top, spacing: BTSpacing.xs) {
                     Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
                     (Text("browsing \(viewing.name) · you can only post in ")
                      + Text(home.name).font(BTFont.bodyBold(size: 10.5)))
                         .font(BTFont.bodyBold(size: 10.5))
                         .tracking(0.2)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text("go back ›").font(BTFont.monoBold(size: 9)).tracking(0.5)
+                        .fixedSize()
                 }
                 .foregroundStyle(Color.btHouse)
                 .frame(maxWidth: .infinity)

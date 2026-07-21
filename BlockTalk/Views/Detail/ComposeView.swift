@@ -482,7 +482,11 @@ func inferPlaceFromName(_ name: String) -> (label: String, symbol: String)? {
     func has(_ words: [String]) -> Bool { words.contains { n.contains($0) } }
 
     if has(["gym", "fitness", "crossfit", "pilates", "yoga", "climbing", "barre",
-            "spin studio", "cycle", "boxing", "martial"]) { return ("Gym", "dumbbell.fill") }
+            "spin studio", "cycle", "boxing", "martial",
+            // common gym brands that carry no category hint in their name
+            "vital", "equinox", "crunch", "blink", "soulcycle", "barry",
+            "planet fitness", "orangetheory", "f45", "solidcore", "rumble",
+            "chelsea piers", "dogpound"]) { return ("Gym", "dumbbell.fill") }
     if has(["coffee", "café", "cafe", "espresso", "roaster"]) { return ("Café", "cup.and.saucer.fill") }
     if has(["pizza", "pizzeria"]) { return ("Restaurant", "fork.knife") }
     if has(["bakery", "bagel", "patisserie", "bread", "donut", "doughnut"]) { return ("Bakery", "birthday.cake.fill") }
@@ -532,10 +536,10 @@ struct PlacePickerSheet: View {
         .airport, .campground, .marina,
     ]
 
-    // A tagged business must be right at the pin — ~200 ft keeps it to "this
-    // corner" so a dense block doesn't list the whole neighborhood. Closest
-    // first, and capped, so the place you're standing on leads.
-    private let maxPlaceMeters: CLLocationDistance = 65
+    // Precision comes from closest-first + the cap, not a razor-thin radius —
+    // ~360 ft is forgiving enough not to drop the business you're standing near
+    // (long blocks / GPS drift), while the cap keeps a dense block manageable.
+    private let maxPlaceMeters: CLLocationDistance = 110
     private let maxResults = 12
 
     var body: some View {
@@ -669,12 +673,37 @@ struct PlacePickerSheet: View {
         return String(format: "%.1f mi", meters / 1609.34)
     }
 
-    private func mapItemToPlace(_ item: MKMapItem) -> TaggedPlace? {
+    private func mapItemToPlace(_ item: MKMapItem, nearby: [MKMapItem] = []) -> TaggedPlace? {
         guard let name = item.name else { return nil }
-        let (label, symbol) = placeDisplay(name: name, category: item.pointOfInterestCategory)
+        var (label, symbol) = placeDisplay(name: name, category: item.pointOfInterestCategory)
+
+        // Icon rescue: a typed hit often has no Apple category, so if it's still
+        // a generic pin, borrow the category from a nearby POI at the same spot
+        // (the nearby request carries reliable categories). This is what makes
+        // the right icon show up across the board, not just for known brands.
+        if symbol == "mappin.circle.fill" {
+            let here = item.placemark.coordinate
+            if let match = nearby.first(where: { poi in
+                poi.pointOfInterestCategory != nil &&
+                CLLocation(latitude: here.latitude, longitude: here.longitude)
+                    .distance(from: CLLocation(latitude: poi.placemark.coordinate.latitude,
+                                               longitude: poi.placemark.coordinate.longitude)) < 25
+            }) {
+                (label, symbol) = placeCategoryDisplay(match.pointOfInterestCategory)
+            }
+        }
+
         let c = item.placemark.coordinate
         return TaggedPlace(name: name, category: label, symbol: symbol,
                            latitude: c.latitude, longitude: c.longitude)
+    }
+
+    private func mapItems(_ request: MKLocalSearch.Request) async -> [MKMapItem] {
+        (try? await MKLocalSearch(request: request).start())?.mapItems ?? []
+    }
+
+    private func mapItems(_ request: MKLocalPointsOfInterestRequest) async -> [MKMapItem] {
+        (try? await MKLocalSearch(request: request).start())?.mapItems ?? []
     }
 
     private func meters(to place: TaggedPlace) -> CLLocationDistance {
@@ -697,12 +726,8 @@ struct PlacePickerSheet: View {
         // enforces the cap; we still sort closest-first.
         let req = MKLocalPointsOfInterestRequest(center: center, radius: maxPlaceMeters)
         req.pointOfInterestFilter = MKPointOfInterestFilter(excluding: excludedCategories)
-        do {
-            let resp = try await MKLocalSearch(request: req).start()
-            results = withinRange(resp.mapItems.compactMap(mapItemToPlace))
-        } catch {
-            results = []
-        }
+        let nearby = await mapItems(req)
+        results = withinRange(nearby.compactMap { mapItemToPlace($0, nearby: nearby) })
         loading = false
     }
 
@@ -711,17 +736,19 @@ struct PlacePickerSheet: View {
         // A text query's region is only a bias, not a hard limit — Apple can
         // return matches far away. Search a tight box AND filter by real
         // distance so you can't tag a business that isn't at your pin.
-        let req = MKLocalSearch.Request()
-        req.naturalLanguageQuery = q
-        req.region = MKCoordinateRegion(center: center,
-                                        latitudinalMeters: maxPlaceMeters * 2,
-                                        longitudinalMeters: maxPlaceMeters * 2)
-        do {
-            let resp = try await MKLocalSearch(request: req).start()
-            results = withinRange(resp.mapItems.compactMap(mapItemToPlace))
-        } catch {
-            results = []
-        }
+        let textReq = MKLocalSearch.Request()
+        textReq.naturalLanguageQuery = q
+        textReq.region = MKCoordinateRegion(center: center,
+                                            latitudinalMeters: maxPlaceMeters * 2,
+                                            longitudinalMeters: maxPlaceMeters * 2)
+        // Fetch nearby POIs in parallel so typed hits can borrow real categories.
+        let poiReq = MKLocalPointsOfInterestRequest(center: center, radius: maxPlaceMeters)
+        poiReq.pointOfInterestFilter = MKPointOfInterestFilter(excluding: excludedCategories)
+
+        async let textItems = mapItems(textReq)
+        async let nearbyItems = mapItems(poiReq)
+        let (text, nearby) = await (textItems, nearbyItems)
+        results = withinRange(text.compactMap { mapItemToPlace($0, nearby: nearby) })
         loading = false
     }
 }
