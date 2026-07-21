@@ -5,8 +5,9 @@ import Supabase
 enum AppStage {
     case splash
     case how
-    case profile
     case tone
+    case profile     // step 1: home neighborhood
+    case username    // step 2: username (forced choice)
     case app
 }
 
@@ -44,6 +45,10 @@ final class AppState {
     /// Debug: force the splash to lead into onboarding (bypasses the
     /// returning-user skip) so "Replay onboarding" can show the full flow.
     var forceOnboarding = false
+
+    /// The neighborhood picked on onboarding step 1, carried to step 2 (username)
+    /// so the final profile can be assembled once both are chosen.
+    var onboardingNeighborhood: Neighborhood?
 
     /// A post opened via a shared link (blocktalk://p/<id>). When set, it's
     /// presented full-screen over whatever's on screen — so a recipient reads

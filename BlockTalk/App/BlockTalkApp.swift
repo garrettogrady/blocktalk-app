@@ -17,10 +17,12 @@ struct BlockTalkApp: App {
                     SplashView()
                 case .how:
                     HowItWorksView()
-                case .profile:
-                    ProfileCreationView()
                 case .tone:
                     ToneRulesView()
+                case .profile:
+                    ProfileCreationView()
+                case .username:
+                    UsernameCreationView()
                 case .app:
                     MainTabView()
                 }

@@ -8,7 +8,7 @@ struct ToneRulesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Step 03 / 03 — matches the Profile step bar (bar left, counter right)
+            // Step 01 / 03 — rule, then neighborhood, then username
             HStack(spacing: BTSpacing.sm) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -17,12 +17,12 @@ struct ToneRulesView: View {
                             .frame(height: 3)
                         RoundedRectangle(cornerRadius: 2)
                             .fill(Color.btLime)
-                            .frame(width: geo.size.width * 0.5, height: 3)
+                            .frame(width: geo.size.width / 3, height: 3)
                     }
                 }
                 .frame(height: 3)
 
-                Text("01 / 02")
+                Text("01 / 03")
                     .font(BTFont.mono(size: 10))
                     .foregroundStyle(Color.btText3)
                     .tracking(1)
