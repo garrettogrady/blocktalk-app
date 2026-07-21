@@ -39,6 +39,12 @@ extension Pin {
     static let delanceyAllen  = UUID(uuidString: "c0000000-0000-0000-0000-000000000004")!
     static let clintonDelancey = UUID(uuidString: "c0000000-0000-0000-0000-000000000005")!
 
+    /// Vital climbing gym — 182 Broome St, in Essex Crossing (Broome between
+    /// Norfolk & Suffolk). Single source of truth so the map tab and the landing
+    /// screen always place it identically. Anchored off Doughnut Plant's verified
+    /// coordinate (379 Grand); nudge here if it needs to be exact-to-the-door.
+    static let vitalCoordinate = CLLocationCoordinate2D(latitude: 40.71715, longitude: -73.98750)
+
     private static func make(_ id: UUID, _ corner: String, _ lat: Double, _ lng: Double) -> Pin {
         Pin(id: id, userId: UUID(), latitude: lat, longitude: lng,
             cornerName: corner, neighborhoodId: Post.lesNeighborhoodId,
@@ -61,8 +67,7 @@ extension Pin {
         make(houstonLudlow, "Houston & Ludlow", 40.7222, -73.9877),
         make(delanceyAllen, "Delancey & Allen", 40.7186, -73.9898),
         // The gym street comment — tagged to a business, so it shows house-blue.
-        // Vital is on the NW corner of Clinton & Broome.
-        makeBiz(clintonDelancey, "Clinton & Broome", 40.71785, -73.98428,
+        makeBiz(clintonDelancey, "Broome & Suffolk", vitalCoordinate.latitude, vitalCoordinate.longitude,
                 place: "Vital", category: "gym", symbol: "dumbbell.fill"),
     ]
 }

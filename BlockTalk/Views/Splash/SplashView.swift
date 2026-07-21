@@ -22,8 +22,8 @@ struct SplashView: View {
     // 6 house-blue business pins on REAL Lower East Side businesses (each a
     // distinct type/icon, Route 2), plus 12 lime corner pins scattered around.
     private let landingPins: [LandingPin] = [
-        // Vital — gym (182 Broome St, NW corner of Clinton & Broome)
-        .init(coord: .init(latitude: 40.71765, longitude: -73.98460), tint: .btHouse, symbol: "dumbbell.fill"),
+        // Vital — gym (182 Broome St, Essex Crossing). Same constant as the map.
+        .init(coord: Pin.vitalCoordinate, tint: .btHouse, symbol: "dumbbell.fill"),
         // Katz's Delicatessen — restaurant (205 E Houston St)
         .init(coord: .init(latitude: 40.72225, longitude: -73.98748), tint: .btHouse, symbol: "fork.knife"),
         // Tenement Museum — museum (103 Orchard St)
