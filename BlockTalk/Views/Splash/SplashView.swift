@@ -19,10 +19,36 @@ struct SplashView: View {
         let tint: Color
         let symbol: String?
     }
+    // 6 house-blue business pins on REAL Lower East Side businesses (each a
+    // distinct type/icon, Route 2), plus 12 lime corner pins scattered around.
     private let landingPins: [LandingPin] = [
-        .init(coord: .init(latitude: 40.7139, longitude: -73.9862), tint: .btLime, symbol: nil),
-        .init(coord: .init(latitude: 40.7122, longitude: -73.9901), tint: .btLime, symbol: nil),
-        .init(coord: .init(latitude: 40.7151, longitude: -73.9835), tint: .btHouse, symbol: "dumbbell.fill"),
+        // Vital — gym (182 Broome St, NW corner of Clinton & Broome)
+        .init(coord: .init(latitude: 40.71765, longitude: -73.98460), tint: .btHouse, symbol: "dumbbell.fill"),
+        // Katz's Delicatessen — restaurant (205 E Houston St)
+        .init(coord: .init(latitude: 40.72225, longitude: -73.98748), tint: .btHouse, symbol: "fork.knife"),
+        // Tenement Museum — museum (103 Orchard St)
+        .init(coord: .init(latitude: 40.71882, longitude: -73.99009), tint: .btHouse, symbol: "building.columns.fill"),
+        // Pianos — bar (158 Ludlow St)
+        .init(coord: .init(latitude: 40.72100, longitude: -73.98780), tint: .btHouse, symbol: "wineglass.fill"),
+        // Doughnut Plant — bakery (379 Grand St)
+        .init(coord: .init(latitude: 40.71629, longitude: -73.98856), tint: .btHouse, symbol: "birthday.cake.fill"),
+        // Round K — café (99 Allen St)
+        .init(coord: .init(latitude: 40.71820, longitude: -73.99060), tint: .btHouse, symbol: "cup.and.saucer.fill"),
+
+        // 12 corner/street comments scattered across the whole visible map
+        // (East Village, Village, Nolita, Chinatown) so it feels alive citywide.
+        .init(coord: .init(latitude: 40.72820, longitude: -73.98420), tint: .btLime, symbol: nil), // East Village
+        .init(coord: .init(latitude: 40.72650, longitude: -73.98880), tint: .btLime, symbol: nil), // EV / Bowery
+        .init(coord: .init(latitude: 40.72520, longitude: -73.98280), tint: .btLime, symbol: nil), // Alphabet City edge
+        .init(coord: .init(latitude: 40.72850, longitude: -73.99320), tint: .btLime, symbol: nil), // NoHo / Village
+        .init(coord: .init(latitude: 40.72600, longitude: -73.99560), tint: .btLime, symbol: nil), // Greenwich Village edge
+        .init(coord: .init(latitude: 40.72350, longitude: -73.99120), tint: .btLime, symbol: nil), // Nolita
+        .init(coord: .init(latitude: 40.72150, longitude: -73.99520), tint: .btLime, symbol: nil), // Little Italy / Nolita
+        .init(coord: .init(latitude: 40.71700, longitude: -73.99450), tint: .btLime, symbol: nil), // Chinatown
+        .init(coord: .init(latitude: 40.71500, longitude: -73.99080), tint: .btLime, symbol: nil), // Chinatown / East Broadway
+        .init(coord: .init(latitude: 40.72000, longitude: -73.98250), tint: .btLime, symbol: nil), // LES east
+        .init(coord: .init(latitude: 40.71580, longitude: -73.98350), tint: .btLime, symbol: nil), // LES south-east
+        .init(coord: .init(latitude: 40.72420, longitude: -73.98650), tint: .btLime, symbol: nil), // LES / EV border
     ]
 
     var body: some View {
@@ -37,7 +63,7 @@ struct SplashView: View {
                 if showStreetPins {
                     ForEach(Array(landingPins.enumerated()), id: \.offset) { i, p in
                         Annotation("", coordinate: p.coord) {
-                            PulsingStreetPin(tint: p.tint, symbol: p.symbol, delay: Double(i) * 0.55)
+                            PulsingStreetPin(tint: p.tint, symbol: p.symbol, delay: Double(i % 6) * 0.3)
                         }
                     }
                 }
