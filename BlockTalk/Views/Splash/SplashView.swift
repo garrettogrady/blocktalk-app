@@ -22,8 +22,9 @@ struct SplashView: View {
     // 6 house-blue business pins on REAL Lower East Side businesses (each a
     // distinct type/icon, Route 2), plus 12 lime corner pins scattered around.
     private let landingPins: [LandingPin] = [
-        // Vital — gym (182 Broome St, Essex Crossing). Same constant as the map.
-        .init(coord: Pin.vitalCoordinate, tint: .btHouse, symbol: "dumbbell.fill"),
+        // Vital — gym. Reads the same Pin.vital used by the map + feed, so the
+        // location and dumbbell icon can never drift between screens.
+        .init(coord: Pin.vital.coordinate, tint: .btHouse, symbol: Pin.vital.placeSymbol),
         // Katz's Delicatessen — restaurant (205 E Houston St)
         .init(coord: .init(latitude: 40.72225, longitude: -73.98748), tint: .btHouse, symbol: "fork.knife"),
         // Tenement Museum — museum (103 Orchard St)
@@ -35,20 +36,21 @@ struct SplashView: View {
         // Round K — café (99 Allen St)
         .init(coord: .init(latitude: 40.71820, longitude: -73.99060), tint: .btHouse, symbol: "cup.and.saucer.fill"),
 
-        // 12 corner/street comments scattered across the whole visible map
-        // (East Village, Village, Nolita, Chinatown) so it feels alive citywide.
-        .init(coord: .init(latitude: 40.72820, longitude: -73.98420), tint: .btLime, symbol: nil), // East Village
-        .init(coord: .init(latitude: 40.72650, longitude: -73.98880), tint: .btLime, symbol: nil), // EV / Bowery
-        .init(coord: .init(latitude: 40.72520, longitude: -73.98280), tint: .btLime, symbol: nil), // Alphabet City edge
-        .init(coord: .init(latitude: 40.72850, longitude: -73.99320), tint: .btLime, symbol: nil), // NoHo / Village
-        .init(coord: .init(latitude: 40.72600, longitude: -73.99560), tint: .btLime, symbol: nil), // Greenwich Village edge
-        .init(coord: .init(latitude: 40.72350, longitude: -73.99120), tint: .btLime, symbol: nil), // Nolita
-        .init(coord: .init(latitude: 40.72150, longitude: -73.99520), tint: .btLime, symbol: nil), // Little Italy / Nolita
-        .init(coord: .init(latitude: 40.71700, longitude: -73.99450), tint: .btLime, symbol: nil), // Chinatown
-        .init(coord: .init(latitude: 40.71500, longitude: -73.99080), tint: .btLime, symbol: nil), // Chinatown / East Broadway
-        .init(coord: .init(latitude: 40.72000, longitude: -73.98250), tint: .btLime, symbol: nil), // LES east
-        .init(coord: .init(latitude: 40.71580, longitude: -73.98350), tint: .btLime, symbol: nil), // LES south-east
-        .init(coord: .init(latitude: 40.72420, longitude: -73.98650), tint: .btLime, symbol: nil), // LES / EV border
+        // 12 corner/street comments scattered across the WHOLE visible map —
+        // west (Village/SoHo), north (NoHo/EV), and south (Chinatown), not just
+        // the LES cluster, so the page feels alive everywhere.
+        .init(coord: .init(latitude: 40.72800, longitude: -73.99950), tint: .btLime, symbol: nil), // West Village
+        .init(coord: .init(latitude: 40.72480, longitude: -73.99750), tint: .btLime, symbol: nil), // Village
+        .init(coord: .init(latitude: 40.72250, longitude: -73.99980), tint: .btLime, symbol: nil), // SoHo
+        .init(coord: .init(latitude: 40.71950, longitude: -73.99850), tint: .btLime, symbol: nil), // SoHo / LES west
+        .init(coord: .init(latitude: 40.72880, longitude: -73.99000), tint: .btLime, symbol: nil), // NoHo
+        .init(coord: .init(latitude: 40.72950, longitude: -73.98380), tint: .btLime, symbol: nil), // East Village
+        .init(coord: .init(latitude: 40.72580, longitude: -73.98600), tint: .btLime, symbol: nil), // East Village
+        .init(coord: .init(latitude: 40.72120, longitude: -73.98900), tint: .btLime, symbol: nil), // Nolita / LES
+        .init(coord: .init(latitude: 40.71820, longitude: -73.98320), tint: .btLime, symbol: nil), // LES east
+        .init(coord: .init(latitude: 40.71520, longitude: -73.99450), tint: .btLime, symbol: nil), // Chinatown
+        .init(coord: .init(latitude: 40.71380, longitude: -73.99900), tint: .btLime, symbol: nil), // Tribeca / Chinatown
+        .init(coord: .init(latitude: 40.71680, longitude: -73.98780), tint: .btLime, symbol: nil), // LES south
     ]
 
     var body: some View {

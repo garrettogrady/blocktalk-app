@@ -35,10 +35,6 @@ struct FeedView: View {
                         // Location gate banner at top when location not granted
                         LocationGateBanner(showPreFrame: $showPreFrame)
 
-                        // Browsing a neighborhood you're not physically in — read
-                        // freely, but posting is locked to where you actually are.
-                        viewingElsewhereBanner
-
                         // Offline banner
                         if offline.isOffline {
                             OfflineBanner(pendingPostCount: offline.pending.count)
@@ -276,34 +272,13 @@ struct FeedView: View {
 
     // MARK: - Location locking
 
-    /// Thin banner shown when the viewed feed isn't the block you're in.
-    @ViewBuilder private var viewingElsewhereBanner: some View {
-        if locationService.permissionState == .granted,
-           let home = appState.physicalNeighborhood,
-           let viewing = appState.viewingNeighborhood,
-           !appState.canPostInViewing {
-            Button {
-                appState.viewingNeighborhood = home
-            } label: {
-                HStack(alignment: .top, spacing: BTSpacing.xs) {
-                    Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
-                    (Text("browsing \(viewing.name) · you can only post in ")
-                     + Text(home.name).font(BTFont.bodyBold(size: 10.5)))
-                        .font(BTFont.bodyBold(size: 10.5))
-                        .tracking(0.2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("go back ›").font(BTFont.monoBold(size: 9)).tracking(0.5)
-                        .fixedSize()
-                }
-                .foregroundStyle(Color.btHouse)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, BTSpacing.lg)
-                .padding(.vertical, 7)
-                .background(Color.btHouse.opacity(0.1))
-            }
-            .buttonStyle(.plain)
-        }
+    /// True when you're reading a neighborhood you're not physically in — the
+    /// note lives under the VIEWING dropdown (see locationRow).
+    private var isBrowsingElsewhere: Bool {
+        locationService.permissionState == .granted
+            && appState.physicalNeighborhood != nil
+            && appState.viewingNeighborhood != nil
+            && !appState.canPostInViewing
     }
 
     /// Replaces the compose bar when you're viewing a block you're not in —
@@ -375,6 +350,16 @@ struct FeedView: View {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Color.btText3)
+                    }
+
+                    // Browsing a block you're not in — clean note under the
+                    // dropdown, not a separate banner up top.
+                    if isBrowsingElsewhere, let home = appState.physicalNeighborhood {
+                        Text("browsing · you can only post in \(home.name)")
+                            .font(BTFont.mono(size: 10))
+                            .foregroundStyle(Color.btHouse)
+                            .lineLimit(1)
+                            .padding(.top, 1)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -39,11 +39,10 @@ extension Pin {
     static let delanceyAllen  = UUID(uuidString: "c0000000-0000-0000-0000-000000000004")!
     static let clintonDelancey = UUID(uuidString: "c0000000-0000-0000-0000-000000000005")!
 
-    /// Vital gym — NW corner of Broome & Clinton (per Matt). Single source of
-    /// truth so the map tab and the landing screen always place it identically.
-    /// Anchored off Doughnut Plant's verified coordinate (379 Grand, one block
-    /// south). Nudge here if it needs to be exact-to-the-door.
-    static let vitalCoordinate = CLLocationCoordinate2D(latitude: 40.71715, longitude: -73.98513)
+    /// VITAL Climbing Gym — 182 Broome St, NW corner of Broome & Clinton.
+    /// Verified via OpenStreetMap's geocoder (not estimated). Single source of
+    /// truth for both the map tab and the landing screen.
+    static let vitalCoordinate = CLLocationCoordinate2D(latitude: 40.71705, longitude: -73.98634)
 
     private static func make(_ id: UUID, _ corner: String, _ lat: Double, _ lng: Double) -> Pin {
         Pin(id: id, userId: UUID(), latitude: lat, longitude: lng,
@@ -52,22 +51,44 @@ extension Pin {
     }
 
     /// A corner that's also tagged to a business — renders house-blue (Route 2).
+    /// The icon is derived from the category, not passed in per call site, so the
+    /// same category always yields the same glyph everywhere it's shown.
     private static func makeBiz(_ id: UUID, _ corner: String, _ lat: Double, _ lng: Double,
-                                place: String, category: String, symbol: String) -> Pin {
+                                place: String, category: String) -> Pin {
         var pin = make(id, corner, lat, lng)
         pin.placeName = place
         pin.placeCategory = category
-        pin.placeSymbol = symbol
+        pin.placeSymbol = symbol(forCategory: category)
         return pin
     }
+
+    /// Category → SF Symbol, so a business's icon is data-driven, not hardcoded
+    /// at each place it appears (map / feed chip / landing all resolve the same).
+    static func symbol(forCategory category: String) -> String {
+        switch category.lowercased() {
+        case "gym", "fitness":     return "dumbbell.fill"
+        case "restaurant":         return "fork.knife"
+        case "cafe", "café":       return "cup.and.saucer.fill"
+        case "bakery":             return "birthday.cake.fill"
+        case "bar", "nightlife":   return "wineglass.fill"
+        case "museum":             return "building.columns.fill"
+        case "market":             return "cart.fill"
+        case "pharmacy":           return "cross.case.fill"
+        default:                   return "mappin.circle.fill"
+        }
+    }
+
+    /// The Vital gym street-comment pin — ONE definition, referenced by the map
+    /// samples and the landing screen so the location + icon can never drift.
+    static let vital: Pin = makeBiz(clintonDelancey, "Broome & Clinton",
+                                    vitalCoordinate.latitude, vitalCoordinate.longitude,
+                                    place: "Vital", category: "gym")
 
     static let samples: [Pin] = [
         make(essexRivington, "Essex & Rivington", 40.7196, -73.9878),
         make(stantonNorfolk, "Stanton & Norfolk", 40.7211, -73.9871),
         make(houstonLudlow, "Houston & Ludlow", 40.7222, -73.9877),
         make(delanceyAllen, "Delancey & Allen", 40.7186, -73.9898),
-        // The gym street comment — tagged to a business, so it shows house-blue.
-        makeBiz(clintonDelancey, "Broome & Clinton", vitalCoordinate.latitude, vitalCoordinate.longitude,
-                place: "Vital", category: "gym", symbol: "dumbbell.fill"),
+        vital,
     ]
 }

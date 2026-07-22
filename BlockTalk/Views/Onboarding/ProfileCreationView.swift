@@ -48,7 +48,6 @@ struct ProfileCreationView: View {
 
             VStack(alignment: .leading, spacing: BTSpacing.xl) {
                 heading
-                userNumberBanner
                 neighborhoodSection
             }
             .padding(.horizontal, BTSpacing.xxl)
@@ -80,15 +79,6 @@ struct ProfileCreationView: View {
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
         }
-    }
-
-    private var userNumberBanner: some View {
-        (Text("You are user: ")
-            .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
-         + Text(onboardingUserNumber)
-            .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
-            .tracking(-0.2)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var neighborhoodSection: some View {
@@ -195,6 +185,7 @@ struct UsernameCreationView: View {
             onboardingStepBar(3, 3)
 
             VStack(alignment: .leading, spacing: BTSpacing.xl) {
+                userNumberBanner
                 heading
                 if editing { usernameField }
                 previewCard
@@ -206,6 +197,15 @@ struct UsernameCreationView: View {
             bottomBar
         }
         .background(Color.btBg.ignoresSafeArea())
+    }
+
+    private var userNumberBanner: some View {
+        (Text("You are user: ")
+            .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
+         + Text(onboardingUserNumber)
+            .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
+            .tracking(-0.2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var heading: some View {
@@ -302,6 +302,7 @@ struct UsernameCreationView: View {
                 textButton("Stay as BlockTalker instead") { finish(username: "BlockTalker") }
             } else {
                 primaryButton("Set a username", enabled: true) {
+                    viewModel.username = ""   // start empty — don't make them clear "BlockTalker"
                     editing = true
                     fieldFocused = true
                 }
