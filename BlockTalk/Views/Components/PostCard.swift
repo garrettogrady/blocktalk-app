@@ -16,9 +16,9 @@ struct PostCard: View {
     @Environment(AppState.self) private var appState
     @Environment(ModerationStore.self) private var moderation
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(NotificationStore.self) private var notifications
     @State private var showReport = false
     @State private var showAppeal = false
-    @State private var appealed = false
     @State private var enrolled = false
     @State private var toastMessage = ""
     @State private var toastIcon = "bell.fill"
@@ -95,10 +95,10 @@ struct PostCard: View {
                 .padding(.horizontal, BTSpacing.lg)
                 .padding(.vertical, BTSpacing.sm)
             } else if !isPreview && post.status == .removed {
-                // Your post was removed — appeal it.
+                // Your post was removed — appeal it (once).
                 Tombstone(variant: .removed, reasonShort: "harassment",
-                          bodyText: post.text, appealed: appealed,
-                          onAppeal: { showAppeal = true })
+                          bodyText: post.text, appealed: moderation.hasAppealed(post.id),
+                          onAppeal: { if !moderation.hasAppealed(post.id) { showAppeal = true } })
                     .padding(.horizontal, BTSpacing.lg)
                     .padding(.vertical, BTSpacing.sm)
             } else if !isPreview && post.status == .underReview {
@@ -109,8 +109,15 @@ struct PostCard: View {
                 cardContent
             }
         }
-        .sheet(isPresented: $showAppeal, onDismiss: { appealed = true }) {
-            AppealView(removedPostText: post.text, violationReason: "Harassment", alreadyAppealed: appealed)
+        .sheet(isPresented: $showAppeal) {
+            AppealView(removedPostText: post.text, violationReason: "Harassment",
+                       alreadyAppealed: moderation.hasAppealed(post.id),
+                       onSubmitted: {
+                           moderation.markAppealed(post.id)
+                           notifications.add(kind: "moderation", title: "Appeal submitted",
+                                             preview: "We got your appeal. A human will review within 48 hours.",
+                                             relatedPostId: post.id)
+                       })
         }
     }
 
@@ -217,6 +224,9 @@ struct PostCard: View {
             ReportModalView(postId: post.id) { short in
                 moderation.report(postId: post.id, reasonShort: short)
                 showToast("reported for \(short) · we'll review", icon: "flag.fill")
+                notifications.add(kind: "moderation", title: "Report received",
+                                  preview: "Thanks — we're reviewing this post for \(short).",
+                                  relatedPostId: post.id)
             }
         }
     }

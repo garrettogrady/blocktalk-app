@@ -16,9 +16,12 @@ struct FeedView: View {
     @AppStorage("hasSeenMapTip") private var hasSeenMapTip = false
 
     /// Posts the user created this session for the neighborhood being viewed.
+    /// Moderation warnings (removed / under review) are pinned to the top so a
+    /// newly composed post never pushes them down.
     private var myPosts: [Post] {
         guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
-        return localContent.posts(in: viewingId)
+        let posts = localContent.posts(in: viewingId)
+        return posts.filter { $0.status != .live } + posts.filter { $0.status == .live }
     }
 
     private var isViewingHome: Bool {

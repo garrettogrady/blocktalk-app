@@ -2,8 +2,10 @@ import SwiftUI
 
 struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var notifications: [BTNotification] = []
+    @Environment(NotificationStore.self) private var store
     @State private var isLoading = false
+
+    private var notifications: [BTNotification] { store.items }
 
     var body: some View {
         NavigationStack {
@@ -40,9 +42,6 @@ struct NotificationsView: View {
                     .font(BTFont.body(size: 14))
                     .foregroundStyle(Color.btLime)
                 }
-            }
-            .onAppear {
-                if notifications.isEmpty { notifications = BTNotification.samples }
             }
         }
     }
@@ -124,9 +123,7 @@ struct NotificationsView: View {
     }
 
     private func markAllRead() {
-        for index in notifications.indices {
-            notifications[index].unread = false
-        }
+        store.markAllRead()
     }
 
     private func timeAgo(_ date: Date) -> String {

@@ -7,6 +7,7 @@ struct BlockTalkApp: App {
     @State private var moderation = ModerationStore()
     @State private var offline = OfflineStore()
     @State private var localContent = LocalContentStore()
+    @State private var notifications = NotificationStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -32,6 +33,7 @@ struct BlockTalkApp: App {
             .environment(moderation)
             .environment(offline)
             .environment(localContent)
+            .environment(notifications)
             .preferredColorScheme(.dark)
             // A shared post opens full-screen over everything — read first, then
             // join. This is the highest-intent arrival, so content leads.
