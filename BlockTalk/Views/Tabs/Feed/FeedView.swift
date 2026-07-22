@@ -15,13 +15,17 @@ struct FeedView: View {
     /// tab 2. Dismissible so it never becomes permanent chrome.
     @AppStorage("hasSeenMapTip") private var hasSeenMapTip = false
 
-    /// Posts the user created this session for the neighborhood being viewed.
-    /// Moderation warnings (removed / under review) are pinned to the top so a
-    /// newly composed post never pushes them down.
+    /// What renders above the sample feed: your moderation warnings (removed /
+    /// under review) always show — they're personal notices, not tied to a
+    /// neighborhood — pinned above your live posts, which ARE filtered to the
+    /// neighborhood you're viewing.
     private var myPosts: [Post] {
-        guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
-        let posts = localContent.posts(in: viewingId)
-        return posts.filter { $0.status != .live } + posts.filter { $0.status == .live }
+        let warnings = localContent.posts.filter { $0.status != .live }
+        let live: [Post] = {
+            guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
+            return localContent.posts(in: viewingId).filter { $0.status == .live }
+        }()
+        return warnings + live
     }
 
     private var isViewingHome: Bool {
