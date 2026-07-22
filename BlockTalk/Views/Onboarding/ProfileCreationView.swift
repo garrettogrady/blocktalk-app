@@ -192,19 +192,23 @@ struct UsernameCreationView: View {
         VStack(spacing: 0) {
             onboardingStepBar(3, 3)
 
-            VStack(alignment: .leading, spacing: BTSpacing.xl) {
-                userNumberBanner
-                heading
-                if editing { usernameField }
-                previewCard
+            ScrollView {
+                VStack(alignment: .leading, spacing: BTSpacing.xl) {
+                    userNumberBanner
+                    heading
+                    if editing { usernameField }
+                    previewCard
+                }
+                .padding(.horizontal, BTSpacing.xxl)
+                .padding(.top, BTSpacing.lg)
+                .frame(maxWidth: .infinity, alignment: .top)
             }
-            .padding(.horizontal, BTSpacing.xxl)
-            .padding(.top, BTSpacing.lg)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            bottomBar
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(Color.btBg.ignoresSafeArea())
+        // Pin the two choices above the keyboard so "Stay as BlockTalker" is
+        // never hidden when the field is focused.
+        .safeAreaInset(edge: .bottom) { bottomBar }
     }
 
     private var userNumberBanner: some View {
@@ -357,11 +361,16 @@ struct UsernameCreationView: View {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         if appState.currentUser == nil { appState.currentUser = .sample }
         appState.currentUser?.username = username
+        // Home neighborhood is just your base/badge — it does NOT decide where
+        // you can post. Where you can post is your PHYSICAL location (GPS).
         if let hood = appState.onboardingNeighborhood {
             appState.currentUser?.homeNeighborhoodId = hood.id
-            appState.viewingNeighborhood = hood
-            appState.physicalNeighborhood = hood
         }
+        // Mock has no live GPS, so simulate "you're physically in LES". You land
+        // viewing where you actually are, not the home you picked.
+        let physical = appState.physicalNeighborhood ?? .les
+        appState.physicalNeighborhood = physical
+        appState.viewingNeighborhood = physical
         appState.selectedTab = 0
         appState.advanceTo(.app)
     }

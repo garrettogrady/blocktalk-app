@@ -97,13 +97,14 @@ struct BlockTalkApp: App {
             appState.hasResolvedInitialNeighborhood = true
             appState.stage = .app
 
-            // DEMO SEED: one of your posts, removed — so the report/appeal flow is
-            // reachable from the feed (removed tombstone → Appeal → form). Delete
-            // this block to take it out of the demo.
+            // DEMO SEED: a real-looking post of yours that got removed, so the
+            // report/appeal flow is reachable from the feed (removed tombstone →
+            // Appeal → form, showing this exact text). Delete this block to remove
+            // it from the demo.
             localContent.add(post: Post(
                 id: UUID(), userId: BlockTalkUser.sample.id, neighborhoodId: Post.lesNeighborhoodId,
-                text: "this one got taken down. tap appeal to contest it.",
-                isDailyPrompt: false, score: 0, replyCount: 0, reportCount: 6,
+                text: "whoever keeps leaving their dog's mess outside 88 Orchard, I know exactly who you are and so does everyone on this block.",
+                isDailyPrompt: false, score: 14, replyCount: 3, reportCount: 6,
                 status: .removed, createdAt: Date().addingTimeInterval(-1800),
                 author: PostAuthor(username: "BlockTalker", userNumber: 4827, home: .init(shortCode: "LES"))
             ))

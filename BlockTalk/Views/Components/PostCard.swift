@@ -96,7 +96,7 @@ struct PostCard: View {
                 .padding(.vertical, BTSpacing.sm)
             } else if !isPreview && post.status == .removed {
                 // Your post was removed — appeal it.
-                Tombstone(variant: .removed, reasonShort: "hate speech",
+                Tombstone(variant: .removed, reasonShort: "harassment",
                           bodyText: post.text, appealed: appealed,
                           onAppeal: { showAppeal = true })
                     .padding(.horizontal, BTSpacing.lg)
@@ -110,7 +110,7 @@ struct PostCard: View {
             }
         }
         .sheet(isPresented: $showAppeal, onDismiss: { appealed = true }) {
-            AppealView(removedPostText: post.text, violationReason: "hate speech", alreadyAppealed: appealed)
+            AppealView(removedPostText: post.text, violationReason: "Harassment", alreadyAppealed: appealed)
         }
     }
 

@@ -378,15 +378,16 @@ struct FeedView: View {
 
             // Browsing a block you're not in — a distinct, tappable control that
             // sends you back to where you can actually post.
-            if isBrowsingElsewhere, let home = appState.physicalNeighborhood {
+            if isBrowsingElsewhere, let here = appState.physicalNeighborhood {
                 Button {
-                    withAnimation { appState.viewingNeighborhood = home }
+                    withAnimation { appState.viewingNeighborhood = here }
                 } label: {
                     HStack(spacing: BTSpacing.sm) {
                         Image(systemName: "arrow.uturn.backward")
                             .font(.system(size: 12, weight: .semibold))
                         (Text("You can only post in ")
-                         + Text(home.name).font(BTFont.bodyBold(size: 12.5)))
+                         + Text(here.name).font(BTFont.bodyBold(size: 12.5))
+                         + Text(", where you actually are"))
                             .font(BTFont.body(size: 12.5))
                         Spacer(minLength: BTSpacing.sm)
                         Text("Go there")

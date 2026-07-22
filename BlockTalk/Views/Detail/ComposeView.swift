@@ -193,7 +193,7 @@ struct ComposeView: View {
             HStack(spacing: BTSpacing.sm) {
                 if let place = taggedPlace {
                     Image(systemName: place.symbol)
-                        .font(.system(size: 13)).foregroundStyle(Color.btLime)
+                        .font(.system(size: 13)).foregroundStyle(Color.btHouse)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(place.name)
                             .font(BTFont.bodySemibold(size: 13)).foregroundStyle(Color.btText).lineLimit(1)
@@ -220,10 +220,10 @@ struct ComposeView: View {
             }
             .padding(.horizontal, BTSpacing.md)
             .padding(.vertical, BTSpacing.sm)
-            .background(taggedPlace != nil ? Color.btLime.opacity(0.06) : Color.btSurface)
+            .background(taggedPlace != nil ? Color.btHouse.opacity(0.08) : Color.btSurface)
             .overlay(
                 RoundedRectangle(cornerRadius: BTRadius.md)
-                    .stroke(taggedPlace != nil ? Color.btLime.opacity(0.3) : Color.btLine, lineWidth: 1)
+                    .stroke(taggedPlace != nil ? Color.btHouse.opacity(0.35) : Color.btLine, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
         }
