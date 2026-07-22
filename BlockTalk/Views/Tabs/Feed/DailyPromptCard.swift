@@ -23,7 +23,7 @@ struct DailyPromptCard: View {
                             .fill(Color.btLime)
                             .frame(width: 5, height: 5)
                             .shadow(color: Color.btLime.opacity(0.7), radius: 4)
-                        Text("TODAY'S PROMPT · NYC WIDE")
+                        Text("THIS WEEK'S PROMPT · NYC WIDE")
                             .font(BTFont.monoBold(size: 9.5))
                             .tracking(1.5)
                             .foregroundStyle(Color.btLime)

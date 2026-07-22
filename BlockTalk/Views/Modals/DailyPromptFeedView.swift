@@ -63,7 +63,7 @@ struct DailyPromptFeedView: View {
                     .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text("TODAY'S PROMPT · NYC-WIDE")
+                Text("THIS WEEK'S PROMPT · NYC-WIDE")
                     .font(BTFont.monoBold(size: 10)).tracking(1)
                     .foregroundStyle(Color.btLime)
                 Text("Prompt of the day")
@@ -191,7 +191,7 @@ struct DailyPromptFeedView: View {
             HStack(spacing: BTSpacing.xs) {
                 Circle().fill(Color.btLime).frame(width: 6, height: 6)
                 (Text("Posting to ").foregroundColor(.btText2)
-                 + Text("TODAY'S PROMPT").foregroundColor(.btText)
+                 + Text("THIS WEEK'S PROMPT").foregroundColor(.btText)
                  + Text(" · NYC-WIDE").foregroundColor(.btText2))
                     .font(BTFont.bodySemibold(size: 10.5))
                 Spacer()

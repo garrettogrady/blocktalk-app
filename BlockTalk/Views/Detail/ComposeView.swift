@@ -264,7 +264,7 @@ struct ComposeView: View {
                 + Text(place).font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btLime)
         } else if nycWide {
             return base
-                + Text("TODAY'S PROMPT").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
+                + Text("THIS WEEK'S PROMPT").font(BTFont.bodySemibold(size: 10.5)).foregroundColor(.btText)
                 + Text(" · NYC-WIDE").font(BTFont.body(size: 10.5)).foregroundColor(.btText2)
         } else {
             return base
