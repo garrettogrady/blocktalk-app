@@ -197,7 +197,6 @@ struct UsernameCreationView: View {
                     userNumberBanner
                     heading
                     if editing { usernameField }
-                    previewCard
                 }
                 .padding(.horizontal, BTSpacing.xxl)
                 .padding(.top, BTSpacing.lg)
@@ -221,18 +220,12 @@ struct UsernameCreationView: View {
     }
 
     private var heading: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("You're anonymous either way")
-                .font(BTFont.display(size: 30))
-                .foregroundStyle(Color.btText)
-                .tracking(-0.6)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Stay as BlockTalker, or set your own username. No real names, no personal info.")
-                .font(BTFont.body(size: 14))
-                .foregroundStyle(Color.btText2)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)   // never truncate when the field opens
-        }
+        Text("Go by BlockTalker, or set your own username. Stay Anonymous.")
+            .font(BTFont.display(size: 27))
+            .foregroundStyle(Color.btText)
+            .tracking(-0.5)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var usernameField: some View {
@@ -265,42 +258,6 @@ struct UsernameCreationView: View {
                     .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
-        }
-    }
-
-    private var previewCard: some View {
-        VStack(alignment: .leading, spacing: BTSpacing.sm) {
-            Text("THIS IS ALL ANYONE SEES")
-                .font(BTFont.monoBold(size: 9)).tracking(1.4).foregroundStyle(Color.btText3)
-
-            HStack(spacing: BTSpacing.sm) {
-                Text("@\(displayName)")
-                    .font(BTFont.bodySemibold(size: 15)).foregroundStyle(Color.btText).lineLimit(1)
-                Text("#\(onboardingUserNumber)")
-                    .font(BTFont.monoBold(size: 14)).foregroundStyle(Color.btLime)
-                homeBadge
-                Spacer(minLength: 0)
-            }
-            .padding(BTSpacing.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.btLime.opacity(0.05))
-            .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.35), lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
-        }
-    }
-
-    @ViewBuilder private var homeBadge: some View {
-        if let n = appState.onboardingNeighborhood {
-            HomeBadge(shortCode: n.shortCode)
-        } else {
-            HStack(spacing: 3) {
-                Image(systemName: "house.fill").font(.system(size: 8))
-                Text("—").font(BTFont.monoBold(size: 9))
-            }
-            .foregroundStyle(Color.btText3)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Color.btSurface2)
-            .clipShape(Capsule())
         }
     }
 
