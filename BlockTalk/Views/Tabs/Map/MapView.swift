@@ -310,7 +310,7 @@ struct MapTabView: View {
                 }
             }
         }
-        .sheet(isPresented: $showComposeForPin) {
+        .fullScreenCover(isPresented: $showComposeForPin) {
             ComposeView(
                 postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
                 pinDropLocation: dropCoordinate,

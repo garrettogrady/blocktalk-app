@@ -1,6 +1,13 @@
 import SwiftUI
 import UIKit
 
+/// Copy shared between onboarding and Settings so the username rules never
+/// contradict each other.
+enum ProfileCopy {
+    static let usernameGuide = "BlockTalk is anonymous. Don't use your real name, or anything that points back to you. You can only set a username once, and it can't be changed."
+    static let locationRule = "You post wherever you're physically located."
+}
+
 // MARK: - Shared onboarding chrome
 
 /// Progress bar used by both profile steps (fill = current/total).
@@ -118,7 +125,7 @@ struct ProfileCreationView: View {
                 )
             }
 
-            Text("You still post wherever you physically stand.")
+            Text("You still post wherever you're physically located.")
                 .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
         }
     }
@@ -211,11 +218,12 @@ struct UsernameCreationView: View {
 
     private var heading: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Pick a username?")
+            Text("You're anonymous either way")
                 .font(BTFont.display(size: 30))
                 .foregroundStyle(Color.btText)
                 .tracking(-0.6)
-            Text("Or stay anonymous as BlockTalker. Either way you can't be searched or followed.")
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Stay as BlockTalker, or set your own username. No real names, no personal info.")
                 .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
@@ -249,7 +257,7 @@ struct UsernameCreationView: View {
             if let msg = usernameError {
                 Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
             } else {
-                Text("You're anonymous here. Don't use your real name, or anything that points back to you.")
+                Text(ProfileCopy.usernameGuide)
                     .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -297,18 +305,19 @@ struct UsernameCreationView: View {
     @ViewBuilder private var bottomBar: some View {
         VStack(spacing: BTSpacing.sm) {
             if editing {
-                primaryButton(canConfirmUsername ? "Continue as @\(displayName)" : "Enter a username",
+                // Same two-button format as before you tapped in — just relabeled.
+                primaryButton(canConfirmUsername ? "Continue as @\(displayName)" : "Continue",
                               enabled: canConfirmUsername) {
                     finish(username: displayName)
                 }
-                textButton("Stay as BlockTalker instead") { finish(username: "BlockTalker") }
+                secondaryButton("Stay as BlockTalker") { finish(username: "BlockTalker") }
             } else {
                 primaryButton("Set a username", enabled: true) {
                     viewModel.username = ""   // start empty — don't make them clear "BlockTalker"
                     editing = true
                     fieldFocused = true
                 }
-                secondaryButton("Stay anonymous as @BlockTalker") { finish(username: "BlockTalker") }
+                secondaryButton("Stay as BlockTalker") { finish(username: "BlockTalker") }
             }
         }
         .padding(.horizontal, BTSpacing.xxl)
@@ -316,13 +325,15 @@ struct UsernameCreationView: View {
         .padding(.bottom, BTSpacing.lg)
     }
 
+    // Disabled state dims the lime (keeps it reading as the SAME button), never
+    // greys out — the format shouldn't change when you tap into the field.
     private func primaryButton(_ label: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
                 .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
-                .foregroundStyle(enabled ? Color.btOnAccent : Color.btText3)
+                .foregroundStyle(Color.btOnAccent.opacity(enabled ? 1 : 0.65))
                 .frame(maxWidth: .infinity).frame(height: 50)
-                .background(enabled ? Color.btLime : Color.btSurface2)
+                .background(Color.btLime.opacity(enabled ? 1 : 0.4))
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
         }
         .disabled(!enabled)
@@ -337,16 +348,6 @@ struct UsernameCreationView: View {
                 .background(Color.btSurface)
                 .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLine, lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
-        }
-    }
-
-    private func textButton(_ label: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(BTFont.bodySemibold(size: 13))
-                .foregroundStyle(Color.btText3)
-                .frame(maxWidth: .infinity)
-                .frame(height: 24)
         }
     }
 

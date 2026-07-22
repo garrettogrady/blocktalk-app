@@ -203,6 +203,7 @@ struct NeighborhoodPickerView: View {
     }
 
     private var confirmLabel: String {
+        if picked.isEmpty { return "SELECT A NEIGHBORHOOD" }
         if !dirty { return "NO CHANGE" }
         if let cta = confirmCta { return cta(picked) }
         return "MOVE TO \(picked.uppercased())"

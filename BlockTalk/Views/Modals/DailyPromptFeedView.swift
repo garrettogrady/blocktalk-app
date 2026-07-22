@@ -44,7 +44,7 @@ struct DailyPromptFeedView: View {
             .background(Color.btBg)
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top) { header }
-            .sheet(isPresented: $showCompose) { ComposeView(nycWide: true) }
+            .fullScreenCover(isPresented: $showCompose) { ComposeView(nycWide: true) }
             .sheet(isPresented: $showPreFrame) { LocationPreFrameSheet() }
         }
     }

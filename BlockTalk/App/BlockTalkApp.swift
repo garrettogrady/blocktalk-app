@@ -96,6 +96,17 @@ struct BlockTalkApp: App {
             appState.physicalNeighborhood = .les   // mock: you're home in LES
             appState.hasResolvedInitialNeighborhood = true
             appState.stage = .app
+
+            // DEMO SEED: one of your posts, removed — so the report/appeal flow is
+            // reachable from the feed (removed tombstone → Appeal → form). Delete
+            // this block to take it out of the demo.
+            localContent.add(post: Post(
+                id: UUID(), userId: BlockTalkUser.sample.id, neighborhoodId: Post.lesNeighborhoodId,
+                text: "this one got taken down. tap appeal to contest it.",
+                isDailyPrompt: false, score: 0, replyCount: 0, reportCount: 6,
+                status: .removed, createdAt: Date().addingTimeInterval(-1800),
+                author: PostAuthor(username: "BlockTalker", userNumber: 4827, home: .init(shortCode: "LES"))
+            ))
         }
     }
 }

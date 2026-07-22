@@ -623,12 +623,15 @@ struct PlacePickerSheet: View {
             onPick(nil); dismiss()
         } label: {
             HStack(spacing: BTSpacing.md) {
+                // A plain corner comment is lime (Route 2), same as its pin.
                 Image(systemName: "mappin")
-                    .font(.system(size: 15)).foregroundStyle(Color.btText2)
+                    .font(.system(size: 15)).foregroundStyle(Color.btLime)
                     .frame(width: 40, height: 40)
-                    .background(Color.btSurface).clipShape(RoundedRectangle(cornerRadius: 11))
-                Text("No business — just the pin")
-                    .font(BTFont.bodySemibold(size: 14)).foregroundStyle(Color.btText2)
+                    .background(Color.btLime.opacity(0.10))
+                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.btLime.opacity(0.22), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 11))
+                Text("No business, just the pin")
+                    .font(BTFont.bodySemibold(size: 14)).foregroundStyle(Color.btText)
                 Spacer(minLength: 0)
                 if selected == nil {
                     Image(systemName: "checkmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.btLime)
@@ -644,11 +647,12 @@ struct PlacePickerSheet: View {
             onPick(place); dismiss()
         } label: {
             HStack(spacing: BTSpacing.md) {
+                // A tagged business is house-blue (Route 2), same as its pin.
                 Image(systemName: place.symbol)
-                    .font(.system(size: 16)).foregroundStyle(Color.btLime)
+                    .font(.system(size: 16)).foregroundStyle(Color.btHouse)
                     .frame(width: 40, height: 40)
-                    .background(Color.btLime.opacity(0.10))
-                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.btLime.opacity(0.22), lineWidth: 1))
+                    .background(Color.btHouse.opacity(0.12))
+                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.btHouse.opacity(0.28), lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 11))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(place.name)
@@ -658,7 +662,7 @@ struct PlacePickerSheet: View {
                 }
                 Spacer(minLength: 0)
                 Image(systemName: selected?.name == place.name ? "checkmark" : "plus")
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.btLime)
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.btHouse)
             }
             .padding(.vertical, 8).padding(.horizontal, BTSpacing.lg)
         }

@@ -182,7 +182,7 @@ struct FeedView: View {
             .navigationDestination(for: Post.self) { post in
                 PostDetailView(post: post)
             }
-            .sheet(isPresented: $showCompose) {
+            .fullScreenCover(isPresented: $showCompose) {
                 ComposeView(postingNeighborhood: appState.viewingNeighborhood)
             }
             .task {

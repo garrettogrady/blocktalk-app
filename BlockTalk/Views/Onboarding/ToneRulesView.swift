@@ -112,8 +112,8 @@ struct HowItWorksView: View {
                 .padding(.bottom, BTSpacing.xxxl)
 
             row("mappin.and.ellipse", Color.btLime,
-                "Post where you stand.",
-                "You can only post in the neighborhood you're physically in. Real presence, authentic commentary.")
+                "Post where you are.",
+                "You can only post in the neighborhood you're physically located in. Real presence, authentic commentary.")
 
             row("eye", Color.btHouse,
                 "Read anywhere.",
