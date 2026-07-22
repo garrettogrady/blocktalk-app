@@ -326,63 +326,82 @@ struct FeedView: View {
     // MARK: - Location Row
 
     private var locationRow: some View {
-        HStack(spacing: BTSpacing.sm) {
-            Button {
-                showNeighborhoodPicker = true
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("VIEWING")
-                        .font(BTFont.mono(size: 10))
-                        .foregroundStyle(Color.btText3)
-
-                    HStack(spacing: BTSpacing.sm) {
-                        // 🏠 only when viewing == home neighborhood
-                        if isViewingHome {
-                            Image(systemName: "house.fill")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Color.btHouse)
-                        }
-
-                        Text(appState.viewingNeighborhood?.name ?? "Locating...")
-                            .font(BTFont.display(size: 18))
-                            .foregroundStyle(Color.btText)
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color.btText3)
-                    }
-
-                    // Browsing a block you're not in — clean note under the
-                    // dropdown, not a separate banner up top.
-                    if isBrowsingElsewhere, let home = appState.physicalNeighborhood {
-                        Text("browsing · you can only post in \(home.name)")
+        VStack(alignment: .leading, spacing: BTSpacing.sm) {
+            HStack(spacing: BTSpacing.sm) {
+                Button {
+                    showNeighborhoodPicker = true
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("VIEWING")
                             .font(BTFont.mono(size: 10))
-                            .foregroundStyle(Color.btHouse)
-                            .lineLimit(1)
-                            .padding(.top, 1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, BTSpacing.sm)
-            }
-            .buttonStyle(.plain)
+                            .foregroundStyle(Color.btText3)
 
-            // 38×38 within-neighborhood search
-            Button {
-                showSearch = true
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.btText2)
-                    .frame(width: 38, height: 38)
-                    .background(Color.btSurface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: BTRadius.md)
-                            .stroke(Color.btLine, lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                        HStack(spacing: BTSpacing.sm) {
+                            // 🏠 only when viewing == home neighborhood
+                            if isViewingHome {
+                                Image(systemName: "house.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Color.btHouse)
+                            }
+
+                            Text(appState.viewingNeighborhood?.name ?? "Locating...")
+                                .font(BTFont.display(size: 18))
+                                .foregroundStyle(Color.btText)
+
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.btText3)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, BTSpacing.sm)
+                }
+                .buttonStyle(.plain)
+
+                // 38×38 within-neighborhood search
+                Button {
+                    showSearch = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.btText2)
+                        .frame(width: 38, height: 38)
+                        .background(Color.btSurface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: BTRadius.md)
+                                .stroke(Color.btLine, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+
+            // Browsing a block you're not in — a distinct, tappable control that
+            // sends you back to where you can actually post.
+            if isBrowsingElsewhere, let home = appState.physicalNeighborhood {
+                Button {
+                    withAnimation { appState.viewingNeighborhood = home }
+                } label: {
+                    HStack(spacing: BTSpacing.sm) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 12, weight: .semibold))
+                        (Text("You can only post in ")
+                         + Text(home.name).font(BTFont.bodyBold(size: 12.5)))
+                            .font(BTFont.body(size: 12.5))
+                        Spacer(minLength: BTSpacing.sm)
+                        Text("Go there")
+                            .font(BTFont.bodyBold(size: 12))
+                    }
+                    .foregroundStyle(Color.btHouse)
+                    .padding(.horizontal, BTSpacing.md)
+                    .padding(.vertical, 9)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.btHouse.opacity(0.12))
+                    .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btHouse.opacity(0.4), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

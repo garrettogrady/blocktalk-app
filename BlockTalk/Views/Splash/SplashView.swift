@@ -19,38 +19,40 @@ struct SplashView: View {
         let tint: Color
         let symbol: String?
     }
-    // 6 house-blue business pins on REAL Lower East Side businesses (each a
-    // distinct type/icon, Route 2), plus 12 lime corner pins scattered around.
+    // 6 house-blue business pins on REAL, geocoded NYC businesses (each a
+    // distinct type/icon, Route 2), spread across neighborhoods. Icons derive
+    // from the category via Pin.symbol, not hardcoded per pin. Plus 12 lime
+    // corner pins. All kept OUT of the center band so nothing sits under the
+    // block.talk logo or the tagline.
     private let landingPins: [LandingPin] = [
-        // Vital — gym. Reads the same Pin.vital used by the map + feed, so the
-        // location and dumbbell icon can never drift between screens.
+        // Vital — gym, LES (kept low, below the tagline). Same Pin.vital the app uses.
         .init(coord: Pin.vital.coordinate, tint: .btHouse, symbol: Pin.vital.placeSymbol),
-        // Katz's Delicatessen — restaurant (205 E Houston St)
-        .init(coord: .init(latitude: 40.72225, longitude: -73.98748), tint: .btHouse, symbol: "fork.knife"),
-        // Tenement Museum — museum (103 Orchard St)
-        .init(coord: .init(latitude: 40.71882, longitude: -73.99009), tint: .btHouse, symbol: "building.columns.fill"),
-        // Pianos — bar (158 Ludlow St)
-        .init(coord: .init(latitude: 40.72100, longitude: -73.98780), tint: .btHouse, symbol: "wineglass.fill"),
-        // Doughnut Plant — bakery (379 Grand St)
-        .init(coord: .init(latitude: 40.71629, longitude: -73.98856), tint: .btHouse, symbol: "birthday.cake.fill"),
-        // Round K — café (99 Allen St)
-        .init(coord: .init(latitude: 40.71820, longitude: -73.99060), tint: .btHouse, symbol: "cup.and.saucer.fill"),
+        // Doughnut Plant — bakery, LES (kept low). 379 Grand St.
+        .init(coord: .init(latitude: 40.71629, longitude: -73.98856), tint: .btHouse, symbol: Pin.symbol(forCategory: "bakery")),
+        // Veselka — restaurant, East Village. 144 Second Ave.
+        .init(coord: .init(latitude: 40.72898, longitude: -73.98700), tint: .btHouse, symbol: Pin.symbol(forCategory: "restaurant")),
+        // McSorley's — bar, East Village. 15 E 7th St.
+        .init(coord: .init(latitude: 40.72876, longitude: -73.98970), tint: .btHouse, symbol: Pin.symbol(forCategory: "bar")),
+        // Caffe Reggio — café, Greenwich Village. 119 MacDougal St.
+        .init(coord: .init(latitude: 40.73032, longitude: -74.00036), tint: .btHouse, symbol: Pin.symbol(forCategory: "cafe")),
+        // Merchant's House Museum — museum, NoHo. 29 E 4th St.
+        .init(coord: .init(latitude: 40.72766, longitude: -73.99234), tint: .btHouse, symbol: Pin.symbol(forCategory: "museum")),
 
-        // 12 corner/street comments scattered across the WHOLE visible map —
-        // west (Village/SoHo), north (NoHo/EV), and south (Chinatown), not just
-        // the LES cluster, so the page feels alive everywhere.
-        .init(coord: .init(latitude: 40.72800, longitude: -73.99950), tint: .btLime, symbol: nil), // West Village
-        .init(coord: .init(latitude: 40.72480, longitude: -73.99750), tint: .btLime, symbol: nil), // Village
-        .init(coord: .init(latitude: 40.72250, longitude: -73.99980), tint: .btLime, symbol: nil), // SoHo
-        .init(coord: .init(latitude: 40.71950, longitude: -73.99850), tint: .btLime, symbol: nil), // SoHo / LES west
-        .init(coord: .init(latitude: 40.72880, longitude: -73.99000), tint: .btLime, symbol: nil), // NoHo
-        .init(coord: .init(latitude: 40.72950, longitude: -73.98380), tint: .btLime, symbol: nil), // East Village
-        .init(coord: .init(latitude: 40.72580, longitude: -73.98600), tint: .btLime, symbol: nil), // East Village
-        .init(coord: .init(latitude: 40.72120, longitude: -73.98900), tint: .btLime, symbol: nil), // Nolita / LES
-        .init(coord: .init(latitude: 40.71820, longitude: -73.98320), tint: .btLime, symbol: nil), // LES east
-        .init(coord: .init(latitude: 40.71520, longitude: -73.99450), tint: .btLime, symbol: nil), // Chinatown
-        .init(coord: .init(latitude: 40.71380, longitude: -73.99900), tint: .btLime, symbol: nil), // Tribeca / Chinatown
-        .init(coord: .init(latitude: 40.71680, longitude: -73.98780), tint: .btLime, symbol: nil), // LES south
+        // 12 corner/street comments — scattered top (EV/Village, lat > 40.723)
+        // and bottom (Chinatown/LES, lat < 40.716), never in the 40.717–40.722
+        // band where the logo + tagline sit.
+        .init(coord: .init(latitude: 40.73150, longitude: -73.98850), tint: .btLime, symbol: nil), // Gramercy edge
+        .init(coord: .init(latitude: 40.73000, longitude: -73.99550), tint: .btLime, symbol: nil), // Village
+        .init(coord: .init(latitude: 40.72680, longitude: -73.98520), tint: .btLime, symbol: nil), // East Village
+        .init(coord: .init(latitude: 40.72460, longitude: -73.99780), tint: .btLime, symbol: nil), // NoHo / Village
+        .init(coord: .init(latitude: 40.72420, longitude: -73.99080), tint: .btLime, symbol: nil), // Bowery / NoHo
+        .init(coord: .init(latitude: 40.72560, longitude: -73.98320), tint: .btLime, symbol: nil), // East Village east
+        .init(coord: .init(latitude: 40.71540, longitude: -73.99450), tint: .btLime, symbol: nil), // Chinatown
+        .init(coord: .init(latitude: 40.71350, longitude: -73.99920), tint: .btLime, symbol: nil), // Tribeca / Chinatown
+        .init(coord: .init(latitude: 40.71580, longitude: -73.98220), tint: .btLime, symbol: nil), // LES east
+        .init(coord: .init(latitude: 40.71220, longitude: -73.99000), tint: .btLime, symbol: nil), // Two Bridges
+        .init(coord: .init(latitude: 40.71430, longitude: -73.98720), tint: .btLime, symbol: nil), // LES south
+        .init(coord: .init(latitude: 40.71600, longitude: -73.99760), tint: .btLime, symbol: nil), // Chinatown west
     ]
 
     var body: some View {

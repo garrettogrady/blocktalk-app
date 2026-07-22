@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Shared onboarding chrome
 
@@ -218,6 +219,7 @@ struct UsernameCreationView: View {
                 .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)   // never truncate when the field opens
         }
     }
 
@@ -349,6 +351,9 @@ struct UsernameCreationView: View {
     }
 
     private func finish(username: String) {
+        // Drop the keyboard immediately so it doesn't linger over the feed.
+        fieldFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         if appState.currentUser == nil { appState.currentUser = .sample }
         appState.currentUser?.username = username
         if let hood = appState.onboardingNeighborhood {
