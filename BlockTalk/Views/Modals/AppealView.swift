@@ -23,6 +23,13 @@ struct AppealView: View {
         return trimmed.count >= minLength && appealText.count <= maxLength && !isSubmitting
     }
 
+    /// Started typing but not yet at the minimum — drives the helper text in the
+    /// bottom bar (which swaps to the SLA note otherwise).
+    private var needsMore: Bool {
+        let trimmed = appealText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !appealText.isEmpty && trimmed.count < minLength
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -95,61 +102,66 @@ struct AppealView: View {
                     .foregroundStyle(Color.btText)
                     .scrollContentBackground(.hidden)
                     .padding(BTSpacing.md)
-                    .frame(minHeight: 120)
+                    .frame(minHeight: 100)
                     .background(Color.btSurface)
                     .cornerRadius(BTRadius.md)
                     .overlay(
                         RoundedRectangle(cornerRadius: BTRadius.md)
                             .stroke(Color.btLine, lineWidth: 1)
                     )
-
-                HStack {
-                    if appealText.count < minLength && !appealText.isEmpty {
-                        Text("At least \(minLength) characters")
-                            .font(BTFont.body(size: 12))
-                            .foregroundStyle(Color.btText3)
-                    }
-                    Spacer()
-                    Text("\(appealText.count)/\(maxLength)")
-                        .font(BTFont.mono(size: 11))
-                        .foregroundStyle(
-                            appealText.count > maxLength ? Color.btPink : Color.btText3
-                        )
-                }
             }
-
-            // 48h SLA message
-            HStack(spacing: BTSpacing.sm) {
-                Image(systemName: "clock")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.btText3)
-                Text("Appeals are reviewed within 48 hours.")
-                    .font(BTFont.body(size: 13))
-                    .foregroundStyle(Color.btText3)
-            }
+            // The character count + 48h SLA note live in the bottom bar (submitBar)
+            // so they stay visible above the keyboard while typing.
         }
     }
 
     // MARK: - Submit bar (bottom-anchored)
 
     private var submitBar: some View {
-        Button {
-            submit()
-        } label: {
-            HStack {
-                if isSubmitting {
-                    ProgressView().tint(Color.btBg)
+        VStack(spacing: BTSpacing.sm) {
+            // Count + SLA note sit here (not in the scroll body) so they stay
+            // visible right above the keyboard while the user types.
+            HStack(spacing: BTSpacing.sm) {
+                if needsMore {
+                    Text("At least \(minLength) characters")
+                        .font(BTFont.body(size: 12))
+                        .foregroundStyle(Color.btWarn)
+                } else {
+                    HStack(spacing: 5) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.btText3)
+                        Text("Appeals reviewed within 48 hours")
+                            .font(BTFont.body(size: 12))
+                            .foregroundStyle(Color.btText3)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
                 }
-                Text("Submit Appeal")
-                    .font(BTFont.bodySemibold(size: 16))
+                Spacer()
+                Text("\(appealText.count)/\(maxLength)")
+                    .font(BTFont.mono(size: 11))
+                    .foregroundStyle(appealText.count > maxLength ? Color.btPink : Color.btText3)
             }
-            .foregroundStyle(Color.btBg)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, BTSpacing.lg)
-            .background(canSubmit ? Color.btLime : Color.btMuted)
-            .cornerRadius(BTRadius.md)
+
+            Button {
+                submit()
+            } label: {
+                HStack {
+                    if isSubmitting {
+                        ProgressView().tint(Color.btBg)
+                    }
+                    Text("Submit Appeal")
+                        .font(BTFont.bodySemibold(size: 16))
+                }
+                .foregroundStyle(Color.btBg)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, BTSpacing.lg)
+                .background(canSubmit ? Color.btLime : Color.btMuted)
+                .cornerRadius(BTRadius.md)
+            }
+            .disabled(!canSubmit)
         }
-        .disabled(!canSubmit)
         .padding(.horizontal, BTSpacing.xxl)
         .padding(.vertical, BTSpacing.md)
         .frame(maxWidth: .infinity)
