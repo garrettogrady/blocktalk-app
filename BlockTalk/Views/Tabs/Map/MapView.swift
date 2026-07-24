@@ -70,19 +70,11 @@ struct MapTabView: View {
                     }
                 }
 
-                // Lime label follows the highlighted neighborhood (selected if the
-                // user tapped one, otherwise the one they're in). Every other name
-                // comes from the base map — rendering our own duplicated them.
-                ForEach(polygons.filter { $0.name == (selectedNeighborhood ?? activeNeighborhoodName) }) { polygon in
-                    Annotation("", coordinate: polygon.center) {
-                        Text(polygon.name.uppercased())
-                            .font(BTFont.display(size: 12))
-                            .tracking(1.1)
-                            .foregroundStyle(Color.btLime)
-                            .shadow(color: .black.opacity(0.85), radius: 3, x: 0, y: 0)
-                            .fixedSize()
-                    }
-                }
+                // Neighborhood names come from the base map only — we no longer
+                // draw our own lime label over the highlighted one (it showed
+                // inconsistently vs the base-map labels). The highlighted polygon
+                // is still marked by its lime outline/fill, and the bottom card
+                // names the tapped neighborhood.
 
                 // Pin annotations (bundled samples + anything created this session)
                 ForEach(viewModel.pins + localContent.pins) { pin in
@@ -173,10 +165,6 @@ struct MapTabView: View {
                                 Text("You're in \(hereShortCode)")
                                     .font(BTFont.bodySemibold(size: 12))
                                     .foregroundStyle(Color.btText)
-                                Text("·").foregroundStyle(Color.btText3)
-                                Text(viewModel.formatRadius())
-                                    .font(BTFont.monoBold(size: 11))
-                                    .foregroundStyle(Color.btLime)
                             } else {
                                 Image(systemName: "location.slash.fill")
                                     .font(.system(size: 10))
@@ -191,14 +179,19 @@ struct MapTabView: View {
                         .background(Color.btSurface.opacity(0.95))
                         .clipShape(Capsule())
 
-                        // Hint pill — centered, below
-                        Text("tap a neighborhood to select it")
-                            .font(BTFont.body(size: 11))
-                            .foregroundStyle(Color.btText2)
-                            .padding(.horizontal, BTSpacing.md)
-                            .padding(.vertical, BTSpacing.xs)
-                            .background(Color.btSurface.opacity(0.9))
-                            .clipShape(Capsule())
+                        // Contextual hint — only while nothing's selected. The
+                        // moment you tap a neighborhood, the bottom card takes over
+                        // and this gets out of the way.
+                        if selectedNeighborhood == nil {
+                            Text("Tap a neighborhood to view its feed")
+                                .font(BTFont.body(size: 11))
+                                .foregroundStyle(Color.btText2)
+                                .padding(.horizontal, BTSpacing.md)
+                                .padding(.vertical, BTSpacing.xs)
+                                .background(Color.btSurface.opacity(0.9))
+                                .clipShape(Capsule())
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, BTSpacing.sm)
@@ -264,10 +257,15 @@ struct MapTabView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if locationService.permissionState == .granted {
                         Button {
-                            // Recenter to your postable zone so the reticle starts
+                            // Start the drop reticle on your current location — the
+                            // most useful starting point, and it keeps the pin
                             // in-range even if you'd panned off to browse elsewhere.
                             selectedNeighborhood = nil
-                            focus(on: activeNeighborhoodName)
+                            if let here = locationService.currentLocation {
+                                centerReticle(on: here)
+                            } else {
+                                focus(on: activeNeighborhoodName)
+                            }
                             viewModel.enterDropMode()
                         } label: {
                             HStack(spacing: BTSpacing.sm) {
@@ -363,7 +361,11 @@ struct MapTabView: View {
     /// Enter drop mode in response to the compose → "drop a pin" hand-off.
     private func enterDropFromCompose() {
         selectedNeighborhood = nil
-        focus(on: activeNeighborhoodName)
+        if let here = locationService.currentLocation {
+            centerReticle(on: here)
+        } else {
+            focus(on: activeNeighborhoodName)
+        }
         viewModel.enterDropMode()
         appState.pendingPinPlacement = false
     }
@@ -578,6 +580,22 @@ struct MapTabView: View {
                 latitudeDelta: max((maxLat - minLat) * 1.5, 0.012),
                 longitudeDelta: max((maxLng - minLng) * 1.5, 0.010)
             )
+        )
+        withAnimation(.easeInOut(duration: 0.45)) {
+            cameraPosition = .region(region)
+        }
+    }
+
+    /// Center the drop reticle on a coordinate. The reticle sits at 42% screen
+    /// height (see reticlePoint), so bias the region center south by that fraction
+    /// of the span — the coordinate lands right under the ring when drop mode opens.
+    private func centerReticle(on coord: CLLocationCoordinate2D) {
+        let latDelta = 0.006
+        let lngDelta = 0.005
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: coord.latitude - latDelta * 0.08,
+                                           longitude: coord.longitude),
+            span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: lngDelta)
         )
         withAnimation(.easeInOut(duration: 0.45)) {
             cameraPosition = .region(region)

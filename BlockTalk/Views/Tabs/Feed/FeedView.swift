@@ -11,6 +11,10 @@ struct FeedView: View {
     @State private var showNeighborhoodPicker = false
     @State private var showPreFrame = false
     @State private var showSearch = false
+    /// Dismiss state for the "you can only post in X" browsing note. Once waved
+    /// off it's gone for good (persisted) — the bottom "browsing only" bar still
+    /// carries the state + the way back. Matches the one-time map tip.
+    @AppStorage("hasDismissedBrowseNote") private var browsingNoteDismissed = false
     /// One-time nudge toward the map — the sexiest feature, otherwise buried in
     /// tab 2. Dismissible so it never becomes permanent chrome.
     @AppStorage("hasSeenMapTip") private var hasSeenMapTip = false
@@ -385,22 +389,33 @@ struct FeedView: View {
 
             // Browsing a block you're not in — a distinct, tappable control that
             // sends you back to where you can actually post.
-            if isBrowsingElsewhere, let here = appState.physicalNeighborhood {
+            if isBrowsingElsewhere, !browsingNoteDismissed, let here = appState.physicalNeighborhood {
                 Button {
                     withAnimation { appState.viewingNeighborhood = here }
                 } label: {
                     HStack(spacing: BTSpacing.sm) {
-                        Image(systemName: "arrow.uturn.backward")
-                            .font(.system(size: 12, weight: .semibold))
                         (Text("You can only post in ")
                          + Text(here.name).font(BTFont.bodyBold(size: 12.5))
                          + Text(", where you actually are"))
                             .font(BTFont.body(size: 12.5))
+                            .foregroundStyle(Color.btHouse)
                         Spacer(minLength: BTSpacing.sm)
-                        Text("Go there")
-                            .font(BTFont.bodyBold(size: 12))
+                        // Open-arrow affordance, tinted to match the rest of the bar
+                        Text("Go there →")
+                            .font(BTFont.bodySemibold(size: 12))
+                            .foregroundStyle(Color.btHouse)
+                        // Dismiss — the bottom "browsing only" bar still carries the
+                        // state + the way back, so this nudge can be waved off.
+                        Button {
+                            withAnimation { browsingNoteDismissed = true }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Color.btHouse.opacity(0.7))
+                                .frame(width: 22, height: 22)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .foregroundStyle(Color.btHouse)
                     .padding(.horizontal, BTSpacing.md)
                     .padding(.vertical, 9)
                     .frame(maxWidth: .infinity)
