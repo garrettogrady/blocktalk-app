@@ -16,7 +16,9 @@ struct PostCard: View {
     @Environment(AppState.self) private var appState
     @Environment(ModerationStore.self) private var moderation
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(NotificationStore.self) private var notifications
     @State private var showReport = false
+    @State private var showAppeal = false
     @State private var enrolled = false
     @State private var toastMessage = ""
     @State private var toastIcon = "bell.fill"
@@ -34,6 +36,18 @@ struct PostCard: View {
 
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }
 
+    /// Route 2 color coding: a street comment tagged to a business is house-blue
+    /// ("a place"); a plain corner comment stays lime.
+    private var isBusinessTagged: Bool { streetPin?.placeName != nil }
+    private var tagColor: Color { isBusinessTagged ? Color.btHouse : Color.btLime }
+
+    /// Your own posts can't be reported. Matches by author id, and also treats
+    /// anything you created this session (in the local store) as yours.
+    private var isOwnPost: Bool {
+        if let uid = appState.currentUser?.id, uid == post.userId { return true }
+        return localContent.posts.contains { $0.id == post.id }
+    }
+
     /// Lime location pill overlaid on a street comment's photo (bottom-left).
     /// Prefers a tagged business name over the raw corner.
     @ViewBuilder private var photoPinChip: some View {
@@ -47,7 +61,7 @@ struct PostCard: View {
             .foregroundStyle(Color.btBg)
             .padding(.horizontal, BTSpacing.sm)
             .padding(.vertical, 5)
-            .background(Color.btLime)
+            .background(tagColor)
             .clipShape(Capsule())
             .padding(BTSpacing.sm)
         }
@@ -60,27 +74,50 @@ struct PostCard: View {
             Image(systemName: symbol).font(.system(size: 9))
             Text(name).font(BTFont.monoBold(size: 10)).lineLimit(1)
         }
-        .foregroundStyle(Color.btLime)
+        .foregroundStyle(Color.btHouse)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background(Color.btLime.opacity(0.10))
-        .overlay(Capsule().stroke(Color.btLime.opacity(0.28), lineWidth: 1))
+        .background(Color.btHouse.opacity(0.12))
+        .overlay(Capsule().stroke(Color.btHouse.opacity(0.32), lineWidth: 1))
         .clipShape(Capsule())
     }
 
     var body: some View {
-        // Reporter-side hide: a post you reported collapses to a tombstone
-        if !isPreview && moderation.isHidden(post.id) {
-            Tombstone(
-                variant: .reporter,
-                reasonShort: moderation.reasonShort(post.id),
-                bodyText: post.text,
-                onShowAnyway: { moderation.toggleShowAnyway(post.id) }
-            )
-            .padding(.horizontal, BTSpacing.lg)
-            .padding(.vertical, BTSpacing.sm)
-        } else {
-            cardContent
+        Group {
+            // Reporter-side hide: a post you reported collapses to a tombstone
+            if !isPreview && moderation.isHidden(post.id) {
+                Tombstone(
+                    variant: .reporter,
+                    reasonShort: moderation.reasonShort(post.id),
+                    bodyText: post.text,
+                    onShowAnyway: { moderation.toggleShowAnyway(post.id) }
+                )
+                .padding(.horizontal, BTSpacing.lg)
+                .padding(.vertical, BTSpacing.sm)
+            } else if !isPreview && post.status == .removed {
+                // Your post was removed — appeal it (once).
+                Tombstone(variant: .removed, reasonShort: "harassment",
+                          bodyText: post.text, appealed: moderation.hasAppealed(post.id),
+                          onAppeal: { if !moderation.hasAppealed(post.id) { showAppeal = true } })
+                    .padding(.horizontal, BTSpacing.lg)
+                    .padding(.vertical, BTSpacing.sm)
+            } else if !isPreview && post.status == .underReview {
+                Tombstone(variant: .underReview, bodyText: post.text)
+                    .padding(.horizontal, BTSpacing.lg)
+                    .padding(.vertical, BTSpacing.sm)
+            } else {
+                cardContent
+            }
+        }
+        .sheet(isPresented: $showAppeal) {
+            AppealView(removedPostText: post.text, violationReason: "Harassment",
+                       alreadyAppealed: moderation.hasAppealed(post.id),
+                       onSubmitted: {
+                           moderation.markAppealed(post.id)
+                           notifications.add(kind: "moderation", title: "Appeal submitted",
+                                             preview: "We got your appeal. A human will review within 48 hours.",
+                                             relatedPostId: post.id)
+                       })
         }
     }
 
@@ -99,9 +136,20 @@ struct PostCard: View {
                     span: MKCoordinateSpan(latitudeDelta: 0.0022, longitudeDelta: 0.0019)
                 )), interactionModes: []) {
                     Annotation("", coordinate: pin.coordinate) {
+                        // Business-tagged pins carry their category glyph (dumbbell,
+                        // fork, cup…) so the map reads by type — matches the map tab.
                         ZStack {
-                            Circle().fill(Color.btLime.opacity(0.25)).frame(width: 18, height: 18)
-                            Circle().fill(Color.btLime).frame(width: 9, height: 9)
+                            Circle().fill(tagColor.opacity(0.25))
+                                .frame(width: isBusinessTagged ? 30 : 18, height: isBusinessTagged ? 30 : 18)
+                            Circle().fill(tagColor)
+                                .frame(width: isBusinessTagged ? 20 : 9, height: isBusinessTagged ? 20 : 9)
+                                .overlay {
+                                    if isBusinessTagged, let sym = streetPin?.placeSymbol {
+                                        Image(systemName: sym)
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(Color.btBg)
+                                    }
+                                }
                                 .overlay(Circle().stroke(Color.btBg, lineWidth: 1.5))
                         }
                     }
@@ -176,6 +224,9 @@ struct PostCard: View {
             ReportModalView(postId: post.id) { short in
                 moderation.report(postId: post.id, reasonShort: short)
                 showToast("reported for \(short) · we'll review", icon: "flag.fill")
+                notifications.add(kind: "moderation", title: "Report received",
+                                  preview: "Thanks — we're reviewing this post for \(short).",
+                                  relatedPostId: post.id)
             }
         }
     }
@@ -242,8 +293,8 @@ struct PostCard: View {
                 ShareHelper.sharePost(post)
             }
 
-            // Flag (hidden on own posts; filled+pink once reported)
-            if appState.currentUser?.id != post.userId {
+            // Flag (hidden on your own posts — you can't report yourself; filled+pink once reported)
+            if !isOwnPost {
                 if moderation.isReported(post.id) {
                     actionButton(systemName: "flag.fill", active: true, activeColor: .btPink) {}
                 } else {
@@ -284,8 +335,8 @@ struct PostCard: View {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         enrolled.toggle()
         showToast(
-            enrolled ? "you're in — we'll ping you when something moves"
-                     : "you're out — we'll leave this one alone",
+            enrolled ? "Notifications on. We'll let you know about new replies."
+                     : "Notifications off for this post.",
             icon: enrolled ? "bell.fill" : "bell.slash"
         )
     }

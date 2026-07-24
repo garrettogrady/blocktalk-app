@@ -4,8 +4,10 @@ import Supabase
 
 enum AppStage {
     case splash
-    case profile
+    case how
     case tone
+    case profile     // step 1: home neighborhood
+    case username    // step 2: username (forced choice)
     case app
 }
 
@@ -44,6 +46,15 @@ final class AppState {
     /// returning-user skip) so "Replay onboarding" can show the full flow.
     var forceOnboarding = false
 
+    /// The neighborhood picked on onboarding step 1, carried to step 2 (username)
+    /// so the final profile can be assembled once both are chosen.
+    var onboardingNeighborhood: Neighborhood?
+
+    /// A post opened via a shared link (blocktalk://p/<id>). When set, it's
+    /// presented full-screen over whatever's on screen — so a recipient reads
+    /// the post that hooked them before (or instead of) onboarding.
+    var deepLinkedPost: Post?
+
     func advanceTo(_ stage: AppStage) {
         withAnimation {
             self.stage = stage
@@ -73,10 +84,15 @@ final class ModerationStore {
     private(set) var reportedReasons: [UUID: String] = [:]
     /// posts the reporter chose to reveal despite reporting
     private(set) var shownAnyway: Set<UUID> = []
+    /// posts whose removal the user has already appealed (one appeal per post)
+    private(set) var appealedPostIds: Set<UUID> = []
 
     func report(postId: UUID, reasonShort: String) {
         reportedReasons[postId] = reasonShort
     }
+
+    func markAppealed(_ postId: UUID) { appealedPostIds.insert(postId) }
+    func hasAppealed(_ postId: UUID) -> Bool { appealedPostIds.contains(postId) }
 
     func toggleShowAnyway(_ postId: UUID) {
         if shownAnyway.contains(postId) {
@@ -90,6 +106,26 @@ final class ModerationStore {
     func reasonShort(_ postId: UUID) -> String? { reportedReasons[postId] }
     /// Hidden = reported and not currently revealed
     func isHidden(_ postId: UUID) -> Bool { isReported(postId) && !shownAnyway.contains(postId) }
+}
+
+/// Session-scoped notifications. Seeded with the bundled samples; report and
+/// appeal actions push new ones so they show in the bell + tab badge.
+@Observable
+final class NotificationStore {
+    private(set) var items: [BTNotification] = BTNotification.samples
+
+    var unreadCount: Int { items.filter(\.unread).count }
+
+    func add(kind: String, title: String, preview: String? = nil, relatedPostId: UUID? = nil) {
+        let note = BTNotification(id: UUID(), userId: UUID(), kind: kind, title: title,
+                                  preview: preview, unread: true,
+                                  relatedPostId: relatedPostId, createdAt: Date())
+        items.insert(note, at: 0)
+    }
+
+    func markAllRead() {
+        for i in items.indices { items[i].unread = false }
+    }
 }
 
 /// Session-scoped offline queue (mock mechanics). Posts made offline queue
@@ -186,6 +222,7 @@ final class LocalContentStore {
 
     func pin(id: UUID) -> Pin? { pins.first { $0.id == id } }
     func post(forPinId pinId: UUID) -> Post? { posts.first { $0.pinId == pinId } }
+    func post(id: UUID) -> Post? { posts.first { $0.id == id } }
 
     func reset() {
         posts = []

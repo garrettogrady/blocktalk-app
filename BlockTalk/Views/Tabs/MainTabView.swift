@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(AppState.self) private var appState
+    @Environment(NotificationStore.self) private var notifications
 
     var body: some View {
         @Bindable var appState = appState
@@ -21,7 +22,7 @@ struct MainTabView: View {
             Tab("You", systemImage: "person.fill", value: 3) {
                 YouView()
             }
-            .badge(BTNotification.unreadCount)
+            .badge(notifications.unreadCount)
         }
         .tint(Color.btLime)
         .toolbarBackground(Color.btBg, for: .tabBar)

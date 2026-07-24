@@ -7,6 +7,7 @@ struct BlockTalkApp: App {
     @State private var moderation = ModerationStore()
     @State private var offline = OfflineStore()
     @State private var localContent = LocalContentStore()
+    @State private var notifications = NotificationStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -15,10 +16,14 @@ struct BlockTalkApp: App {
                 switch appState.stage {
                 case .splash:
                     SplashView()
-                case .profile:
-                    ProfileCreationView()
+                case .how:
+                    HowItWorksView()
                 case .tone:
                     ToneRulesView()
+                case .profile:
+                    ProfileCreationView()
+                case .username:
+                    UsernameCreationView()
                 case .app:
                     MainTabView()
                 }
@@ -28,7 +33,23 @@ struct BlockTalkApp: App {
             .environment(moderation)
             .environment(offline)
             .environment(localContent)
+            .environment(notifications)
             .preferredColorScheme(.dark)
+            // A shared post opens full-screen over everything — read first, then
+            // join. This is the highest-intent arrival, so content leads.
+            .fullScreenCover(item: Binding(
+                get: { appState.deepLinkedPost },
+                set: { appState.deepLinkedPost = $0 }
+            )) { post in
+                SharedPostView(post: post)
+                    .environment(appState)
+                    .environment(locationService)
+                    .environment(moderation)
+                    .environment(offline)
+                    .environment(localContent)
+                    .preferredColorScheme(.dark)
+            }
+            .onOpenURL { url in handleDeepLink(url) }
             .task {
                 bootstrapMock()
             }
@@ -48,6 +69,26 @@ struct BlockTalkApp: App {
         }
     }
 
+    /// Route an incoming link to the post it points at. Handles both the custom
+    /// scheme (blocktalk://p/<id>) and the shareable https form
+    /// (https://blocktalk.nyc/p/<id>) — same path shape, so one parser covers both.
+    /// [PROD: the https form needs an apple-app-site-association file hosted on
+    /// blocktalk.nyc to open from Messages; the custom scheme works today.]
+    private func handleDeepLink(_ url: URL) {
+        let segments = url.pathComponents.filter { $0 != "/" }
+        let idString: String?
+        if url.host == "p" {                                   // blocktalk://p/<id>
+            idString = segments.first
+        } else if let i = segments.firstIndex(of: "p"), i + 1 < segments.count {
+            idString = segments[i + 1]                          // .../p/<id>
+        } else {
+            idString = segments.last
+        }
+        guard let idString, let id = UUID(uuidString: idString),
+              let post = Post.find(id: id) ?? localContent.post(id: id) else { return }
+        appState.deepLinkedPost = post
+    }
+
     /// Bundled-mock boot: no auth/backend — drop straight into a populated app
     /// with the sample user + LES. (Onboarding is still reachable via Sign Out.)
     private func bootstrapMock() {
@@ -57,6 +98,18 @@ struct BlockTalkApp: App {
             appState.physicalNeighborhood = .les   // mock: you're home in LES
             appState.hasResolvedInitialNeighborhood = true
             appState.stage = .app
+
+            // DEMO SEED: a real-looking post of yours that got removed, so the
+            // report/appeal flow is reachable from the feed (removed tombstone →
+            // Appeal → form, showing this exact text). Delete this block to remove
+            // it from the demo.
+            localContent.add(post: Post(
+                id: UUID(), userId: BlockTalkUser.sample.id, neighborhoodId: Post.lesNeighborhoodId,
+                text: "whoever keeps leaving their dog's mess outside 88 Orchard, I know exactly who you are and so does everyone on this block.",
+                isDailyPrompt: false, score: 14, replyCount: 3, reportCount: 6,
+                status: .removed, createdAt: Date().addingTimeInterval(-1800),
+                author: PostAuthor(username: "BlockTalker", userNumber: 4827, home: .init(shortCode: "LES"))
+            ))
         }
     }
 }

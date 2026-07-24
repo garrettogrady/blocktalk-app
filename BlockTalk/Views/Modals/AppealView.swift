@@ -6,6 +6,9 @@ struct AppealView: View {
     /// True when reopening a post that was already appealed — shows the locked
     /// "Already submitted. Only one appeal per post." success variant.
     var alreadyAppealed: Bool = false
+    /// Fired once the appeal is actually submitted (not on cancel), so the caller
+    /// can lock further appeals and post a notification.
+    var onSubmitted: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var appealText = ""
@@ -206,6 +209,7 @@ struct AppealView: View {
             try? await Task.sleep(for: .seconds(1))
             isSubmitting = false
             showSuccess = true
+            onSubmitted?()
         }
     }
 }

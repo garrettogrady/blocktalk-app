@@ -211,3 +211,86 @@ struct PostDetailView: View {
     }
     .preferredColorScheme(.dark)
 }
+
+// MARK: - Shared post (deep-link landing)
+
+/// The read-first screen a recipient sees when they open a shared blocktalk
+/// link. The post leads — the pitch and the join come after they've read it.
+struct SharedPostView: View {
+    let post: Post
+    @Environment(AppState.self) private var appState
+
+    private var isOnboarded: Bool { appState.stage == .app }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Wordmark + close
+            HStack {
+                HStack(spacing: 0) {
+                    Text("block").foregroundStyle(Color.btText)
+                    Text(".").foregroundStyle(Color.btLime)
+                    Text("talk").foregroundStyle(Color.btText)
+                }
+                .font(BTFont.display(size: 22))
+                .tracking(-1)
+
+                Spacer()
+
+                Button { appState.deepLinkedPost = nil } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.btText2)
+                        .frame(width: 34, height: 34)
+                        .background(Color.btSurface)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.vertical, BTSpacing.md)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: BTSpacing.md) {
+                    Text("SHARED WITH YOU")
+                        .font(BTFont.monoBold(size: 10)).tracking(2)
+                        .foregroundStyle(Color.btText3)
+                        .padding(.horizontal, BTSpacing.lg)
+                        .padding(.top, BTSpacing.xs)
+
+                    PostCard(post: post)
+
+                    if post.replyCount > 0 {
+                        (Text("\(post.replyCount) ").font(BTFont.monoBold(size: 13)).foregroundColor(.btText)
+                         + Text("people replied on this block.").font(BTFont.body(size: 13)).foregroundColor(.btText2))
+                            .padding(.horizontal, BTSpacing.lg)
+                    }
+                }
+                .padding(.bottom, BTSpacing.xl)
+            }
+
+            // Join / open
+            VStack(spacing: BTSpacing.sm) {
+                Button { appState.deepLinkedPost = nil } label: {
+                    Text(isOnboarded ? "Open in blocktalk" : "Join blocktalk to reply")
+                        .font(BTFont.bodyBold(size: 14)).tracking(0.4)
+                        .foregroundStyle(Color.btOnAccent)
+                        .frame(maxWidth: .infinity).frame(height: 50)
+                        .background(Color.btLime)
+                        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+                }
+                .buttonStyle(.plain)
+
+                Text("post where you stand · read anywhere · anonymous")
+                    .font(BTFont.body(size: 11))
+                    .foregroundStyle(Color.btText3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.top, BTSpacing.md)
+            .padding(.bottom, BTSpacing.lg)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.btBg.ignoresSafeArea())
+    }
+}

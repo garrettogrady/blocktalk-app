@@ -1,59 +1,71 @@
 import SwiftUI
+import UIKit
+
+/// Copy shared between onboarding and Settings so the username rules never
+/// contradict each other.
+enum ProfileCopy {
+    static let usernameGuide = "BlockTalk is anonymous. Don't use your real name, or anything that points back to you. You can only set a username once, and it can't be changed."
+    static let locationRule = "You post wherever you're physically located."
+}
+
+// MARK: - Shared onboarding chrome
+
+/// Progress bar used by both profile steps (fill = current/total).
+private func onboardingStepBar(_ current: Int, _ total: Int) -> some View {
+    HStack(spacing: BTSpacing.sm) {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2).fill(Color.btSurface2).frame(height: 3)
+                RoundedRectangle(cornerRadius: 2).fill(Color.btLime)
+                    .frame(width: geo.size.width * CGFloat(current) / CGFloat(total), height: 3)
+            }
+        }
+        .frame(height: 3)
+        Text(String(format: "%02d / %02d", current, total))
+            .font(BTFont.mono(size: 10)).foregroundStyle(Color.btText3).tracking(1).fixedSize()
+    }
+    .padding(.top, BTSpacing.sm)
+    .padding(.horizontal, BTSpacing.xxl)
+}
+
+private func onboardingFieldLabel(_ text: String, tag: String, tagColor: Color) -> some View {
+    HStack(spacing: 7) {
+        Text(text)
+            .font(BTFont.bodyBold(size: 13)).foregroundStyle(Color.btText).tracking(1.4)
+        Text(tag)
+            .font(BTFont.monoBold(size: 9.5)).tracking(0.9).foregroundStyle(tagColor)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(tagColor.opacity(0.18)).clipShape(Capsule())
+    }
+}
+
+private let onboardingUserNumber = "4,827"
+
+// MARK: - Step 1: Home neighborhood
 
 struct ProfileCreationView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = ProfileViewModel()
     @State private var showNeighborhoodPicker = false
-    @FocusState private var usernameFieldFocused: Bool
 
-    private let userNumber = "4,827"
-    // Universally-NYC + neighborhood-agnostic so it reads true on any block.
-    private let examplePost = "the bodega cat has seen everything and will tell you nothing."
-
-    /// The name shown in the preview + CTA — falls back to the default when blank.
-    private var displayName: String {
-        let v = viewModel.username.trimmingCharacters(in: .whitespaces)
-        return v.isEmpty ? "BlockTalker" : v
-    }
-    private var isDefaultName: Bool {
-        displayName.caseInsensitiveCompare("BlockTalker") == .orderedSame
-    }
-
-    private enum CTAState { case fixUsername, pickNeighborhood, ready }
-    private var ctaState: CTAState {
-        if isErrorState { return .fixUsername }
-        if viewModel.selectedNeighborhood == nil { return .pickNeighborhood }
-        return .ready
-    }
-    private var ctaLabel: String {
-        switch ctaState {
-        case .fixUsername:      return "Continue"
-        case .pickNeighborhood: return "Pick your neighborhood"
-        case .ready:            return isDefaultName ? "Continue as BlockTalker" : "Continue as @\(displayName)"
-        }
-    }
+    private var hasNeighborhood: Bool { viewModel.selectedNeighborhood != nil }
 
     var body: some View {
         VStack(spacing: 0) {
-            stepBar
+            onboardingStepBar(2, 3)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: BTSpacing.xl) {
-                    heading
-                    neighborhoodSection   // required — the anchor
-                    usernameSection       // optional — secondary
-                    previewCard           // "this is all anyone sees" — the result
-                    Spacer(minLength: BTSpacing.sm)
-                }
-                .padding(.horizontal, BTSpacing.xxl)
-                .padding(.top, BTSpacing.lg)
+            VStack(alignment: .leading, spacing: BTSpacing.xl) {
+                heading
+                neighborhoodSection
             }
-            .scrollDismissesKeyboard(.interactively)
+            .padding(.horizontal, BTSpacing.xxl)
+            .padding(.top, BTSpacing.lg)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             continueBar
         }
         .background(Color.btBg.ignoresSafeArea())
-        .sheet(isPresented: $showNeighborhoodPicker) {
+        .fullScreenCover(isPresented: $showNeighborhoodPicker) {
             NeighborhoodPickerView(
                 currentValue: viewModel.selectedNeighborhood,
                 confirmCta: { "Use \($0)" }
@@ -64,45 +76,22 @@ struct ProfileCreationView: View {
         }
     }
 
-    // MARK: - Step bar
-
-    private var stepBar: some View {
-        HStack(spacing: BTSpacing.sm) {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2).fill(Color.btSurface2).frame(height: 3)
-                    RoundedRectangle(cornerRadius: 2).fill(Color.btLime)
-                        .frame(width: geo.size.width * 0.66, height: 3)
-                }
-            }
-            .frame(height: 3)
-            Text("02 / 03")
-                .font(BTFont.mono(size: 10)).foregroundStyle(Color.btText3).tracking(1).fixedSize()
-        }
-        .padding(.top, BTSpacing.sm)
-        .padding(.horizontal, BTSpacing.xxl)
-    }
-
-    // MARK: - Heading
-
     private var heading: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("you're in.")
+            Text("Where are you based?")
                 .font(BTFont.display(size: 30))
                 .foregroundStyle(Color.btText)
                 .tracking(-0.6)
-            Text("set your neighborhood. everything else is optional.")
+            Text("Pick your home neighborhood. It's your badge and the feed you land in.")
                 .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)
         }
     }
 
-    // MARK: - Home neighborhood (the anchor)
-
     private var neighborhoodSection: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
-            fieldLabel("HOME NEIGHBORHOOD", tag: "REQUIRED", tagColor: Color.btLime)
+            onboardingFieldLabel("HOME NEIGHBORHOOD", tag: "REQUIRED", tagColor: Color.btLime)
 
             Button {
                 showNeighborhoodPicker = true
@@ -110,7 +99,7 @@ struct ProfileCreationView: View {
                 HStack(spacing: BTSpacing.md) {
                     Image(systemName: "house.fill")
                         .font(.system(size: 16))
-                        .foregroundStyle(viewModel.selectedNeighborhood == nil ? Color.btLime : Color.btText2)
+                        .foregroundStyle(hasNeighborhood ? Color.btText2 : Color.btLime)
                     if let n = viewModel.selectedNeighborhood {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(n.name).font(BTFont.bodyMedium(size: 16)).foregroundStyle(Color.btText)
@@ -122,9 +111,9 @@ struct ProfileCreationView: View {
                             .font(BTFont.body(size: 15)).foregroundStyle(Color.btText3)
                     }
                     Spacer()
-                    Image(systemName: viewModel.selectedNeighborhood == nil ? "chevron.down" : "checkmark")
-                        .font(.system(size: 14, weight: viewModel.selectedNeighborhood == nil ? .regular : .semibold))
-                        .foregroundStyle(viewModel.selectedNeighborhood == nil ? Color.btText3 : Color.btLime)
+                    Image(systemName: hasNeighborhood ? "checkmark" : "chevron.down")
+                        .font(.system(size: 14, weight: hasNeighborhood ? .semibold : .regular))
+                        .foregroundStyle(hasNeighborhood ? Color.btLime : Color.btText3)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 15)
@@ -132,174 +121,62 @@ struct ProfileCreationView: View {
                 .cornerRadius(BTRadius.lg)
                 .overlay(
                     RoundedRectangle(cornerRadius: BTRadius.lg)
-                        .stroke(Color.btLime.opacity(viewModel.selectedNeighborhood == nil ? 0.5 : 0.4), lineWidth: 1)
+                        .stroke(Color.btLime.opacity(hasNeighborhood ? 0.4 : 0.5), lineWidth: 1)
                 )
             }
+
+            Text("You still post wherever you're physically located.")
+                .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
         }
     }
-
-    // MARK: - Username (optional)
-
-    private var usernameSection: some View {
-        VStack(alignment: .leading, spacing: BTSpacing.sm) {
-            fieldLabel("USERNAME", tag: "OPTIONAL", tagColor: Color.btText3)
-
-            HStack(spacing: 0) {
-                Text("@")
-                    .font(BTFont.body(size: 15))
-                    .foregroundStyle(Color.btText3)
-                    .padding(.trailing, 1)
-
-                TextField("BlockTalker", text: $viewModel.username)
-                    .font(BTFont.body(size: 15))
-                    .foregroundStyle(Color.btText)
-                    .focused($usernameFieldFocused)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .onChange(of: usernameFieldFocused) { _, focused in
-                        if focused && viewModel.username == "BlockTalker" {
-                            viewModel.username = ""
-                        } else if !focused && viewModel.username.trimmingCharacters(in: .whitespaces).isEmpty {
-                            viewModel.username = "BlockTalker"
-                        }
-                    }
-
-                if viewModel.usernameOk {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.btLime)
-                } else if isErrorState {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.btPink)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(isErrorState ? Color.btPink.opacity(0.05) : Color.btSurface)
-            .cornerRadius(BTRadius.lg)
-            .overlay(
-                RoundedRectangle(cornerRadius: BTRadius.lg)
-                    .stroke(isErrorState ? Color.btPink : Color.btLine, lineWidth: 1)
-            )
-
-            if let msg = usernameError {
-                Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
-            } else {
-                Text("skip it and you're **BlockTalker** · change it anytime in Settings")
-                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
-            }
-        }
-    }
-
-    // MARK: - Live "this is all anyone sees" preview (the result)
-
-    private var previewCard: some View {
-        VStack(alignment: .leading, spacing: BTSpacing.sm) {
-            Text("THIS IS ALL ANYONE SEES")
-                .font(BTFont.monoBold(size: 9)).tracking(1.4).foregroundStyle(Color.btText3)
-
-            VStack(alignment: .leading, spacing: BTSpacing.sm) {
-                HStack(spacing: 6) {
-                    Text("@\(displayName)")
-                        .font(BTFont.bodySemibold(size: 12)).foregroundStyle(Color.btText).lineLimit(1)
-                    Text("#\(userNumber)")
-                        .font(BTFont.monoBold(size: 12)).foregroundStyle(Color.btLime)
-                    homeBadge
-                    Text("· now").font(BTFont.mono(size: 11)).foregroundStyle(Color.btText3)
-                    Spacer(minLength: 0)
-                }
-
-                Text(examplePost)
-                    .font(BTFont.body(size: 13)).foregroundStyle(Color.btText).lineSpacing(3)
-
-                HStack(spacing: 6) {
-                    fakePill("▲"); fakePill("▽")
-                    Spacer()
-                    (Text("0").foregroundStyle(Color.btText) + Text(" replies").foregroundStyle(Color.btText2))
-                        .font(BTFont.monoBold(size: 11))
-                }
-                .opacity(0.55)
-            }
-            .padding(BTSpacing.lg)
-            .background(Color.btLime.opacity(0.05))
-            .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.35), lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
-        }
-    }
-
-    @ViewBuilder private var homeBadge: some View {
-        if let n = viewModel.selectedNeighborhood {
-            HomeBadge(shortCode: n.shortCode)
-        } else {
-            HStack(spacing: 3) {
-                Image(systemName: "house.fill").font(.system(size: 8))
-                Text("—").font(BTFont.monoBold(size: 9))
-            }
-            .foregroundStyle(Color.btText3)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Color.btSurface2)
-            .clipShape(Capsule())
-        }
-    }
-
-    private func fakePill(_ glyph: String) -> some View {
-        Text(glyph)
-            .font(BTFont.bodyBold(size: 11))
-            .foregroundStyle(glyph == "▲" ? Color.btLime : Color.btPink)
-            .frame(width: 30, height: 30)
-            .background(Color.btSurface)
-            .overlay(RoundedRectangle(cornerRadius: BTRadius.sm).stroke(Color.btLine, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
-    }
-
-    // MARK: - Continue (smart CTA)
 
     private var continueBar: some View {
         Button {
-            switch ctaState {
-            case .fixUsername:      break
-            case .pickNeighborhood: showNeighborhoodPicker = true
-            case .ready:            handleContinue()
+            if hasNeighborhood {
+                appState.onboardingNeighborhood = viewModel.selectedNeighborhood
+                appState.advanceTo(.username)
+            } else {
+                showNeighborhoodPicker = true
             }
         } label: {
-            Text(ctaLabel)
+            Text(hasNeighborhood ? "Continue" : "Pick your neighborhood")
                 .font(BTFont.bodyBold(size: 14))
                 .tracking(0.4)
                 .lineLimit(1)
-                .foregroundStyle(ctaForeground)
+                .foregroundStyle(hasNeighborhood ? Color.btOnAccent : Color.btText)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(ctaState == .ready ? Color.btLime : Color.btSurface2)
+                .background(hasNeighborhood ? Color.btLime : Color.btSurface2)
                 .overlay(
                     RoundedRectangle(cornerRadius: BTRadius.lg)
-                        .stroke(ctaState == .pickNeighborhood ? Color.btLine : Color.clear, lineWidth: 1)
+                        .stroke(hasNeighborhood ? Color.clear : Color.btLine, lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
         }
-        .disabled(ctaState == .fixUsername)
         .padding(.horizontal, BTSpacing.xxl)
         .padding(.top, BTSpacing.sm)
         .padding(.bottom, BTSpacing.lg)
     }
+}
 
-    private var ctaForeground: Color {
-        switch ctaState {
-        case .ready:            return Color.btOnAccent
-        case .pickNeighborhood: return Color.btText
-        case .fixUsername:      return Color.btText3
-        }
+// MARK: - Step 2: Username (a forced choice, not a skippable field)
+
+struct UsernameCreationView: View {
+    @Environment(AppState.self) private var appState
+    @State private var viewModel = ProfileViewModel()
+    @State private var editing = false
+    @FocusState private var fieldFocused: Bool
+
+    private var displayName: String {
+        let v = viewModel.username.trimmingCharacters(in: .whitespaces)
+        return v.isEmpty ? "BlockTalker" : v
     }
-
-    // MARK: - Helpers
-
     private var isErrorState: Bool {
         switch viewModel.usernameState {
         case .taken, .invalid, .blocked, .hate: return true
         default: return false
         }
     }
-
     private var usernameError: String? {
         switch viewModel.usernameState {
         case .invalid: return "3–20 characters · letters, numbers, underscores"
@@ -309,29 +186,161 @@ struct ProfileCreationView: View {
         default:       return nil
         }
     }
+    private var canConfirmUsername: Bool { viewModel.usernameOk }
 
-    private func fieldLabel(_ text: String, tag: String, tagColor: Color) -> some View {
-        HStack(spacing: 6) {
-            Text(text)
-                .font(BTFont.bodyBold(size: 11.5)).foregroundStyle(Color.btText2).tracking(1.6)
-            Text(tag)
-                .font(BTFont.monoBold(size: 8.5)).tracking(0.8).foregroundStyle(tagColor)
-                .padding(.horizontal, 5).padding(.vertical, 1.5)
-                .background(tagColor.opacity(0.14)).clipShape(Capsule())
+    var body: some View {
+        VStack(spacing: 0) {
+            onboardingStepBar(3, 3)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: BTSpacing.xl) {
+                    userNumberBanner
+                    heading
+                    if editing { usernameField }
+                }
+                .padding(.horizontal, BTSpacing.xxl)
+                .padding(.top, BTSpacing.lg)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .background(Color.btBg.ignoresSafeArea())
+        // Pin the two choices above the keyboard so "Stay as BlockTalker" is
+        // never hidden when the field is focused.
+        .safeAreaInset(edge: .bottom) { bottomBar }
+    }
+
+    private var userNumberBanner: some View {
+        (Text("You are user: ")
+            .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
+         + Text(onboardingUserNumber)
+            .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
+            .tracking(-0.2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var heading: some View {
+        Text("Go by BlockTalker, or set your own username. Stay Anonymous.")
+            .font(BTFont.display(size: 27))
+            .foregroundStyle(Color.btText)
+            .tracking(-0.5)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var usernameField: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.sm) {
+            onboardingFieldLabel("USERNAME", tag: "PERMANENT", tagColor: Color.btWarn)
+
+            HStack(spacing: 0) {
+                Text("@").font(BTFont.body(size: 15)).foregroundStyle(Color.btText3).padding(.trailing, 1)
+                TextField("your username", text: $viewModel.username)
+                    .font(BTFont.body(size: 15))
+                    .foregroundStyle(Color.btText)
+                    .focused($fieldFocused)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                if viewModel.usernameOk {
+                    Image(systemName: "checkmark").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.btLime)
+                } else if isErrorState {
+                    Image(systemName: "xmark").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.btPink)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 14)
+            .background(isErrorState ? Color.btPink.opacity(0.05) : Color.btSurface)
+            .cornerRadius(BTRadius.lg)
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(isErrorState ? Color.btPink : Color.btLine, lineWidth: 1))
+
+            if let msg = usernameError {
+                Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
+            } else {
+                Text(ProfileCopy.usernameGuide)
+                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
-    private func handleContinue() {
-        guard viewModel.canContinue, let neighborhood = viewModel.selectedNeighborhood else { return }
+    // Two explicit choices — the whole point of the split: you can't skim past
+    // a field, you have to pick one.
+    @ViewBuilder private var bottomBar: some View {
+        VStack(spacing: BTSpacing.sm) {
+            if editing {
+                // Same two-button format as before you tapped in — just relabeled.
+                primaryButton(canConfirmUsername ? "Continue as @\(displayName)" : "Continue",
+                              enabled: canConfirmUsername) {
+                    finish(username: displayName)
+                }
+                secondaryButton("Stay as BlockTalker") { finish(username: "BlockTalker") }
+            } else {
+                primaryButton("Set a username", enabled: true) {
+                    viewModel.username = ""   // start empty — don't make them clear "BlockTalker"
+                    editing = true
+                    fieldFocused = true
+                }
+                secondaryButton("Stay as BlockTalker") { finish(username: "BlockTalker") }
+            }
+        }
+        .padding(.horizontal, BTSpacing.xxl)
+        .padding(.top, BTSpacing.sm)
+        .padding(.bottom, BTSpacing.lg)
+    }
+
+    // Disabled state dims the lime (keeps it reading as the SAME button), never
+    // greys out — the format shouldn't change when you tap into the field.
+    private func primaryButton(_ label: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
+                .foregroundStyle(Color.btOnAccent.opacity(enabled ? 1 : 0.65))
+                .frame(maxWidth: .infinity).frame(height: 50)
+                .background(Color.btLime.opacity(enabled ? 1 : 0.4))
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        }
+        .disabled(!enabled)
+    }
+
+    private func secondaryButton(_ label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
+                .foregroundStyle(Color.btText)
+                .frame(maxWidth: .infinity).frame(height: 50)
+                .background(Color.btSurface)
+                .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLine, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        }
+    }
+
+    private func finish(username: String) {
+        // Drop the keyboard immediately so it doesn't linger over the feed.
+        fieldFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         if appState.currentUser == nil { appState.currentUser = .sample }
-        appState.viewingNeighborhood = neighborhood
-        appState.physicalNeighborhood = neighborhood   // mock: your home is where you are
-        appState.advanceTo(.tone)
+        appState.currentUser?.username = username
+        // Home neighborhood is just your base/badge — it does NOT decide where
+        // you can post. Where you can post is your PHYSICAL location (GPS).
+        if let hood = appState.onboardingNeighborhood {
+            appState.currentUser?.homeNeighborhoodId = hood.id
+        }
+        // Mock has no live GPS, so simulate "you're physically in LES". You land
+        // viewing where you actually are, not the home you picked.
+        let physical = appState.physicalNeighborhood ?? .les
+        appState.physicalNeighborhood = physical
+        appState.viewingNeighborhood = physical
+        appState.selectedTab = 0
+        appState.advanceTo(.app)
     }
 }
 
-#Preview {
+#Preview("Step 1 — Neighborhood") {
     ProfileCreationView()
+        .environment(AppState())
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Step 2 — Username") {
+    UsernameCreationView()
         .environment(AppState())
         .preferredColorScheme(.dark)
 }

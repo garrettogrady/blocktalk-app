@@ -81,10 +81,10 @@ struct SettingsNotificationsView: View {
                 Section {
                     Toggle(isOn: $dailyPromptEnabled) {
                         VStack(alignment: .leading, spacing: BTSpacing.xs) {
-                            Text("Daily prompt")
+                            Text("Weekly prompt")
                                 .font(BTFont.bodyMedium(size: 15))
                                 .foregroundStyle(Color.btText)
-                            Text("When a new daily prompt goes live")
+                            Text("Sundays at 6pm, when a new prompt goes live")
                                 .font(BTFont.body(size: 12))
                                 .foregroundStyle(Color.btText3)
                         }

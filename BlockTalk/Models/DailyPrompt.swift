@@ -19,12 +19,12 @@ struct DailyPrompt: Codable, Identifiable, Sendable {
         return now >= activeFrom && now <= activeUntil
     }
 
-    /// The bundled mock's active prompt
+    /// The bundled mock's active prompt (weekly — Sunday 6pm to Sunday 6pm)
     static let sampleActive = DailyPrompt(
         id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
         question: "What's the craziest thing you've ever seen in NYC?",
-        activeFrom: Date().addingTimeInterval(-2 * 3600),
-        activeUntil: Date().addingTimeInterval(22 * 3600)
+        activeFrom: Date().addingTimeInterval(-2 * 24 * 3600),
+        activeUntil: Date().addingTimeInterval(5 * 24 * 3600)
     )
 
     static let sampleAnswerCount = 1842
@@ -36,7 +36,7 @@ struct DailyPrompt: Codable, Identifiable, Sendable {
              author: PostAuthor(username: username, userNumber: number, home: .init(shortCode: home)))
     }
 
-    /// The 8 cross-NYC responses to today's prompt
+    /// The 8 cross-NYC responses to this week's prompt
     static let sampleResponses: [Post] = [
         resp("lline_lover", 4011, "Williamsburg", "guy on the L last night had a full live peacock on a harness. peacock was unbothered. man was unbothered. i was the only one having a freakout and i was alone in that.", agoMin: 14, score: 2840, replies: 312),
         resp("midtownmuck", 932, "Midtown", "a guy in a full pinstripe suit was IRONING A DRESS SHIRT on the F train this morning. there was an extension cord. to this day i do not know where the extension cord went.", agoMin: 22, score: 4112, replies: 528),
@@ -50,17 +50,17 @@ struct DailyPrompt: Codable, Identifiable, Sendable {
 
     /// 3 past prompts (locked from new answers)
     static let sampleArchive: [PromptArchive] = [
-        PromptArchive(question: "What's the dumbest thing you overheard on the train today?", date: "YESTERDAY", answerCount: 412, posts: [
+        PromptArchive(question: "What's the dumbest thing you overheard on the train today?", date: "LAST WEEK", answerCount: 412, posts: [
             resp("qline_lover", 1902, "Sunnyside", "guy on the 7 confidently explaining to a tourist that the Chrysler Building was \"built by the chrysler family in like the 1700s\"", agoMin: 1440, score: 1289, replies: 134),
             resp("bedfordave", 3021, "Bedford-Stuyvesant", "two girls on the A: \"ok but is it cheating if he's in a different time zone.\" they were having a real and serious conversation.", agoMin: 1440, score: 1842, replies: 211),
             resp("crosstown", 719, "Midtown", "man on the M14 to his AirPods: \"Brenda, I will not say it again, the gnocchi is not for sharing.\"", agoMin: 1440, score: 1554, replies: 187),
         ]),
-        PromptArchive(question: "Caught any drama today?", date: "2 DAYS AGO", answerCount: 318, posts: [
+        PromptArchive(question: "Caught any drama today?", date: "2 WEEKS AGO", answerCount: 318, posts: [
             resp("parkslope_pram", 844, "Park Slope", "two moms in matching Athleta nearly came to blows at the Met Foods because one of them said the other's daughter was \"intense for a four-year-old\"", agoMin: 2880, score: 982, replies: 96),
             resp("eastvillgremlin", 2567, "East Village", "a man and his ex broke up again in real time outside Mamoun's. she got the falafel. he got the bill. classic", agoMin: 2880, score: 1322, replies: 142),
             resp("harlembrass", 1448, "Harlem", "a private investigator (he announced his job, repeatedly, very loudly) was getting dumped at Sylvia's. she was so calm. he was not.", agoMin: 2880, score: 711, replies: 78),
         ]),
-        PromptArchive(question: "What does your block sound like right now?", date: "3 DAYS AGO", answerCount: 256, posts: [
+        PromptArchive(question: "What does your block sound like right now?", date: "3 WEEKS AGO", answerCount: 256, posts: [
             resp("crownhts", 3302, "Crown Heights", "someone three buildings down is rehearsing a single phrase on the trumpet. it is going badly. it is also going on hour two.", agoMin: 4320, score: 612, replies: 58),
             resp("wilburtide", 1103, "Williamsburg", "unmuffled motorcycle, then a flock of pigeons, then a woman screaming \"TYLER\" at full volume, then silence. NYC.", agoMin: 4320, score: 1044, replies: 117),
             resp("jackson_h", 2219, "Jackson Heights", "the bachata coming out of the bodega across the street is louder than my own thoughts. genuinely a good time though.", agoMin: 4320, score: 798, replies: 84),
@@ -71,11 +71,11 @@ struct DailyPrompt: Codable, Identifiable, Sendable {
         let now = Date()
         guard activeUntil > now else { return "expired" }
         let interval = activeUntil.timeIntervalSince(now)
-        let hours = Int(interval) / 3600
+        let days = Int(interval) / 86400
+        let hours = (Int(interval) % 86400) / 3600
+        if days > 0 { return "\(days)d \(hours)h LEFT" }
         let minutes = (Int(interval) % 3600) / 60
-        if hours > 0 {
-            return "\(hours)h \(String(format: "%02d", minutes))m LEFT"
-        }
+        if hours > 0 { return "\(hours)h \(String(format: "%02d", minutes))m LEFT" }
         return "\(minutes)m LEFT"
     }
 }

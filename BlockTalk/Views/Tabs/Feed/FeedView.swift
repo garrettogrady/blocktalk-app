@@ -11,11 +11,21 @@ struct FeedView: View {
     @State private var showNeighborhoodPicker = false
     @State private var showPreFrame = false
     @State private var showSearch = false
+    /// One-time nudge toward the map — the sexiest feature, otherwise buried in
+    /// tab 2. Dismissible so it never becomes permanent chrome.
+    @AppStorage("hasSeenMapTip") private var hasSeenMapTip = false
 
-    /// Posts the user created this session for the neighborhood being viewed.
+    /// What renders above the sample feed: your moderation warnings (removed /
+    /// under review) always show — they're personal notices, not tied to a
+    /// neighborhood — pinned above your live posts, which ARE filtered to the
+    /// neighborhood you're viewing.
     private var myPosts: [Post] {
-        guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
-        return localContent.posts(in: viewingId)
+        let warnings = localContent.posts.filter { $0.status != .live }
+        let live: [Post] = {
+            guard let viewingId = appState.viewingNeighborhood?.id else { return [] }
+            return localContent.posts(in: viewingId).filter { $0.status == .live }
+        }()
+        return warnings + live
     }
 
     private var isViewingHome: Bool {
@@ -32,10 +42,6 @@ struct FeedView: View {
                         // Location gate banner at top when location not granted
                         LocationGateBanner(showPreFrame: $showPreFrame)
 
-                        // Browsing a neighborhood you're not physically in — read
-                        // freely, but posting is locked to where you actually are.
-                        viewingElsewhereBanner
-
                         // Offline banner
                         if offline.isOffline {
                             OfflineBanner(pendingPostCount: offline.pending.count)
@@ -49,8 +55,8 @@ struct FeedView: View {
                         // Location / neighborhood row
                         locationRow
                             .padding(.horizontal, BTSpacing.lg)
-                            .padding(.top, BTSpacing.lg)
-                            .padding(.bottom, BTSpacing.md)
+                            .padding(.top, BTSpacing.md)
+                            .padding(.bottom, BTSpacing.sm)
 
                         // Separator under the neighborhood/search header row
                         // (matches the Expo mock's locRow bottom border).
@@ -62,7 +68,14 @@ struct FeedView: View {
                             timeFilter: $viewModel.timeFilter
                         )
                         .padding(.horizontal, BTSpacing.lg)
-                        .padding(.top, BTSpacing.md)
+                        .padding(.top, BTSpacing.sm)
+
+                        // One-time map nudge
+                        if !hasSeenMapTip {
+                            mapTip
+                                .padding(.horizontal, BTSpacing.lg)
+                                .padding(.top, BTSpacing.md)
+                        }
 
                         // Offline: discarded (top) → pending → flushed, above the feed
                         if !offline.discarded.isEmpty {
@@ -176,7 +189,7 @@ struct FeedView: View {
             .navigationDestination(for: Post.self) { post in
                 PostDetailView(post: post)
             }
-            .sheet(isPresented: $showCompose) {
+            .fullScreenCover(isPresented: $showCompose) {
                 ComposeView(postingNeighborhood: appState.viewingNeighborhood)
             }
             .task {
@@ -226,35 +239,53 @@ struct FeedView: View {
         }
     }
 
+    // MARK: - Map nudge
+
+    /// Slim, one-time teaser pointing at the map — where street comments live on
+    /// the real corner. Tapping opens the Map tab; the × just dismisses it.
+    private var mapTip: some View {
+        Button {
+            hasSeenMapTip = true
+            appState.selectedTab = 1
+        } label: {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.btHouse)
+                (Text("Street comments live on the map. ")
+                    .font(BTFont.bodySemibold(size: 12)).foregroundColor(.btText)
+                 + Text("See the actual corners →")
+                    .font(BTFont.body(size: 12)).foregroundColor(.btText2))
+                    .lineLimit(2)
+                Spacer(minLength: BTSpacing.sm)
+                Button {
+                    hasSeenMapTip = true
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.btText3)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.btHouse.opacity(0.08))
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btHouse.opacity(0.28), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Location locking
 
-    /// Thin banner shown when the viewed feed isn't the block you're in.
-    @ViewBuilder private var viewingElsewhereBanner: some View {
-        if locationService.permissionState == .granted,
-           let home = appState.physicalNeighborhood,
-           let viewing = appState.viewingNeighborhood,
-           !appState.canPostInViewing {
-            Button {
-                appState.viewingNeighborhood = home
-            } label: {
-                HStack(spacing: BTSpacing.xs) {
-                    Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
-                    (Text("browsing \(viewing.name) · you can only post in ")
-                     + Text(home.name).font(BTFont.bodyBold(size: 10.5)))
-                        .font(BTFont.bodyBold(size: 10.5))
-                        .tracking(0.2)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text("go back ›").font(BTFont.monoBold(size: 9)).tracking(0.5)
-                }
-                .foregroundStyle(Color.btHouse)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, BTSpacing.lg)
-                .padding(.vertical, 7)
-                .background(Color.btHouse.opacity(0.1))
-            }
-            .buttonStyle(.plain)
-        }
+    /// True when you're reading a neighborhood you're not physically in — the
+    /// note lives under the VIEWING dropdown (see locationRow).
+    private var isBrowsingElsewhere: Bool {
+        locationService.permissionState == .granted
+            && appState.physicalNeighborhood != nil
+            && appState.viewingNeighborhood != nil
+            && !appState.canPostInViewing
     }
 
     /// Replaces the compose bar when you're viewing a block you're not in —
@@ -302,53 +333,83 @@ struct FeedView: View {
     // MARK: - Location Row
 
     private var locationRow: some View {
-        HStack(spacing: BTSpacing.sm) {
-            Button {
-                showNeighborhoodPicker = true
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("VIEWING")
-                        .font(BTFont.mono(size: 10))
-                        .foregroundStyle(Color.btText3)
-
-                    HStack(spacing: BTSpacing.sm) {
-                        // 🏠 only when viewing == home neighborhood
-                        if isViewingHome {
-                            Image(systemName: "house.fill")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Color.btHouse)
-                        }
-
-                        Text(appState.viewingNeighborhood?.name ?? "Locating...")
-                            .font(BTFont.display(size: 18))
-                            .foregroundStyle(Color.btText)
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
+        VStack(alignment: .leading, spacing: BTSpacing.sm) {
+            HStack(spacing: BTSpacing.sm) {
+                Button {
+                    showNeighborhoodPicker = true
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("VIEWING")
+                            .font(BTFont.mono(size: 10))
                             .foregroundStyle(Color.btText3)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, BTSpacing.sm)
-            }
-            .buttonStyle(.plain)
 
-            // 38×38 within-neighborhood search
-            Button {
-                showSearch = true
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.btText2)
-                    .frame(width: 38, height: 38)
-                    .background(Color.btSurface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: BTRadius.md)
-                            .stroke(Color.btLine, lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                        HStack(spacing: BTSpacing.sm) {
+                            // 🏠 only when viewing == home neighborhood
+                            if isViewingHome {
+                                Image(systemName: "house.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Color.btHouse)
+                            }
+
+                            Text(appState.viewingNeighborhood?.name ?? "Locating...")
+                                .font(BTFont.display(size: 18))
+                                .foregroundStyle(Color.btText)
+
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.btText3)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, BTSpacing.sm)
+                }
+                .buttonStyle(.plain)
+
+                // 38×38 within-neighborhood search
+                Button {
+                    showSearch = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.btText2)
+                        .frame(width: 38, height: 38)
+                        .background(Color.btSurface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: BTRadius.md)
+                                .stroke(Color.btLine, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+
+            // Browsing a block you're not in — a distinct, tappable control that
+            // sends you back to where you can actually post.
+            if isBrowsingElsewhere, let here = appState.physicalNeighborhood {
+                Button {
+                    withAnimation { appState.viewingNeighborhood = here }
+                } label: {
+                    HStack(spacing: BTSpacing.sm) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.system(size: 12, weight: .semibold))
+                        (Text("You can only post in ")
+                         + Text(here.name).font(BTFont.bodyBold(size: 12.5))
+                         + Text(", where you actually are"))
+                            .font(BTFont.body(size: 12.5))
+                        Spacer(minLength: BTSpacing.sm)
+                        Text("Go there")
+                            .font(BTFont.bodyBold(size: 12))
+                    }
+                    .foregroundStyle(Color.btHouse)
+                    .padding(.horizontal, BTSpacing.md)
+                    .padding(.vertical, 9)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.btHouse.opacity(0.12))
+                    .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btHouse.opacity(0.4), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

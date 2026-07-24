@@ -115,28 +115,44 @@ struct DiscoverView: View {
     }
 
     private func neighborhoodRow(_ n: DiscoverNeighborhood) -> some View {
-        HStack(spacing: BTSpacing.md) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(n.name)
-                    .font(BTFont.bodySemibold(size: 15))
-                    .foregroundStyle(Color.btText)
-                Text("\(n.borough) · \(n.talking) TALKING")
-                    .font(BTFont.monoBold(size: 9))
-                    .tracking(0.5)
-                    .foregroundStyle(Color.btText3)
+        Button {
+            openNeighborhoodFeed(n)
+        } label: {
+            HStack(spacing: BTSpacing.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(n.name)
+                        .font(BTFont.bodySemibold(size: 15))
+                        .foregroundStyle(Color.btText)
+                    Text("\(n.borough) · \(n.talking) TALKING")
+                        .font(BTFont.monoBold(size: 9))
+                        .tracking(0.5)
+                        .foregroundStyle(Color.btText3)
+                }
+                Spacer()
+                Text("OPEN →")
+                    .font(BTFont.bodySemibold(size: 12))
+                    .foregroundStyle(Color.btLime)
             }
-            Spacer()
-            Text("OPEN →")
-                .font(BTFont.bodySemibold(size: 12))
-                .foregroundStyle(Color.btLime)
+            .padding(BTSpacing.md)
+            .background(Color.btSurface)
+            .cornerRadius(BTRadius.md)
+            .overlay(
+                RoundedRectangle(cornerRadius: BTRadius.md)
+                    .stroke(Color.btLine, lineWidth: 1)
+            )
         }
-        .padding(BTSpacing.md)
-        .background(Color.btSurface)
-        .cornerRadius(BTRadius.md)
-        .overlay(
-            RoundedRectangle(cornerRadius: BTRadius.md)
-                .stroke(Color.btLine, lineWidth: 1)
+        .buttonStyle(.plain)
+    }
+
+    /// Open this neighborhood's feed on the Feed tab.
+    private func openNeighborhoodFeed(_ n: DiscoverNeighborhood) {
+        let entry = NeighborhoodDirectory.all.first { $0.name.caseInsensitiveCompare(n.name) == .orderedSame }
+        let shortCode = entry?.shortCode ?? String(n.name.prefix(4)).uppercased()
+        appState.viewingNeighborhood = Neighborhood(
+            id: UUID(), name: n.name, shortCode: shortCode,
+            borough: entry?.borough ?? n.borough.capitalized
         )
+        appState.selectedTab = 0
     }
 }
 

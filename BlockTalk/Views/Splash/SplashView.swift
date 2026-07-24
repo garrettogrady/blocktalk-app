@@ -5,6 +5,56 @@ import SwiftUI
 struct SplashView: View {
     @Environment(AppState.self) private var appState
 
+    // Landing composition — flip these two to swap the hero. Easy revert:
+    // set showHeroCard = true / showStreetPins = false to restore the
+    // sample-post card. [Matt: keep reversible]
+    private let showHeroCard = false
+    private let showStreetPins = true
+
+    // A few LES corners, south of the map center so the pins sit in the open
+    // lower-middle of the screen (below the logo, above sign-in). One is a
+    // business-tagged gym (house-blue, dumbbell) to preview Route 2.
+    private struct LandingPin {
+        let coord: CLLocationCoordinate2D
+        let tint: Color
+        let symbol: String?
+    }
+    // 6 house-blue business pins on REAL, geocoded NYC businesses (each a
+    // distinct type/icon, Route 2), spread across neighborhoods. Icons derive
+    // from the category via Pin.symbol, not hardcoded per pin. Plus 12 lime
+    // corner pins. All kept OUT of the center band so nothing sits under the
+    // block.talk logo or the tagline.
+    private let landingPins: [LandingPin] = [
+        // Vital — gym, LES (kept low, below the tagline). Same Pin.vital the app uses.
+        .init(coord: Pin.vital.coordinate, tint: .btHouse, symbol: Pin.vital.placeSymbol),
+        // Doughnut Plant — bakery, LES (kept low). 379 Grand St.
+        .init(coord: .init(latitude: 40.71629, longitude: -73.98856), tint: .btHouse, symbol: Pin.symbol(forCategory: "bakery")),
+        // Veselka — restaurant, East Village. 144 Second Ave.
+        .init(coord: .init(latitude: 40.72898, longitude: -73.98700), tint: .btHouse, symbol: Pin.symbol(forCategory: "restaurant")),
+        // McSorley's — bar, East Village. 15 E 7th St.
+        .init(coord: .init(latitude: 40.72876, longitude: -73.98970), tint: .btHouse, symbol: Pin.symbol(forCategory: "bar")),
+        // Caffe Reggio — café, Greenwich Village. 119 MacDougal St.
+        .init(coord: .init(latitude: 40.73032, longitude: -74.00036), tint: .btHouse, symbol: Pin.symbol(forCategory: "cafe")),
+        // Merchant's House Museum — museum, NoHo. 29 E 4th St.
+        .init(coord: .init(latitude: 40.72766, longitude: -73.99234), tint: .btHouse, symbol: Pin.symbol(forCategory: "museum")),
+
+        // 12 corner/street comments — scattered top (EV/Village, lat > 40.723)
+        // and bottom (Chinatown/LES, lat < 40.716), never in the 40.717–40.722
+        // band where the logo + tagline sit.
+        .init(coord: .init(latitude: 40.73150, longitude: -73.98850), tint: .btLime, symbol: nil), // Gramercy edge
+        .init(coord: .init(latitude: 40.73000, longitude: -73.99550), tint: .btLime, symbol: nil), // Village
+        .init(coord: .init(latitude: 40.72680, longitude: -73.98520), tint: .btLime, symbol: nil), // East Village
+        .init(coord: .init(latitude: 40.72460, longitude: -73.99780), tint: .btLime, symbol: nil), // NoHo / Village
+        .init(coord: .init(latitude: 40.72420, longitude: -73.99080), tint: .btLime, symbol: nil), // Bowery / NoHo
+        .init(coord: .init(latitude: 40.72560, longitude: -73.98320), tint: .btLime, symbol: nil), // East Village east
+        .init(coord: .init(latitude: 40.71540, longitude: -73.99450), tint: .btLime, symbol: nil), // Chinatown
+        .init(coord: .init(latitude: 40.71350, longitude: -73.99920), tint: .btLime, symbol: nil), // Tribeca / Chinatown
+        .init(coord: .init(latitude: 40.71580, longitude: -73.98220), tint: .btLime, symbol: nil), // LES east
+        .init(coord: .init(latitude: 40.71220, longitude: -73.99000), tint: .btLime, symbol: nil), // Two Bridges
+        .init(coord: .init(latitude: 40.71430, longitude: -73.98720), tint: .btLime, symbol: nil), // LES south
+        .init(coord: .init(latitude: 40.71600, longitude: -73.99760), tint: .btLime, symbol: nil), // Chinatown west
+    ]
+
     var body: some View {
         ZStack {
             // MapKit background locked to Lower Manhattan. contentMargins lifts
@@ -14,6 +64,13 @@ struct SplashView: View {
                 center: CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911),
                 span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.024)
             )), interactionModes: []) {
+                if showStreetPins {
+                    ForEach(Array(landingPins.enumerated()), id: \.offset) { i, p in
+                        Annotation("", coordinate: p.coord) {
+                            PulsingStreetPin(tint: p.tint, symbol: p.symbol, delay: Double(i % 6) * 0.3)
+                        }
+                    }
+                }
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
             .mapControls { }
@@ -51,16 +108,20 @@ struct SplashView: View {
                 .minimumScaleFactor(0.6)
                 .padding(.bottom, BTSpacing.sm)
 
-                // Subheader
-                Text("anonymous · neighborhood-locked · NYC")
-                    .font(BTFont.bodyBold(size: 11))
+                // The one line that says what the app is
+                Text("anonymous NYC commentary")
+                    .font(BTFont.displayMedium(size: 22))
                     .foregroundStyle(Color.btText)
-                    .tracking(1.6)
+                    .tracking(-0.2)
+                    .offset(y: -13)
                     .padding(.bottom, BTSpacing.xxxl)
 
-                // Hero card with sample post
-                heroCard
-                    .padding(.bottom, BTSpacing.xxxl)
+                // Hero card with sample post — hidden for now in favor of the
+                // pulsing street pins on the map. Flip showHeroCard to restore.
+                if showHeroCard {
+                    heroCard
+                        .padding(.bottom, BTSpacing.xxxl)
+                }
 
                 Spacer()
 
@@ -194,7 +255,7 @@ struct SplashView: View {
 
     private func startOnboarding() {
         appState.forceOnboarding = false
-        appState.advanceTo(.profile)
+        appState.advanceTo(.how)   // how it works → the one rule → profile
     }
 
     // MARK: - Sign In Handler
@@ -221,8 +282,8 @@ struct SplashView: View {
                             appState.currentUser = user
                             appState.advanceTo(.app)
                         } else {
-                            // New user — go to profile creation
-                            appState.advanceTo(.profile)
+                            // New user — how it works, then the rule, then profile
+                            appState.advanceTo(.how)
                         }
                     } catch {
                         print("Sign in error: \(error)")
@@ -238,4 +299,42 @@ struct SplashView: View {
 #Preview {
     SplashView()
         .environment(AppState())
+}
+
+// MARK: - Pulsing street pin (landing map)
+
+/// A street-comment pin for the landing map: a solid lime dot with a ring that
+/// pulses outward, staggered per pin via `delay`.
+private struct PulsingStreetPin: View {
+    var tint: Color = .btLime
+    var symbol: String? = nil
+    var delay: Double = 0
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(tint.opacity(0.35))
+                .frame(width: 40, height: 40)
+                .scaleEffect(animate ? 1.7 : 0.5)
+                .opacity(animate ? 0 : 0.7)
+            Circle()
+                .fill(tint)
+                .frame(width: symbol != nil ? 20 : 11, height: symbol != nil ? 20 : 11)
+                .overlay {
+                    if let symbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.btBg)
+                    }
+                }
+                .overlay(Circle().stroke(Color.black.opacity(0.55), lineWidth: 1.5))
+                .shadow(color: tint.opacity(0.6), radius: 5)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 2).repeatForever(autoreverses: false).delay(delay)) {
+                animate = true
+            }
+        }
+    }
 }

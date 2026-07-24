@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct Post: Codable, Identifiable, Hashable, Sendable {
@@ -71,11 +72,28 @@ extension Post {
     /// Stable LES neighborhood id shared by the sample user + posts
     static let lesNeighborhoodId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 
+    /// Deterministic id derived from the post text so a shared link
+    /// (blocktalk://p/<id>) resolves to the same post on every launch and every
+    /// device — sample posts otherwise get a fresh random UUID each run.
+    static func stableId(_ seed: String) -> UUID {
+        let hex = SHA256.hash(data: Data(seed.utf8)).map { String(format: "%02x", $0) }.joined()
+        let s = "\(hex.prefix(8))-\(hex.dropFirst(8).prefix(4))-\(hex.dropFirst(12).prefix(4))-\(hex.dropFirst(16).prefix(4))-\(hex.dropFirst(20).prefix(12))"
+        return UUID(uuidString: s) ?? UUID()
+    }
+
+    /// Find a sample post by id (for deep links). Session-created posts live in
+    /// LocalContentStore and are checked separately by the caller.
+    static func find(id: UUID) -> Post? {
+        sampleFeed.first { $0.id == id }
+            ?? sampleTrending.first { $0.id == id }
+            ?? samplePinPosts.values.first { $0.id == id }
+    }
+
     private static func sample(_ username: String, _ number: Int, _ text: String,
                                agoMin: Double, score: Int, replies: Int,
                                pinId: UUID? = nil, image: String? = nil) -> Post {
         Post(
-            id: UUID(),
+            id: stableId(text),
             userId: UUID(),
             neighborhoodId: lesNeighborhoodId,
             text: text,
@@ -131,7 +149,7 @@ extension Post {
 
     private static func trend(_ username: String, _ number: Int, _ home: String, _ text: String, agoMin: Double, score: Int, replies: Int) -> Post {
         Post(
-            id: UUID(), userId: UUID(), neighborhoodId: UUID(),
+            id: stableId(text), userId: UUID(), neighborhoodId: UUID(),
             text: text, isDailyPrompt: false, score: score, replyCount: replies,
             reportCount: 0, status: .live,
             createdAt: Date().addingTimeInterval(-agoMin * 60),
@@ -155,7 +173,7 @@ extension Post {
 
     private static func pinPost(_ pinId: UUID, _ username: String, _ number: Int, _ text: String, score: Int, replies: Int, agoMin: Double) -> Post {
         Post(
-            id: UUID(), userId: UUID(), neighborhoodId: lesNeighborhoodId,
+            id: stableId(text), userId: UUID(), neighborhoodId: lesNeighborhoodId,
             text: text, pinId: pinId, isDailyPrompt: false, score: score,
             replyCount: replies, reportCount: 0, status: .live,
             createdAt: Date().addingTimeInterval(-agoMin * 60),

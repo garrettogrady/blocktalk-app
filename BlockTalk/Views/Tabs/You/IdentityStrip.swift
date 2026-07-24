@@ -5,6 +5,7 @@ struct IdentityStrip: View {
     var postCount: Int = 0
     var replyCount: Int = 0
     var totalScore: Int = 0
+    var downvoteCount: Int = 0
     var homeShortCode: String = "LES"
 
     var body: some View {
@@ -59,7 +60,9 @@ struct IdentityStrip: View {
         + Text("\(replyCount)").foregroundStyle(Color.btText)
         + Text(" replies").foregroundStyle(Color.btText2)
         + Text("  ·  ").foregroundStyle(Color.btText3)
-        + Text("▲ \(totalScore.formatted())").foregroundStyle(Color.btText)
+        + Text("▲ \(totalScore.formatted())").foregroundStyle(Color.btLime)
+        + Text("  ").foregroundStyle(Color.btText3)
+        + Text("▽ \(downvoteCount.formatted())").foregroundStyle(Color.btPink)
     }
 }
 

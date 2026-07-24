@@ -23,6 +23,10 @@ struct PinDetailView: View {
     private let replyLimit = 500
     private let replyWarnAt = 350
 
+    /// Route 2: business-tagged corners read house-blue, plain corners lime.
+    private var isBusiness: Bool { pin.placeName != nil }
+    private var tagColor: Color { isBusiness ? Color.btHouse : Color.btLime }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
@@ -76,8 +80,8 @@ struct PinDetailView: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                if let cornerName = pin.cornerName {
-                    Text("Pin · \(cornerName)")
+                if let label = pin.placeName ?? pin.cornerName {
+                    Text("Pin · \(label)")
                         .font(BTFont.bodySemibold(size: 16))
                         .foregroundStyle(Color.btText)
                 }
@@ -108,24 +112,27 @@ struct PinDetailView: View {
                 )
             ), interactionModes: []) {
                 Annotation("", coordinate: pin.coordinate) {
-                    PulsatingPinView()
+                    PulsatingPinView(
+                        tint: tagColor,
+                        symbol: isBusiness ? (pin.placeSymbol ?? "mappin.circle.fill") : nil
+                    )
                 }
             }
             .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
             .colorScheme(.dark)
 
-            // "DROPPED · CORNER NAME" badge
-            if let cornerName = pin.cornerName {
+            // "DROPPED · …" badge — business name (blue) or corner (lime)
+            if let label = pin.placeName ?? pin.cornerName {
                 HStack(spacing: BTSpacing.xs) {
-                    Image(systemName: "mappin.circle.fill")
+                    Image(systemName: isBusiness ? (pin.placeSymbol ?? "mappin.circle.fill") : "mappin.circle.fill")
                         .font(.system(size: 11))
-                    Text("DROPPED · \(cornerName.uppercased())")
+                    Text("DROPPED · \(label.uppercased())")
                         .font(BTFont.monoBold(size: 10))
                 }
                 .foregroundStyle(Color.btBg)
                 .padding(.horizontal, BTSpacing.md)
                 .padding(.vertical, BTSpacing.xs)
-                .background(Color.btLime)
+                .background(tagColor)
                 .cornerRadius(BTRadius.sm)
                 .padding(BTSpacing.md)
             }

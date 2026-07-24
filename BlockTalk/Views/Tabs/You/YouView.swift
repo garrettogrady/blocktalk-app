@@ -14,10 +14,16 @@ struct YouView: View {
                 VStack(spacing: BTSpacing.xxl) {
                     // Identity strip
                     if let user = appState.currentUser {
-                        IdentityStrip(user: user, postCount: 38, replyCount: 142, totalScore: 1847)
+                        IdentityStrip(user: user, postCount: 38, replyCount: 142,
+                                      totalScore: 1847, downvoteCount: 92)
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.md)
                     }
+
+                    // Settings + Feedback — visible on landing (not buried under
+                    // the Personal Board scroll)
+                    quickActionsRow
+                        .padding(.horizontal, BTSpacing.lg)
 
                     // Notifications card
                     notificationsCard
@@ -27,8 +33,8 @@ struct YouView: View {
                     PersonalBoard()
                         .padding(.horizontal, BTSpacing.lg)
 
-                    // Footer actions
-                    footerActions
+                    // Sign out (bottom — destructive, away from the primary actions)
+                    signOutRow
                         .padding(.horizontal, BTSpacing.lg)
 
                     // 🧪 Offline demo debug card
@@ -124,30 +130,39 @@ struct YouView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Footer Actions
+    // MARK: - Quick actions (Settings + Feedback) — on landing
 
-    private var footerActions: some View {
-        VStack(spacing: 0) {
-            footerButton(icon: "gearshape", title: "Settings") {
-                showSettings = true
-            }
-            Divider().background(Color.btLine)
+    private var quickActionsRow: some View {
+        HStack(spacing: BTSpacing.md) {
+            quickAction(icon: "gearshape", title: "Settings") { showSettings = true }
+            quickAction(icon: "envelope", title: "Feedback") { showFeedback = true }
+        }
+    }
 
-            footerButton(icon: "envelope", title: "Feedback") {
-                showFeedback = true
+    private func quickAction(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: icon).font(.system(size: 15)).foregroundStyle(Color.btText2)
+                Text(title).font(BTFont.bodyMedium(size: 15)).foregroundStyle(Color.btText)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Color.btText3)
             }
-            Divider().background(Color.btLine)
+            .padding(BTSpacing.lg)
+            .frame(maxWidth: .infinity)
+            .background(Color.btSurface)
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        }
+        .buttonStyle(.plain)
+    }
 
-            footerButton(icon: "rectangle.portrait.and.arrow.right", title: "Sign Out", isDestructive: true) {
-                showSignOutConfirm = true
-            }
+    private var signOutRow: some View {
+        footerButton(icon: "rectangle.portrait.and.arrow.right", title: "Sign Out", isDestructive: true) {
+            showSignOutConfirm = true
         }
         .background(Color.btSurface)
         .cornerRadius(BTRadius.md)
-        .overlay(
-            RoundedRectangle(cornerRadius: BTRadius.md)
-                .stroke(Color.btLine, lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
     }
 
     // MARK: - Onboarding Replay (debug)
