@@ -41,7 +41,7 @@ struct AppealView: View {
                     }
                 }
                 .padding(.horizontal, BTSpacing.xxl)
-                .padding(.top, BTSpacing.xxl)
+                .padding(.top, BTSpacing.md)
             }
             .background(Color.btBg.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) {
@@ -64,7 +64,7 @@ struct AppealView: View {
     // MARK: - Form
 
     private var formState: some View {
-        VStack(alignment: .leading, spacing: BTSpacing.xl) {
+        VStack(alignment: .leading, spacing: BTSpacing.lg) {
             // Removed post body
             VStack(alignment: .leading, spacing: BTSpacing.sm) {
                 Text("REMOVED POST")

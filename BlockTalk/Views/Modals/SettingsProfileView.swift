@@ -77,11 +77,9 @@ struct SettingsProfileView: View {
                 Text("IDENTITY")
                     .font(BTFont.mono(size: 11))
                     .foregroundStyle(Color.btText3)
-            } footer: {
-                Text(ProfileCopy.usernameGuide)
-                    .font(BTFont.body(size: 12))
-                    .foregroundStyle(Color.btText3)
             }
+            // The "don't use your real name" guidance lives in the Set-username
+            // sheet, shown only when you actually go to set one — not here at rest.
             .listRowBackground(Color.btSurface)
             .listRowSeparatorTint(Color.btLine)
 
