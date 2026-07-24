@@ -120,10 +120,17 @@ struct FeedView: View {
                         if !myPosts.isEmpty {
                             LazyVStack(spacing: 0) {
                                 ForEach(myPosts) { post in
-                                    NavigationLink(value: post) {
+                                    // A moderated post (removed / under review) is a
+                                    // notice, not a navigable post — render the
+                                    // tombstone inline, no tap-through to a detail.
+                                    if post.status == .live {
+                                        NavigationLink(value: post) {
+                                            PostCard(post: post)
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
                                         PostCard(post: post)
                                     }
-                                    .buttonStyle(.plain)
                                     Divider().background(Color.btLine)
                                 }
                             }

@@ -29,50 +29,58 @@ struct PostDetailView: View {
                     PostCard(post: post)
                         .padding(.bottom, BTSpacing.md)
 
-                    Divider().background(Color.btLine)
+                    // A removed / under-review post is a notice, not a post: the
+                    // tombstone (shown by PostCard above) is the whole screen —
+                    // no reply count, no thread, no reply box.
+                    if post.status == .live {
+                        Divider().background(Color.btLine)
 
-                    // Reply count header — matches the post's count on the card.
-                    Text("\(post.replyCount) REPLIES")
-                        .font(BTFont.mono(size: 11))
-                        .foregroundStyle(Color.btText3)
-                        .padding(.horizontal, BTSpacing.lg)
-                        .padding(.vertical, BTSpacing.md)
+                        // Reply count header — matches the post's count on the card.
+                        Text("\(post.replyCount) REPLIES")
+                            .font(BTFont.mono(size: 11))
+                            .foregroundStyle(Color.btText3)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.vertical, BTSpacing.md)
 
-                    // Threaded replies
-                    LazyVStack(spacing: 0) {
-                        ForEach(viewModel.replies) { reply in
-                            ReplyNode(
-                                reply: reply,
-                                onReplyTap: { replyId, username in
-                                    // Replies require physical presence — gate when ungated
-                                    if location.permissionState == .granted {
-                                        viewModel.replyingTo = (id: replyId, username: username)
-                                        replyFocused = true
-                                    } else {
-                                        locationGateTap(location, showPreFrame: $showPreFrame)
+                        // Threaded replies
+                        LazyVStack(spacing: 0) {
+                            ForEach(viewModel.replies) { reply in
+                                ReplyNode(
+                                    reply: reply,
+                                    onReplyTap: { replyId, username in
+                                        // Replies require physical presence — gate when ungated
+                                        if location.permissionState == .granted {
+                                            viewModel.replyingTo = (id: replyId, username: username)
+                                            replyFocused = true
+                                        } else {
+                                            locationGateTap(location, showPreFrame: $showPreFrame)
+                                        }
+                                    },
+                                    onVote: { replyId, direction in
+                                        guard let userId = appState.currentUser?.id else { return }
+                                        viewModel.voteOnReply(replyId: replyId, userId: userId, direction: direction)
                                     }
-                                },
-                                onVote: { replyId, direction in
-                                    guard let userId = appState.currentUser?.id else { return }
-                                    viewModel.voteOnReply(replyId: replyId, userId: userId, direction: direction)
-                                }
-                            )
+                                )
+                            }
                         }
-                    }
 
-                    // Bottom spacer for reply bar
-                    Spacer(minLength: 100)
+                        // Bottom spacer for reply bar
+                        Spacer(minLength: 100)
+                    }
                 }
             }
             .refreshable {
                 await viewModel.loadReplies(for: post)
             }
 
-            // Reply compose bar — replaced by the location gate when ungated
-            if location.permissionState == .granted {
-                replyBar
-            } else {
-                LocationGateBar(label: "Enable location to reply", showPreFrame: $showPreFrame)
+            // Reply compose bar — only for a live post; a moderated post has
+            // nothing to reply to.
+            if post.status == .live {
+                if location.permissionState == .granted {
+                    replyBar
+                } else {
+                    LocationGateBar(label: "Enable location to reply", showPreFrame: $showPreFrame)
+                }
             }
         }
         .background(Color.btBg)
@@ -92,7 +100,10 @@ struct PostDetailView: View {
         }
         .task {
             viewModel.post = post
-            await viewModel.loadReplies(for: post)
+            // Moderated posts are notices, not posts — no replies to load.
+            if post.status == .live {
+                await viewModel.loadReplies(for: post)
+            }
         }
     }
 
