@@ -13,7 +13,7 @@ async function executeSqlFile(filename: string): Promise<{ success: boolean; err
   const client = new Client({ connectionString: dbUrl });
 
   try {
-    const filePath = join(process.cwd(), "..", "scripts", filename);
+    const filePath = join(process.cwd(), "sql", filename);
     const sql = readFileSync(filePath, "utf-8");
 
     await client.connect();
