@@ -34,3 +34,7 @@ export async function runSeedMock() {
 export async function runSeedReplies() {
   return executeSqlFile("seed_replies.sql");
 }
+
+export async function runSeedReports() {
+  return executeSqlFile("seed_reports.sql");
+}

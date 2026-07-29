@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Database, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
-import { runSeedMock, runSeedReplies } from "./actions";
+import { runSeedMock, runSeedReplies, runSeedReports } from "./actions";
 
 type Status = "idle" | "confirming" | "running" | "success" | "error";
 
@@ -42,6 +42,18 @@ export default function SeedPage() {
     }
     setLog((prev) => [...prev, "seed_replies.sql completed."]);
 
+    setLog((prev) => [...prev, "Running seed_reports.sql..."]);
+    const reportsResult = await runSeedReports();
+    if (!reportsResult.success) {
+      setLog((prev) => [
+        ...prev,
+        `seed_reports.sql failed: ${reportsResult.error}`,
+      ]);
+      setStatus("error");
+      return;
+    }
+    setLog((prev) => [...prev, "seed_reports.sql completed."]);
+
     setLog((prev) => [...prev, "All seeds completed successfully."]);
     setStatus("success");
   }
@@ -62,8 +74,9 @@ export default function SeedPage() {
             <div>
               <h3 className="font-semibold">Seed Mock Data</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Runs <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">seed_mock.sql</code> and{" "}
-                <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">seed_replies.sql</code> against
+                Runs <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">seed_mock.sql</code>,{" "}
+                <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">seed_replies.sql</code>, and{" "}
+                <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">seed_reports.sql</code> against
                 the database. This will clean existing mock data (UUIDs starting with b/c/d/e/f) and re-seed.
               </p>
             </div>
