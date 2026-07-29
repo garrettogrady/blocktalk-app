@@ -1,10 +1,11 @@
 "use server";
 
 import { Client } from "pg";
-import { readFileSync } from "fs";
-import { join } from "path";
+import seedMockSql from "../../sql/seed_mock.sql";
+import seedRepliesSql from "../../sql/seed_replies.sql";
+import seedReportsSql from "../../sql/seed_reports.sql";
 
-async function executeSqlFile(filename: string): Promise<{ success: boolean; error?: string }> {
+async function executeSql(sql: string): Promise<{ success: boolean; error?: string }> {
   const dbUrl = process.env.SUPABASE_DB_URL;
   if (!dbUrl) {
     return { success: false, error: "SUPABASE_DB_URL not configured" };
@@ -13,9 +14,6 @@ async function executeSqlFile(filename: string): Promise<{ success: boolean; err
   const client = new Client({ connectionString: dbUrl });
 
   try {
-    const filePath = join(process.cwd(), "sql", filename);
-    const sql = readFileSync(filePath, "utf-8");
-
     await client.connect();
     await client.query(sql);
     await client.end();
@@ -28,13 +26,13 @@ async function executeSqlFile(filename: string): Promise<{ success: boolean; err
 }
 
 export async function runSeedMock() {
-  return executeSqlFile("seed_mock.sql");
+  return executeSql(seedMockSql);
 }
 
 export async function runSeedReplies() {
-  return executeSqlFile("seed_replies.sql");
+  return executeSql(seedRepliesSql);
 }
 
 export async function runSeedReports() {
-  return executeSqlFile("seed_reports.sql");
+  return executeSql(seedReportsSql);
 }
