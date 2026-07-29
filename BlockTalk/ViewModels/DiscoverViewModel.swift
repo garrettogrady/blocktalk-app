@@ -74,25 +74,21 @@ final class DiscoverViewModel {
             struct ActiveResult: Decodable {
                 let name: String
                 let borough: String
-                let postCount: Int
+                let talkingCount: Int
                 enum CodingKeys: String, CodingKey {
                     case name, borough
-                    case postCount = "post_count"
+                    case talkingCount = "talking_count"
                 }
             }
             let active: [ActiveResult] = try await supabase.rpc("active_neighborhoods")
                 .execute()
                 .value
             neighborhoods = active.map {
-                DiscoverNeighborhood(name: $0.name, borough: $0.borough.uppercased(), talking: $0.postCount)
+                DiscoverNeighborhood(name: $0.name, borough: $0.borough.uppercased(), talking: $0.talkingCount)
             }
         } catch {
-            // Fallback: show some neighborhoods from the directory
-            let sample = ["Astoria", "Crown Heights", "Inwood", "Bedford-Stuyvesant", "Sunnyside"]
-            neighborhoods = sample.compactMap { name in
-                guard let entry = NeighborhoodDirectory.all.first(where: { $0.name == name }) else { return nil }
-                return DiscoverNeighborhood(name: entry.name, borough: entry.borough.uppercased(), talking: 0)
-            }
+            print("Discover: failed to load active neighborhoods — \(error)")
+            neighborhoods = []
         }
     }
 }

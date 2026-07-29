@@ -464,7 +464,7 @@ struct MapTabView: View {
                             Text("·").foregroundStyle(Color.btText3)
                         }
                         Circle().fill(Color.btLime).frame(width: 5, height: 5)
-                        Text("\(talkingCount(name)) talking")
+                        Text("\(viewModel.talkingCounts[name] ?? 0) talking")
                             .font(BTFont.monoBold(size: 9))
                             .tracking(0.8)
                             .foregroundStyle(Color.btLime)
@@ -545,6 +545,7 @@ struct MapTabView: View {
     private func select(_ name: String) {
         withAnimation(.easeOut(duration: 0.18)) { selectedNeighborhood = name }
         focus(on: name)                     // zoom-to-fit the neighborhood
+        Task { await viewModel.loadTalkingCount(name: name) }
     }
 
     /// Nearest neighborhood to a coordinate by distance to its outline.
@@ -581,13 +582,6 @@ struct MapTabView: View {
         withAnimation(.easeInOut(duration: 0.45)) {
             cameraPosition = .region(region)
         }
-    }
-
-    /// A stable, made-up "N talking" count per neighborhood so the map feels
-    /// alive. Deterministic from the name (no backend). [PROD-DIFF]
-    private func talkingCount(_ name: String) -> Int {
-        let base = name.unicodeScalars.reduce(0) { $0 + Int($1.value) }
-        return base % 180 + 14
     }
 
     /// True if the tap landed on a map pin (let the pin's own tap handle it).

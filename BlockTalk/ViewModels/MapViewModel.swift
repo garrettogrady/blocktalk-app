@@ -10,6 +10,7 @@ final class MapViewModel {
     var isDropMode = false
     var dropCenter: CLLocationCoordinate2D?
     var radiusMiles: Double = 0.5
+    var talkingCounts: [String: Int] = [:]
 
     // NYC center
     var region = MKCoordinateRegion(
@@ -59,6 +60,19 @@ final class MapViewModel {
         let latMiles = region.span.latitudeDelta * 69.0 / 2.0
         let lngMiles = region.span.longitudeDelta * 69.0 * cos(region.center.latitude * .pi / 180) / 2.0
         radiusMiles = min(latMiles, lngMiles)
+    }
+
+    func loadTalkingCount(name: String) async {
+        do {
+            guard let neighborhood = neighborhoods.first(where: { $0.name == name }) else { return }
+            let count: Int = try await supabase.rpc("neighborhood_talking", params: ["nid": neighborhood.id.uuidString])
+                .execute()
+                .value
+            talkingCounts[name] = count
+        } catch {
+            print("Failed to load talking count for \(name): \(error)")
+            talkingCounts[name] = 0
+        }
     }
 
     func formatRadius() -> String {
