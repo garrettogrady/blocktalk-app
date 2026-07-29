@@ -13,6 +13,7 @@ struct MapTabView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @State private var viewModel = MapViewModel()
     @State private var showComposeForPin = false
     @State private var polygons: [NeighborhoodPolygon] = []
@@ -603,12 +604,16 @@ struct MapTabView: View {
             .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
     }
 
-    /// Open the confirmed neighborhood's feed — resolved locally from the
-    /// bundled directory (no backend). Switches to the Feed tab.
+    /// Open the confirmed neighborhood's feed. Uses cached Supabase neighborhoods
+    /// so the ID matches posts in the database.
     private func openFeed(_ name: String) {
-        guard let e = NeighborhoodDirectory.all.first(where: { $0.name.lowercased() == name.lowercased() })
-        else { return }
-        appState.viewingNeighborhood = Neighborhood(id: UUID(), name: e.name, shortCode: e.shortCode, borough: e.borough)
+        if let cached = neighborhoodCache.neighborhood(named: name) {
+            appState.viewingNeighborhood = cached
+        } else if let e = NeighborhoodDirectory.all.first(where: { $0.name.lowercased() == name.lowercased() }) {
+            appState.viewingNeighborhood = Neighborhood(id: UUID(), name: e.name, shortCode: e.shortCode, borough: e.borough)
+        } else {
+            return
+        }
         selectedNeighborhood = nil
         appState.selectedTab = 0
     }
@@ -701,5 +706,7 @@ struct HouseBlueDot: View {
     MapTabView()
         .environment(AppState())
         .environment(LocationService())
+        .environment(LocalContentStore())
+        .environment(NeighborhoodCache())
         .preferredColorScheme(.dark)
 }

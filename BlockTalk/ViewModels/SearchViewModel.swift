@@ -8,6 +8,8 @@ final class SearchViewModel {
     var scope: SearchScope = .neighborhood
     var sort: SearchSort = .recent
 
+    private let postService = PostService()
+
     enum SearchScope {
         case neighborhood
         case global
@@ -19,23 +21,36 @@ final class SearchViewModel {
     }
 
     func search(neighborhoodId: UUID?) async {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else {
             results = []
             return
         }
 
-        // Bundled mock data (no backend): neighborhood scope = the LES feed;
-        // global scope = feed + cross-NYC trending + prompt responses.
-        let pool: [Post] = scope == .neighborhood
-            ? Post.sampleFeed
-            : (Post.sampleFeed + Post.sampleTrending + DailyPrompt.sampleResponses)
+        isSearching = true
+        defer { isSearching = false }
 
-        var matched = pool.filter { $0.text.lowercased().contains(q) }
-        switch sort {
-        case .recent:  matched.sort { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-        case .engaged: matched.sort { $0.score > $1.score }
+        do {
+            let orderColumn = sort == .recent ? "created_at" : "score"
+
+            // Filters must be applied before transforms (.order/.limit)
+            var filterBuilder = supabase.from("posts")
+                .select(PostService.postSelect)
+                .ilike("text", value: "%\(q)%")
+                .eq("status", value: "live")
+
+            if scope == .neighborhood, let nid = neighborhoodId {
+                filterBuilder = filterBuilder.eq("neighborhood_id", value: nid.uuidString)
+            }
+
+            results = try await filterBuilder
+                .order(orderColumn, ascending: false)
+                .limit(50)
+                .execute()
+                .value
+        } catch {
+            print("Search failed: \(error)")
+            results = []
         }
-        results = matched
     }
 }

@@ -12,7 +12,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     private let manager = CLLocationManager()
     private let neighborhoodService = NeighborhoodService()
-    private var hasResolvedNeighborhood = false
+    /// The horizontal accuracy (meters) of the fix that produced `currentNeighborhood`.
+    private var resolvedAccuracy: CLLocationAccuracy = .greatestFiniteMagnitude
 
     var permissionState: PermissionState = .unknown
     var currentLocation: CLLocationCoordinate2D?
@@ -23,7 +24,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     override init() {
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         updatePermissionState()
     }
 
@@ -59,10 +60,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// Whether neighborhood resolution has been attempted (success or failure)
     var neighborhoodResolved = false
 
-    private func resolveNeighborhood(for coordinate: CLLocationCoordinate2D) {
-        // Only resolve once
-        guard !hasResolvedNeighborhood else { return }
-        hasResolvedNeighborhood = true
+    private func resolveNeighborhood(for location: CLLocation) {
+        let accuracy = location.horizontalAccuracy
+        guard accuracy >= 0 else { return } // negative = invalid
+
+        // Re-resolve if this fix is meaningfully more accurate than the one
+        // that produced the current neighborhood (at least 2× better).
+        let dominated = currentNeighborhood != nil && accuracy < resolvedAccuracy * 0.5
+        let firstTime = currentNeighborhood == nil
+
+        guard firstTime || dominated else { return }
+
+        let coordinate = location.coordinate
+        resolvedAccuracy = accuracy
 
         Task { @MainActor in
             do {
@@ -90,7 +100,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         Task { @MainActor in
             currentLocation = location.coordinate
-            resolveNeighborhood(for: location.coordinate)
+            resolveNeighborhood(for: location)
         }
     }
 

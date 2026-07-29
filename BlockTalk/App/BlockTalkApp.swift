@@ -8,6 +8,7 @@ struct BlockTalkApp: App {
     @State private var offline = OfflineStore()
     @State private var localContent = LocalContentStore()
     @State private var notifications = NotificationStore()
+    @State private var neighborhoodCache = NeighborhoodCache()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -34,9 +35,8 @@ struct BlockTalkApp: App {
             .environment(offline)
             .environment(localContent)
             .environment(notifications)
+            .environment(neighborhoodCache)
             .preferredColorScheme(.dark)
-            // A shared post opens full-screen over everything — read first, then
-            // join. This is the highest-intent arrival, so content leads.
             .fullScreenCover(item: Binding(
                 get: { appState.deepLinkedPost },
                 set: { appState.deepLinkedPost = $0 }
@@ -47,69 +47,106 @@ struct BlockTalkApp: App {
                     .environment(moderation)
                     .environment(offline)
                     .environment(localContent)
+                    .environment(neighborhoodCache)
                     .preferredColorScheme(.dark)
             }
             .onOpenURL { url in handleDeepLink(url) }
             .task {
-                bootstrapMock()
+                await restoreSession()
             }
             .onChange(of: scenePhase) { _, phase in
-                // Recheck permission on foreground so flipping the toggle in
-                // iOS Settings clears the gate without a relaunch (§17)
                 if phase == .active { locationService.checkPermission() }
             }
-            .onChange(of: locationService.currentNeighborhood) { _, resolved in
-                // Where you PHYSICALLY are (from GPS) is the postable zone — not
-                // the home you picked at onboarding. Once real location resolves,
-                // it wins. [PROD-DIFF: server validates presence at submit.]
+            .onChange(of: locationService.currentNeighborhood) { old, resolved in
                 if let resolved, locationService.permissionState == .granted {
                     appState.physicalNeighborhood = resolved
+                    // First GPS fix: also switch the feed to where the user
+                    // actually is (overrides the home-neighborhood default).
+                    if old == nil {
+                        appState.viewingNeighborhood = resolved
+                    }
                 }
             }
         }
     }
 
-    /// Route an incoming link to the post it points at. Handles both the custom
-    /// scheme (blocktalk://p/<id>) and the shareable https form
-    /// (https://blocktalk.nyc/p/<id>) — same path shape, so one parser covers both.
-    /// [PROD: the https form needs an apple-app-site-association file hosted on
-    /// blocktalk.nyc to open from Messages; the custom scheme works today.]
+    /// Route an incoming link to the post it points at.
     private func handleDeepLink(_ url: URL) {
         let segments = url.pathComponents.filter { $0 != "/" }
         let idString: String?
-        if url.host == "p" {                                   // blocktalk://p/<id>
+        if url.host == "p" {
             idString = segments.first
         } else if let i = segments.firstIndex(of: "p"), i + 1 < segments.count {
-            idString = segments[i + 1]                          // .../p/<id>
+            idString = segments[i + 1]
         } else {
             idString = segments.last
         }
-        guard let idString, let id = UUID(uuidString: idString),
-              let post = Post.find(id: id) ?? localContent.post(id: id) else { return }
-        appState.deepLinkedPost = post
+        guard let idString, let id = UUID(uuidString: idString) else { return }
+        // Check local store first, then fetch from Supabase
+        if let post = localContent.post(id: id) {
+            appState.deepLinkedPost = post
+        } else {
+            Task {
+                let postService = PostService()
+                if let post = try? await postService.fetchPost(id: id) {
+                    await MainActor.run {
+                        appState.deepLinkedPost = post
+                    }
+                }
+            }
+        }
     }
 
-    /// Bundled-mock boot: no auth/backend — drop straight into a populated app
-    /// with the sample user + LES. (Onboarding is still reachable via Sign Out.)
-    private func bootstrapMock() {
-        if appState.currentUser == nil {
-            appState.currentUser = .sample
-            appState.viewingNeighborhood = .les
-            appState.physicalNeighborhood = .les   // mock: you're home in LES
-            appState.hasResolvedInitialNeighborhood = true
-            appState.stage = .app
+    /// Restore an existing Supabase session on launch. If a session exists,
+    /// fetch the user profile and advance to .app. Otherwise stay on .splash.
+    private func restoreSession() async {
+        // Load the neighborhood cache at startup
+        await neighborhoodCache.loadAll()
 
-            // DEMO SEED: a real-looking post of yours that got removed, so the
-            // report/appeal flow is reachable from the feed (removed tombstone →
-            // Appeal → form, showing this exact text). Delete this block to remove
-            // it from the demo.
-            localContent.add(post: Post(
-                id: UUID(), userId: BlockTalkUser.sample.id, neighborhoodId: Post.lesNeighborhoodId,
-                text: "whoever keeps leaving their dog's mess outside 88 Orchard, I know exactly who you are and so does everyone on this block.",
-                isDailyPrompt: false, score: 14, replyCount: 3, reportCount: 6,
-                status: .removed, createdAt: Date().addingTimeInterval(-1800),
-                author: PostAuthor(username: "BlockTalker", userNumber: 4827, home: .init(shortCode: "LES"))
-            ))
+        do {
+            let session = try await supabase.auth.session
+            appState.session = session
+
+            // Fetch user profile from users table
+            let users: [BlockTalkUser] = try await supabase.from("users")
+                .select()
+                .eq("id", value: session.user.id.uuidString)
+                .execute()
+                .value
+
+            guard let user = users.first else {
+                // Session exists but no profile — new user, stay on splash
+                return
+            }
+
+            appState.currentUser = user
+
+            // Resolve home neighborhood for initial viewing
+            if let homeId = user.homeNeighborhoodId {
+                if let home = neighborhoodCache.neighborhood(id: homeId) {
+                    appState.viewingNeighborhood = home
+                    appState.physicalNeighborhood = home
+                    appState.hasResolvedInitialNeighborhood = true
+                } else {
+                    // ID not in cache (stale/synthetic UUID) — fetch directly
+                    let fetched: [Neighborhood] = (try? await supabase.from("neighborhoods")
+                        .select("id, name, short_code, borough")
+                        .eq("id", value: homeId.uuidString)
+                        .limit(1)
+                        .execute()
+                        .value) ?? []
+                    if let home = fetched.first {
+                        appState.viewingNeighborhood = home
+                        appState.physicalNeighborhood = home
+                        appState.hasResolvedInitialNeighborhood = true
+                    }
+                    // If still nil, FeedView.resolveInitialNeighborhood will handle it
+                }
+            }
+
+            appState.advanceTo(.app)
+        } catch {
+            // No valid session — stay on splash
         }
     }
 }

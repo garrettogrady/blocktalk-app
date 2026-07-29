@@ -7,27 +7,28 @@ final class ProfileViewModel {
     var isSubmitting = false
     var error: String?
 
+    /// Whether the current username is taken (checked against Supabase)
+    var isUsernameTaken = false
+    /// Debounce task for username availability check
+    private var checkTask: Task<Void, Never>?
+
     private static let defaultName = "BlockTalker"
 
-    // Hardcoded sets matching the React app exactly
-    private static let takenUsernames: Set<String> = [
-        "ratking", "avenuec", "deli_truther", "admin", "blocktalk"
-    ]
     private static let blockedUsernames: Set<String> = [
         "mod", "official", "moderator", "staff", "support"
     ]
 
     enum UsernameState {
-        case `default`  // matches the default "BlockTalker"
+        case `default`
         case valid
         case taken
-        case invalid    // fails regex: not 3-20 alphanumeric + underscore
-        case blocked    // reserved word
-        case hate       // hate speech detected
-        case empty      // trimmed to nothing
+        case invalid
+        case blocked
+        case hate
+        case empty
+        case checking
     }
 
-    /// Computed exactly like the React app's useMemo
     var usernameState: UsernameState {
         let v = username.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -39,7 +40,6 @@ final class ProfileViewModel {
 
         let lower = v.lowercased()
 
-        // Regex: 3-20 chars, letters/numbers/underscores only
         let regex = /^[a-zA-Z0-9_]{3,20}$/
         if v.wholeMatch(of: regex) == nil {
             return .invalid
@@ -49,12 +49,12 @@ final class ProfileViewModel {
             return .blocked
         }
 
-        if Self.takenUsernames.contains(lower) {
-            return .taken
-        }
-
         if LanguageCheck.containsHateSpeech(v) {
             return .hate
+        }
+
+        if isUsernameTaken {
+            return .taken
         }
 
         return .valid
@@ -66,5 +66,37 @@ final class ProfileViewModel {
 
     var canContinue: Bool {
         usernameOk && selectedNeighborhood != nil
+    }
+
+    /// Debounced check of username availability against the users table.
+    func checkUsernameTaken() {
+        checkTask?.cancel()
+        isUsernameTaken = false
+
+        let v = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !v.isEmpty,
+              v.caseInsensitiveCompare(Self.defaultName) != .orderedSame,
+              v.wholeMatch(of: /^[a-zA-Z0-9_]{3,20}$/) != nil
+        else { return }
+
+        checkTask = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+
+            do {
+                struct IdRow: Decodable { let id: UUID }
+                let results: [IdRow] = try await supabase.from("users")
+                    .select("id")
+                    .ilike("username", value: v)
+                    .limit(1)
+                    .execute()
+                    .value
+                if !Task.isCancelled {
+                    isUsernameTaken = !results.isEmpty
+                }
+            } catch {
+                // Network error — don't block the user
+            }
+        }
     }
 }

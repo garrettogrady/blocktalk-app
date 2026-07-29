@@ -6,17 +6,16 @@ struct PersonalBoard: View {
     enum BoardTab: String, CaseIterable {
         case created = "Created"
         case interacted = "Interacted With"
-
-        var count: Int { self == .created ? 38 : 204 }
     }
 
     @State private var selectedTab: BoardTab = .created
     @State private var createdPosts: [Post] = []
     @State private var interactedPosts: [Post] = []
+    @State private var createdCount = 0
+    @State private var interactedCount = 0
 
     var body: some View {
         VStack(spacing: BTSpacing.lg) {
-            // Segmented control
             HStack(spacing: 0) {
                 ForEach(BoardTab.allCases, id: \.self) { tab in
                     Button {
@@ -27,7 +26,7 @@ struct PersonalBoard: View {
                         HStack(spacing: BTSpacing.xs) {
                             Text(tab.rawValue)
                                 .font(BTFont.bodySemibold(size: 14))
-                            Text("\(tab.count)")
+                            Text("\(tab == .created ? createdCount : interactedCount)")
                                 .font(BTFont.monoBold(size: 12))
                                 .opacity(0.7)
                         }
@@ -43,7 +42,6 @@ struct PersonalBoard: View {
             .background(Color.btSurface)
             .cornerRadius(BTRadius.md)
 
-            // Post list
             let posts = selectedTab == .created ? createdPosts : interactedPosts
 
             if posts.isEmpty {
@@ -57,12 +55,61 @@ struct PersonalBoard: View {
                 }
             }
         }
-        .onAppear {
-            // Bundled mock — counts (38/204) intentionally exceed visible posts (3/2)
-            if createdPosts.isEmpty {
-                createdPosts = Array(Post.sampleFeed.prefix(3))
-                interactedPosts = Array(Post.sampleFeed.dropFirst(8).prefix(2))
+        .task {
+            await loadPosts()
+        }
+    }
+
+    private struct PostIdRow: Decodable {
+        let postId: UUID
+        enum CodingKeys: String, CodingKey { case postId = "post_id" }
+    }
+
+    private func loadPosts() async {
+        guard let userId = appState.currentUser?.id else { return }
+        do {
+            // User's own posts
+            let created: [Post] = try await supabase.from("posts")
+                .select(PostService.postSelect)
+                .eq("user_id", value: userId.uuidString)
+                .eq("status", value: "live")
+                .order("created_at", ascending: false)
+                .limit(20)
+                .execute()
+                .value
+            createdPosts = created
+            createdCount = created.count
+
+            // Posts the user interacted with (voted or replied to)
+            let votedRows: [PostIdRow] = try await supabase.from("votes")
+                .select("post_id")
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+            let votedPostIds = votedRows.map(\.postId)
+
+            let repliedRows: [PostIdRow] = try await supabase.from("replies")
+                .select("post_id")
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+            let repliedPostIds = repliedRows.map(\.postId)
+
+            let allInteractedIds = Array(Set(votedPostIds + repliedPostIds))
+            if !allInteractedIds.isEmpty {
+                let interacted: [Post] = try await supabase.from("posts")
+                    .select(PostService.postSelect)
+                    .in("id", values: allInteractedIds.map(\.uuidString))
+                    .eq("status", value: "live")
+                    .order("created_at", ascending: false)
+                    .limit(20)
+                    .execute()
+                    .value
+                interactedPosts = interacted
+                interactedCount = interacted.count
             }
+        } catch {
+            print("PersonalBoard: failed to load — \(error)")
         }
     }
 

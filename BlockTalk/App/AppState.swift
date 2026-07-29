@@ -108,13 +108,28 @@ final class ModerationStore {
     func isHidden(_ postId: UUID) -> Bool { isReported(postId) && !shownAnyway.contains(postId) }
 }
 
-/// Session-scoped notifications. Seeded with the bundled samples; report and
+/// Session-scoped notifications. Fetches from Supabase on load; report and
 /// appeal actions push new ones so they show in the bell + tab badge.
 @Observable
 final class NotificationStore {
-    private(set) var items: [BTNotification] = BTNotification.samples
+    private(set) var items: [BTNotification] = []
 
     var unreadCount: Int { items.filter(\.unread).count }
+
+    func load(userId: UUID) async {
+        do {
+            let fetched: [BTNotification] = try await supabase.from("notifications")
+                .select()
+                .eq("user_id", value: userId.uuidString)
+                .order("created_at", ascending: false)
+                .limit(50)
+                .execute()
+                .value
+            items = fetched
+        } catch {
+            print("NotificationStore: failed to load — \(error)")
+        }
+    }
 
     func add(kind: String, title: String, preview: String? = nil, relatedPostId: UUID? = nil) {
         let note = BTNotification(id: UUID(), userId: UUID(), kind: kind, title: title,

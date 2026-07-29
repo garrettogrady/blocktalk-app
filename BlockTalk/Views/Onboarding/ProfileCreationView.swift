@@ -205,9 +205,10 @@ struct UsernameCreationView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Color.btBg.ignoresSafeArea())
-        // Pin the two choices above the keyboard so "Stay as BlockTalker" is
-        // never hidden when the field is focused.
         .safeAreaInset(edge: .bottom) { bottomBar }
+        .onChange(of: viewModel.username) { _, _ in
+            viewModel.checkUsernameTaken()
+        }
     }
 
     private var userNumberBanner: some View {
@@ -313,23 +314,57 @@ struct UsernameCreationView: View {
     }
 
     private func finish(username: String) {
-        // Drop the keyboard immediately so it doesn't linger over the feed.
         fieldFocused = false
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        if appState.currentUser == nil { appState.currentUser = .sample }
-        appState.currentUser?.username = username
-        // Home neighborhood is just your base/badge — it does NOT decide where
-        // you can post. Where you can post is your PHYSICAL location (GPS).
-        if let hood = appState.onboardingNeighborhood {
-            appState.currentUser?.homeNeighborhoodId = hood.id
+
+        guard let userId = appState.session?.user.id else {
+            print("Cannot finish onboarding: no authenticated session")
+            return
         }
-        // Mock has no live GPS, so simulate "you're physically in LES". You land
-        // viewing where you actually are, not the home you picked.
-        let physical = appState.physicalNeighborhood ?? .les
-        appState.physicalNeighborhood = physical
-        appState.viewingNeighborhood = physical
-        appState.selectedTab = 0
-        appState.advanceTo(.app)
+        guard let hood = appState.onboardingNeighborhood else {
+            print("Cannot finish onboarding: no neighborhood selected")
+            return
+        }
+
+        Task {
+            do {
+                // If the picker fell back to the local directory, the ID is a
+                // random UUID. Resolve the REAL Supabase ID by name so the DB
+                // always stores a valid foreign key.
+                var resolvedHood = hood
+                let service = NeighborhoodService()
+                if let realHood = try? await service.fetchByName(hood.name) {
+                    resolvedHood = realHood
+                }
+
+                let authService = AuthService()
+                try await authService.createUserProfile(
+                    userId: userId,
+                    username: username,
+                    neighborhoodId: resolvedHood.id
+                )
+
+                // Fetch the created user back to get server-generated fields
+                let users: [BlockTalkUser] = try await supabase.from("users")
+                    .select()
+                    .eq("id", value: userId.uuidString)
+                    .execute()
+                    .value
+
+                guard let user = users.first else { return }
+
+                appState.currentUser = user
+                appState.viewingNeighborhood = resolvedHood
+                if appState.physicalNeighborhood == nil {
+                    appState.physicalNeighborhood = resolvedHood
+                }
+                appState.hasResolvedInitialNeighborhood = true
+                appState.selectedTab = 0
+                appState.advanceTo(.app)
+            } catch {
+                print("Failed to create user profile: \(error)")
+            }
+        }
     }
 }
 

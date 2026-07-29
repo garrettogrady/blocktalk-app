@@ -8,9 +8,9 @@ struct DailyPromptFeedView: View {
     @State private var showCompose = false
     @State private var showPreFrame = false
     @State private var expandedArchive: UUID?
-
-    private let responses = DailyPrompt.sampleResponses
-    private let archive = DailyPrompt.sampleArchive
+    @State private var responses: [Post] = []
+    @State private var archive: [PromptArchive] = []
+    @State private var answerCount = 0
 
     var body: some View {
         NavigationStack {
@@ -46,6 +46,7 @@ struct DailyPromptFeedView: View {
             .safeAreaInset(edge: .top) { header }
             .fullScreenCover(isPresented: $showCompose) { ComposeView(nycWide: true) }
             .sheet(isPresented: $showPreFrame) { LocationPreFrameSheet() }
+            .task { await loadPromptData() }
         }
     }
 
@@ -103,7 +104,7 @@ struct DailyPromptFeedView: View {
                 .lineSpacing(3)
 
             HStack(spacing: 0) {
-                Text("\(DailyPrompt.sampleAnswerCount.formatted())").foregroundStyle(Color.btLime)
+                Text("\(answerCount.formatted())").foregroundStyle(Color.btLime)
                 Text(" answers across NYC").foregroundStyle(Color.btText2)
             }
             .font(BTFont.monoBold(size: 12))
@@ -182,6 +183,55 @@ struct DailyPromptFeedView: View {
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
     }
 
+    // MARK: - Data Loading
+
+    private func loadPromptData() async {
+        // Load responses for the active prompt
+        do {
+            responses = try await supabase.from("posts")
+                .select(PostService.postSelect)
+                .eq("daily_prompt_id", value: prompt.id.uuidString)
+                .eq("status", value: "live")
+                .order("score", ascending: false)
+                .limit(50)
+                .execute()
+                .value
+            answerCount = responses.count
+
+            // Load past prompts for the archive
+            let pastPrompts: [DailyPrompt] = try await supabase.from("daily_prompts")
+                .select()
+                .lt("active_until", value: ISO8601DateFormatter().string(from: Date()))
+                .order("active_from", ascending: false)
+                .limit(5)
+                .execute()
+                .value
+
+            var archiveItems: [PromptArchive] = []
+            for past in pastPrompts {
+                let pastResponses: [Post] = try await supabase.from("posts")
+                    .select(PostService.postSelect)
+                    .eq("daily_prompt_id", value: past.id.uuidString)
+                    .eq("status", value: "live")
+                    .order("score", ascending: false)
+                    .limit(3)
+                    .execute()
+                    .value
+                let weeksAgo = Int(Date().timeIntervalSince(past.activeUntil) / (7 * 86400))
+                let dateLabel = weeksAgo <= 1 ? "LAST WEEK" : "\(weeksAgo) WEEKS AGO"
+                archiveItems.append(PromptArchive(
+                    question: past.question,
+                    date: dateLabel,
+                    answerCount: pastResponses.count,
+                    posts: pastResponses
+                ))
+            }
+            archive = archiveItems
+        } catch {
+            print("DailyPromptFeedView: failed to load — \(error)")
+        }
+    }
+
     // MARK: - Compose bar
 
     private var promptComposeBar: some View {
@@ -227,7 +277,12 @@ struct DailyPromptFeedView: View {
 }
 
 #Preview {
-    DailyPromptFeedView(prompt: DailyPrompt.sampleActive)
-        .environment(LocationService())
-        .preferredColorScheme(.dark)
+    DailyPromptFeedView(prompt: DailyPrompt(
+        id: UUID(),
+        question: "What's the craziest thing you've seen in NYC?",
+        activeFrom: Date().addingTimeInterval(-2 * 86400),
+        activeUntil: Date().addingTimeInterval(5 * 86400)
+    ))
+    .environment(LocationService())
+    .preferredColorScheme(.dark)
 }

@@ -32,10 +32,12 @@ final class AuthService {
     }
 
     func createUserProfile(userId: UUID, username: String, neighborhoodId: UUID) async throws {
+        let userNumber = Int.random(in: 1000...9999)
         try await supabase.from("users")
             .insert([
                 "id": userId.uuidString,
                 "username": username,
+                "user_number": "\(userNumber)",
                 "home_neighborhood_id": neighborhoodId.uuidString,
             ])
             .execute()

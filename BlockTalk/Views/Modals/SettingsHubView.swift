@@ -26,6 +26,23 @@ struct SettingsHubView: View {
             .listRowBackground(Color.btSurface)
             .listRowSeparatorTint(Color.btLine)
 
+            #if DEBUG
+            // Testing tools — only visible in debug builds
+            Section {
+                NavigationLink {
+                    SettingsTestingView()
+                } label: {
+                    settingsRow(icon: "ant", title: "Testing")
+                }
+            } header: {
+                Text("DEVELOPER")
+                    .font(BTFont.mono(size: 11))
+                    .foregroundStyle(Color.btWarn)
+            }
+            .listRowBackground(Color.btWarn.opacity(0.08))
+            .listRowSeparatorTint(Color.btLine)
+            #endif
+
             // About section
             Section {
                 HStack(spacing: BTSpacing.md) {

@@ -32,36 +32,35 @@ final class ComposeViewModel {
     private let postService = PostService()
     private let imageService = ImageService()
 
-    /// Builds the post locally (bundled-mock: no backend). The caller stashes it
-    /// in LocalContentStore so it shows in the feed/map for the session.
-    /// [PROD-DIFF: swap back to postService.createPost for the Supabase write.]
-    func submit(userId: UUID, neighborhoodId: UUID, author: PostAuthor?, pinId: UUID? = nil) async -> Post? {
+    /// Creates a post via Supabase. Uploads the image first if present,
+    /// then inserts the post row.
+    func submit(userId: UUID, neighborhoodId: UUID, author: PostAuthor?, pinId: UUID? = nil, dailyPromptId: UUID? = nil) async -> Post? {
         guard canSubmit else { return nil }
         isSubmitting = true
+        defer { isSubmitting = false }
 
-        // Best-effort image handling; nil if it can't be stored locally.
         var imageUrl: String?
         if let image = selectedImage {
             imageUrl = try? await imageService.upload(image: image, userId: userId)
         }
 
-        let post = Post(
-            id: UUID(),
+        let newPost = NewPost(
             userId: userId,
             neighborhoodId: neighborhoodId,
             text: text.trimmingCharacters(in: .whitespacesAndNewlines),
             imageUrl: imageUrl,
             pinId: pinId,
             isDailyPrompt: isDailyPrompt,
-            score: 0,
-            replyCount: 0,
-            reportCount: 0,
-            status: .live,
-            createdAt: Date(),
-            author: author
+            dailyPromptId: dailyPromptId
         )
-        isSubmitting = false
-        return post
+
+        do {
+            let post = try await postService.createPost(newPost)
+            return post
+        } catch {
+            self.error = error.localizedDescription
+            return nil
+        }
     }
 
     func reset() {

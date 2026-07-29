@@ -65,7 +65,7 @@ struct PostDetailView: View {
                 }
             }
             .refreshable {
-                await viewModel.loadReplies(for: post, store: localContent)
+                await viewModel.loadReplies(for: post)
             }
 
             // Reply compose bar — replaced by the location gate when ungated
@@ -92,7 +92,7 @@ struct PostDetailView: View {
         }
         .task {
             viewModel.post = post
-            await viewModel.loadReplies(for: post, store: localContent)
+            await viewModel.loadReplies(for: post)
         }
     }
 
@@ -160,7 +160,7 @@ struct PostDetailView: View {
                     Button {
                         guard let userId = appState.currentUser?.id else { return }
                         replyFocused = false
-                        viewModel.sendReply(post: post, userId: userId, author: replyAuthor, store: localContent)
+                        viewModel.sendReply(post: post, userId: userId, author: replyAuthor)
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 28))

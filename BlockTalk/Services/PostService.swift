@@ -3,28 +3,53 @@ import Foundation
 struct PostService {
     /// Embeds the author (username / number / home short code) so cards render
     /// real identity instead of the placeholder default.
-    static let postSelect = "*, author:users(username, user_number, home:neighborhoods(short_code))"
+    static let postSelect = "*, author:users!posts_user_id_fkey(username, user_number, home:neighborhoods(short_code))"
 
     func fetchPosts(neighborhoodId: UUID, sort: PostSort = .newest, limit: Int = 50) async throws -> [Post] {
-        // Bundled mock data (no backend). All sample content is LES, shown for
-        // any viewing neighborhood — matches the mock's LES-only data limitation.
-        let posts = Post.sampleFeed
+        let orderColumn: String
+        let ascending: Bool
         switch sort {
-        case .newest:      return posts.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
-        case .oldest:      return posts.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
-        case .mostLiked:   return posts.sorted { $0.score > $1.score }
-        case .mostDisliked: return posts.sorted { $0.score < $1.score }
+        case .newest:       orderColumn = "created_at"; ascending = false
+        case .oldest:       orderColumn = "created_at"; ascending = true
+        case .mostLiked:    orderColumn = "score";      ascending = false
+        case .mostDisliked: orderColumn = "score";      ascending = true
         }
+        return try await supabase.from("posts")
+            .select(PostService.postSelect)
+            .eq("neighborhood_id", value: neighborhoodId.uuidString)
+            .eq("status", value: "live")
+            .order(orderColumn, ascending: ascending)
+            .limit(limit)
+            .execute()
+            .value
+    }
+
+    func fetchPost(id: UUID) async throws -> Post? {
+        let posts: [Post] = try await supabase.from("posts")
+            .select(PostService.postSelect)
+            .eq("id", value: id.uuidString)
+            .limit(1)
+            .execute()
+            .value
+        return posts.first
     }
 
     func fetchPostForPin(_ pinId: UUID) async throws -> Post? {
-        return Post.samplePinPosts[pinId]   // bundled mock data
+        let posts: [Post] = try await supabase.from("posts")
+            .select(PostService.postSelect)
+            .eq("pin_id", value: pinId.uuidString)
+            .eq("status", value: "live")
+            .order("created_at", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return posts.first
     }
 
     func createPost(_ post: NewPost) async throws -> Post {
         return try await supabase.from("posts")
             .insert(post)
-            .select()
+            .select(PostService.postSelect)
             .single()
             .execute()
             .value
@@ -92,8 +117,16 @@ enum PostSort: String, CaseIterable {
 struct DailyPromptService {
     /// The currently-active prompt (now within [active_from, active_until]).
     func fetchActivePrompt() async throws -> DailyPrompt? {
-        // Bundled mock data (no backend)
-        DailyPrompt.sampleActive
+        let now = ISO8601DateFormatter().string(from: Date())
+        let prompts: [DailyPrompt] = try await supabase.from("daily_prompts")
+            .select()
+            .lte("active_from", value: now)
+            .gte("active_until", value: now)
+            .order("active_from", ascending: false)
+            .limit(1)
+            .execute()
+            .value
+        return prompts.first
     }
 }
 

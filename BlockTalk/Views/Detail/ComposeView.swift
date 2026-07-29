@@ -346,6 +346,7 @@ struct ComposeView: View {
         postingNeighborhood?.id
             ?? locationService.currentNeighborhood?.id
             ?? appState.currentUser?.homeNeighborhoodId
+            ?? appState.viewingNeighborhood?.id
     }
 
     private var resolvedNeighborhoodName: String {
@@ -357,12 +358,15 @@ struct ComposeView: View {
     // MARK: - Submit
 
     private func submitPost() {
+        #if DEBUG
+        print("[Compose] submitPost called — canSubmit=\(viewModel.canSubmit) text=\(viewModel.text.prefix(30))… user=\(appState.currentUser?.id.uuidString.prefix(8) ?? "nil") session=\(appState.session != nil) neighborhood=\(resolvedPostingNeighborhoodId?.uuidString.prefix(8) ?? "nil")")
+        #endif
         guard let userId = appState.currentUser?.id ?? appState.session?.user.id else {
-            print("Cannot post: no authenticated user")
+            print("[Compose] BLOCKED: no authenticated user")
             return
         }
         guard let neighborhoodId = resolvedPostingNeighborhoodId else {
-            print("Cannot post: no neighborhood resolved")
+            print("[Compose] BLOCKED: no neighborhood resolved (physical=\(appState.physicalNeighborhood?.name ?? "nil"), viewing=\(appState.viewingNeighborhood?.name ?? "nil"), home=\(appState.currentUser?.homeNeighborhoodId?.uuidString.prefix(8) ?? "nil"))")
             return
         }
 
@@ -392,26 +396,23 @@ struct ComposeView: View {
 
         Task {
             if let pinLocation = effectivePin {
-                // Street comment: build the pin locally (bundled-mock, no backend).
-                let pin = Pin(
-                    id: UUID(),
-                    userId: userId,
-                    latitude: pinLocation.latitude,
-                    longitude: pinLocation.longitude,
-                    cornerName: pinCornerName ?? resolvedStreet,
-                    neighborhoodId: neighborhoodId,
-                    createdAt: Date(),
-                    placeName: taggedPlace?.name,
-                    placeCategory: taggedPlace?.category,
-                    placeSymbol: taggedPlace?.symbol
-                )
-                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
-                    localContent.add(post: post, pin: pin)
-                    routeAfterPost()
+                // Street comment: create the pin in Supabase first, then the post.
+                let pinService = PinService()
+                do {
+                    let pin = try await pinService.createPin(
+                        userId: userId,
+                        coordinate: pinLocation,
+                        cornerName: pinCornerName ?? resolvedStreet,
+                        neighborhoodId: neighborhoodId
+                    )
+                    if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
+                        routeAfterPost()
+                    }
+                } catch {
+                    print("Failed to create pin: \(error)")
                 }
             } else {
                 if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author) {
-                    localContent.add(post: post)
                     routeAfterPost()
                 }
             }

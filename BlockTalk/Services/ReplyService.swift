@@ -1,9 +1,16 @@
 import Foundation
 
 struct ReplyService {
+    static let replySelect = "*, author:users!replies_user_id_fkey(username, user_number, home:neighborhoods(short_code))"
+
     func fetchReplies(postId: UUID) async throws -> [Reply] {
-        // Bundled mock data (no backend)
-        Reply.sampleThread
+        let flat: [Reply] = try await supabase.from("replies")
+            .select(ReplyService.replySelect)
+            .eq("post_id", value: postId.uuidString)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+        return buildTree(from: flat)
     }
 
     func createReply(postId: UUID, userId: UUID, text: String, parentReplyId: UUID? = nil, depth: Int = 0) async throws -> Reply {
@@ -19,7 +26,7 @@ struct ReplyService {
 
         return try await supabase.from("replies")
             .insert(data)
-            .select()
+            .select(ReplyService.replySelect)
             .single()
             .execute()
             .value
@@ -35,7 +42,7 @@ struct ReplyService {
             .execute()
     }
 
-    private func buildTree(from flat: [Reply]) -> [Reply] {
+    func buildTree(from flat: [Reply]) -> [Reply] {
         var lookup: [UUID: Reply] = [:]
         var roots: [Reply] = []
 

@@ -42,10 +42,24 @@ struct NeighborhoodPickerView: View {
         // equal top/bottom padding truly centers the button (the home-indicator
         // area sits inside the bottom padding, not added beneath it).
         .ignoresSafeArea(.container, edges: .bottom)
-        .onAppear {
+        .task {
             if neighborhoods.isEmpty {
+                // Use the local directory as the display source so every
+                // neighborhood is always shown (the Supabase table may not
+                // have all ~280 entries). The real Supabase ID is resolved
+                // by name at profile-creation time (UsernameCreationView.finish).
                 neighborhoods = NeighborhoodDirectory.all.map {
                     Neighborhood(id: UUID(), name: $0.name, shortCode: $0.shortCode, borough: $0.borough)
+                }
+
+                // Overlay real Supabase IDs where available so that picks
+                // that DO exist in the DB work without a second lookup.
+                let service = NeighborhoodService()
+                if let fetched = try? await service.fetchAll(), !fetched.isEmpty {
+                    let byName = Dictionary(fetched.map { ($0.name, $0) }, uniquingKeysWith: { _, b in b })
+                    neighborhoods = neighborhoods.map { local in
+                        byName[local.name] ?? local
+                    }
                 }
             }
             if picked.isEmpty { picked = currentValue?.name ?? "" }
@@ -211,6 +225,6 @@ struct NeighborhoodPickerView: View {
 }
 
 #Preview {
-    NeighborhoodPickerView(currentValue: .les) { n in print("picked \(n.name)") }
+    NeighborhoodPickerView(currentValue: Neighborhood(id: UUID(), name: "Lower East Side", shortCode: "LES", borough: "Manhattan")) { n in print("picked \(n.name)") }
         .preferredColorScheme(.dark)
 }

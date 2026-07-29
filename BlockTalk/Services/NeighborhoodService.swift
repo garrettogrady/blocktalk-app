@@ -12,21 +12,22 @@ struct NeighborhoodService {
     }
 
     func findNeighborhood(at coordinate: CLLocationCoordinate2D) async throws -> Neighborhood? {
-        // Bundled point-in-polygon (no backend): which neighborhood polygon
-        // actually contains the GPS coordinate. [PROD-DIFF: PostGIS ST_Contains.]
+        // Bundled point-in-polygon: which neighborhood polygon actually contains
+        // the GPS coordinate. [PROD-DIFF: PostGIS ST_Contains.]
         let polygons = NeighborhoodPolygonLoader.load()
         guard let match = polygons.first(where: { $0.contains(coordinate) }) else { return nil }
-        // Canonical LES carries the stable id the bundled sample data uses.
-        if match.name.caseInsensitiveCompare(Neighborhood.les.name) == .orderedSame {
-            return .les
-        }
-        let entry = NeighborhoodDirectory.all.first { $0.name.caseInsensitiveCompare(match.name) == .orderedSame }
-        return Neighborhood(
-            id: UUID(),
-            name: match.name,
-            shortCode: entry?.shortCode ?? "NYC",
-            borough: entry?.borough ?? ""
-        )
+        // Look up the real neighborhood from Supabase so the ID matches posts.
+        return try await fetchByName(match.name)
+    }
+
+    func fetchByName(_ name: String) async throws -> Neighborhood? {
+        let results: [Neighborhood] = try await supabase.from("neighborhoods")
+            .select("id, name, short_code, borough")
+            .eq("name", value: name)
+            .limit(1)
+            .execute()
+            .value
+        return results.first
     }
 
     func fetchPolygon(neighborhoodId: UUID) async throws -> [[CLLocationCoordinate2D]] {

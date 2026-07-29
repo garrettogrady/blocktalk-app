@@ -30,8 +30,7 @@ struct PostCard: View {
     private var displayHome: String? { post.author?.home?.shortCode ?? homeShortCode }
     private var streetPin: Pin? {
         guard let id = post.pinId else { return nil }
-        // Session-created pins first, then the bundled sample corners.
-        return localContent.pin(id: id) ?? Pin.samples.first { $0.id == id }
+        return localContent.pin(id: id)
     }
 
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }

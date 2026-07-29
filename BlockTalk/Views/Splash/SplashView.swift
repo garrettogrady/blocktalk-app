@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SplashView: View {
     @Environment(AppState.self) private var appState
+    @Environment(NeighborhoodCache.self) private var neighborhoodCache
 
     // Landing composition — flip these two to swap the hero. Easy revert:
     // set showHeroCard = true / showStreetPins = false to restore the
@@ -25,8 +26,8 @@ struct SplashView: View {
     // corner pins. All kept OUT of the center band so nothing sits under the
     // block.talk logo or the tagline.
     private let landingPins: [LandingPin] = [
-        // Vital — gym, LES (kept low, below the tagline). Same Pin.vital the app uses.
-        .init(coord: Pin.vital.coordinate, tint: .btHouse, symbol: Pin.vital.placeSymbol),
+        // Vital Climbing Gym — 182 Broome St (NW corner Broome & Clinton)
+        .init(coord: .init(latitude: 40.71705, longitude: -73.98634), tint: .btHouse, symbol: Pin.symbol(forCategory: "gym")),
         // Doughnut Plant — bakery, LES (kept low). 379 Grand St.
         .init(coord: .init(latitude: 40.71629, longitude: -73.98856), tint: .btHouse, symbol: Pin.symbol(forCategory: "bakery")),
         // Veselka — restaurant, East Village. 144 Second Ave.
@@ -125,12 +126,7 @@ struct SplashView: View {
 
                 Spacer()
 
-                // Apple Sign In. Real auth is production; the Simulator can't do it,
-                // and "Replay onboarding" forces the bypass so the demo can walk the
-                // full splash → onboarding flow on-device.
-                #if targetEnvironment(simulator)
-                appleSignInButton { startOnboarding() }
-                #else
+                // Apple Sign In
                 if appState.forceOnboarding {
                     appleSignInButton { startOnboarding() }
                 } else {
@@ -144,7 +140,6 @@ struct SplashView: View {
                     .padding(.horizontal, BTSpacing.xxl)
                     .padding(.bottom, BTSpacing.lg)
                 }
-                #endif
 
                 // Legal text — lifted above Apple's bottom-left logo/Legal strip.
                 Text(legalText)
@@ -278,8 +273,14 @@ struct SplashView: View {
                             .value
 
                         if let user = existing.first {
-                            // Returning user — skip onboarding
+                            // Returning user — resolve neighborhood and skip onboarding
                             appState.currentUser = user
+                            if let homeId = user.homeNeighborhoodId,
+                               let home = neighborhoodCache.neighborhood(id: homeId) {
+                                appState.viewingNeighborhood = home
+                                appState.physicalNeighborhood = home
+                                appState.hasResolvedInitialNeighborhood = true
+                            }
                             appState.advanceTo(.app)
                         } else {
                             // New user — how it works, then the rule, then profile
@@ -299,6 +300,7 @@ struct SplashView: View {
 #Preview {
     SplashView()
         .environment(AppState())
+        .environment(NeighborhoodCache())
 }
 
 // MARK: - Pulsing street pin (landing map)

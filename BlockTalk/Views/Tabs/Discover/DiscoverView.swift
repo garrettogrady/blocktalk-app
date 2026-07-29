@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DiscoverView: View {
     @Environment(AppState.self) private var appState
+    @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @State private var viewModel = DiscoverViewModel()
     @State private var showSearch = false
 
@@ -146,12 +147,16 @@ struct DiscoverView: View {
 
     /// Open this neighborhood's feed on the Feed tab.
     private func openNeighborhoodFeed(_ n: DiscoverNeighborhood) {
-        let entry = NeighborhoodDirectory.all.first { $0.name.caseInsensitiveCompare(n.name) == .orderedSame }
-        let shortCode = entry?.shortCode ?? String(n.name.prefix(4)).uppercased()
-        appState.viewingNeighborhood = Neighborhood(
-            id: UUID(), name: n.name, shortCode: shortCode,
-            borough: entry?.borough ?? n.borough.capitalized
-        )
+        if let cached = neighborhoodCache.neighborhood(named: n.name) {
+            appState.viewingNeighborhood = cached
+        } else {
+            let entry = NeighborhoodDirectory.all.first { $0.name.caseInsensitiveCompare(n.name) == .orderedSame }
+            let shortCode = entry?.shortCode ?? String(n.name.prefix(4)).uppercased()
+            appState.viewingNeighborhood = Neighborhood(
+                id: UUID(), name: n.name, shortCode: shortCode,
+                borough: entry?.borough ?? n.borough.capitalized
+            )
+        }
         appState.selectedTab = 0
     }
 }
@@ -159,5 +164,6 @@ struct DiscoverView: View {
 #Preview {
     DiscoverView()
         .environment(AppState())
+        .environment(NeighborhoodCache())
         .preferredColorScheme(.dark)
 }

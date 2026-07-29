@@ -20,22 +20,6 @@ struct Neighborhood: Codable, Identifiable, Hashable, Sendable {
         case borough
     }
 
-    /// Local LES neighborhood for the bundled mock (id shared with sample posts)
-    static let les = Neighborhood(
-        id: Post.lesNeighborhoodId,
-        name: "Lower East Side",
-        shortCode: "LES",
-        borough: "Manhattan"
-    )
-
-    /// A few neighborhoods for the Discover "Random Neighborhoods" list
-    static let sampleRandom: [Neighborhood] = [
-        Neighborhood(id: UUID(), name: "Williamsburg", shortCode: "WILLYB", borough: "Brooklyn"),
-        Neighborhood(id: UUID(), name: "Astoria", shortCode: "ASTORIA", borough: "Queens"),
-        Neighborhood(id: UUID(), name: "SoHo", shortCode: "SOHO", borough: "Manhattan"),
-        Neighborhood(id: UUID(), name: "Fordham", shortCode: "FORDHAM", borough: "Bronx"),
-        Neighborhood(id: UUID(), name: "Park Slope", shortCode: "SLOPE", borough: "Brooklyn"),
-    ]
 }
 
 enum NeighborhoodDirectory {

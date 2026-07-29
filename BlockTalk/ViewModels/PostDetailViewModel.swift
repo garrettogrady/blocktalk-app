@@ -19,45 +19,69 @@ final class PostDetailViewModel {
         isLoading = false
     }
 
-    /// Bundled-mock: the seeded per-post thread (keyed by the post's text) with
-    /// any replies you've added this session grafted into the tree at the right
-    /// parent. [PROD-DIFF: replyService.fetchReplies with the nested join.]
-    func loadReplies(for post: Post, store: LocalContentStore) async {
+    private let replyService = ReplyService()
+
+    func loadReplies(for post: Post) async {
         isLoading = true
-        var thread = Reply.seededThread(forPostText: post.text)
-        // Re-insert session replies in send order so a reply-to-a-reply lands
-        // under its parent (which may itself be an earlier session reply).
-        for r in store.replies(forPost: post.id) {
-            insert(r, under: r.parentReplyId, into: &thread)
+        do {
+            replies = try await replyService.fetchReplies(postId: post.id)
+        } catch {
+            self.error = error.localizedDescription
         }
-        replies = thread
         isLoading = false
     }
 
-    /// Bundled-mock: build the reply locally, nest it under the reply it answers
-    /// (or at the root for a top-level reply), persist it, and show it
-    /// immediately. [PROD-DIFF: replyService.createReply Supabase insert.]
-    func sendReply(post: Post, userId: UUID, author: ReplyAuthor, store: LocalContentStore) {
+    /// Create a reply via Supabase, then optimistically insert it into the
+    /// local reply tree so it appears immediately.
+    func sendReply(post: Post, userId: UUID, author: ReplyAuthor) {
         let trimmed = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard !LanguageCheck.containsHateSpeech(trimmed) else { return }
 
-        let reply = Reply(
-            id: UUID(), postId: post.id, parentReplyId: replyingTo?.id, userId: userId,
-            text: trimmed, score: 0, depth: 0, createdAt: Date(),
+        let parentId = replyingTo?.id
+        let depth: Int = {
+            guard let parentId else { return 0 }
+            func findDepth(in nodes: [Reply]) -> Int? {
+                for node in nodes {
+                    if node.id == parentId { return min(node.depth + 1, Reply.maxDepth) }
+                    if let kids = node.children, let d = findDepth(in: kids) { return d }
+                }
+                return nil
+            }
+            return findDepth(in: replies) ?? 0
+        }()
+
+        // Optimistic UI: insert immediately
+        let optimistic = Reply(
+            id: UUID(), postId: post.id, parentReplyId: parentId, userId: userId,
+            text: trimmed, score: 0, depth: depth, createdAt: Date(),
             children: nil, author: author
         )
-        store.addReply(reply, toPost: post.id)
-        insert(reply, under: replyingTo?.id, into: &replies)
+        insert(optimistic, under: parentId, into: &replies)
         replyText = ""
         replyingTo = nil
+
+        // Persist to Supabase
+        Task {
+            do {
+                _ = try await replyService.createReply(
+                    postId: post.id,
+                    userId: userId,
+                    text: trimmed,
+                    parentReplyId: parentId,
+                    depth: depth
+                )
+            } catch {
+                print("Failed to persist reply: \(error)")
+            }
+        }
     }
 
     /// Insert a reply into the tree: appended at the root when `parentId` is nil,
     /// otherwise nested in the matching parent's children with depth one deeper
     /// (capped). Depth is recomputed here so it always matches nesting. Falls
     /// back to the root if the parent can't be found.
-    private func insert(_ reply: Reply, under parentId: UUID?, into nodes: inout [Reply]) {
+    func insert(_ reply: Reply, under parentId: UUID?, into nodes: inout [Reply]) {
         guard let parentId else {
             var r = reply
             r.depth = 0
@@ -74,7 +98,7 @@ final class PostDetailViewModel {
     }
 
     @discardableResult
-    private func graft(_ reply: Reply, under parentId: UUID, into nodes: inout [Reply]) -> Bool {
+    func graft(_ reply: Reply, under parentId: UUID, into nodes: inout [Reply]) -> Bool {
         for i in nodes.indices {
             if nodes[i].id == parentId {
                 var r = reply
@@ -93,7 +117,9 @@ final class PostDetailViewModel {
         return false
     }
 
-    /// No model mutation: VotePills owns the vote display locally (optimistic
-    /// count + toggle), same as post votes. [PROD-DIFF: replyService.vote.]
-    func voteOnReply(replyId: UUID, userId: UUID, direction: Int) {}
+    func voteOnReply(replyId: UUID, userId: UUID, direction: Int) {
+        Task {
+            try? await replyService.vote(replyId: replyId, userId: userId, direction: direction)
+        }
+    }
 }

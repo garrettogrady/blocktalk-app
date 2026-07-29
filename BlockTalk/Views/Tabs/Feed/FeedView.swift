@@ -419,6 +419,7 @@ struct FeedView: View {
         // GPS-resolved neighborhood first
         if let locationNeighborhood = locationService.currentNeighborhood {
             appState.viewingNeighborhood = locationNeighborhood
+            appState.physicalNeighborhood = locationNeighborhood
             appState.hasResolvedInitialNeighborhood = true
             return
         }
@@ -434,9 +435,24 @@ struct FeedView: View {
 
                 if let home = neighborhoods.first {
                     appState.viewingNeighborhood = home
+                    if appState.physicalNeighborhood == nil {
+                        appState.physicalNeighborhood = home
+                    }
                 }
             } catch {
                 print("Failed to fetch home neighborhood: \(error)")
+            }
+        }
+
+        // If still nil (stale ID in DB), wait briefly for GPS to resolve
+        if appState.viewingNeighborhood == nil {
+            for _ in 1...10 {
+                try? await Task.sleep(for: .milliseconds(300))
+                if let gps = locationService.currentNeighborhood {
+                    appState.viewingNeighborhood = gps
+                    appState.physicalNeighborhood = gps
+                    break
+                }
             }
         }
 
