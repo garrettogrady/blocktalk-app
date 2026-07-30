@@ -5,7 +5,65 @@ import UIKit
 /// contradict each other.
 enum ProfileCopy {
     static let usernameGuide = "BlockTalk is anonymous. Don't use your real name, or anything that points back to you. You can only set a username once, and it can't be changed."
+    static let aliasGuide = "No real names, nothing traceable — that's the whole point of this place."
     static let locationRule = "You post wherever you're physically located."
+}
+
+/// Generates anonymous, NYC-flavored aliases (e.g. "orchard_ghost", "feral_pigeon").
+/// It only SUGGESTS — uniqueness is guaranteed server-side (ProfileViewModel checks
+/// the users table). The big word lists keep clean two-word handles common for early
+/// users; a number suffix is the fallback once the clean space fills, so it never runs
+/// dry at scale (words × words × numbers ≈ millions). [PROD: the server appends a
+/// number or re-suggests when a generated alias collides with an existing one.]
+enum AliasGenerator {
+    // Streets, neighborhoods, transit, NYC texture.
+    private static let places = [
+        "orchard", "ludlow", "delancey", "rivington", "stanton", "essex", "allen", "bowery",
+        "canal", "mott", "mulberry", "houston", "clinton", "norfolk", "forsyth", "chrystie",
+        "grand", "hester", "broome", "spring", "prince", "bleecker", "macdougal", "astor",
+        "dyckman", "bushwick", "ridgewood", "astoria", "flatbush", "gowanus", "greenpoint",
+        "bedstuy", "harlem", "inwood", "chelsea", "tribeca", "soho", "nolita", "dumbo",
+        "redhook", "canarsie", "flushing", "corona", "rockaway", "fordham", "pelham",
+        "ftrain", "ltrain", "gtrain", "jtrain", "atrain", "qtrain", "crosstown", "uptown",
+        "downtown", "midtown", "bodega", "deli", "stoop", "hydrant", "walkup", "rooftop",
+        "alley", "gutter", "curb", "turnstile", "platform", "subway", "express", "halalcart",
+    ]
+    // Creatures + NYC archetypes + mythic.
+    private static let characters = [
+        "rat", "ratking", "pigeon", "roach", "raccoon", "possum", "squirrel", "seagull",
+        "waterbug", "alleycat", "ghost", "menace", "saint", "prophet", "oracle", "gremlin",
+        "wraith", "hermit", "mayor", "villain", "phantom", "lurker", "sage", "goblin",
+        "specter", "baron", "duke", "hustler", "myth", "legend", "native", "transplant",
+        "local", "regular", "insomniac", "nightowl", "wanderer", "drifter", "sentinel",
+        "watcher", "bard", "poet", "critic", "skeptic", "truther", "whisperer", "snob",
+        "renegade", "outlaw", "bandit", "banshee", "gargoyle", "vagrant", "stray", "recluse",
+        "enigma", "cryptid", "apostle",
+    ]
+    // Flavor adjectives for extra variety.
+    private static let adjectives = [
+        "feral", "nocturnal", "unbothered", "chronic", "reluctant", "humble", "restless",
+        "weary", "jaded", "hungover", "crosstown", "downtown", "uptown", "perpetual",
+    ]
+
+    /// One alias, lowercase, obeying the app's [a-z0-9_] 3–20 rule.
+    static func generate() -> String {
+        for _ in 0..<12 {
+            let candidate = build()
+            if (3...20).contains(candidate.count) { return candidate }
+        }
+        return "\(pick(places))\(number())"   // guaranteed-valid fallback
+    }
+
+    private static func build() -> String {
+        switch Int.random(in: 0..<20) {
+        case 0..<8:   return "\(pick(places))_\(pick(characters))"              // orchard_ghost
+        case 8..<13:  return "\(pick(adjectives))_\(pick(characters))"          // feral_pigeon
+        case 13..<17: return "\(pick(characters))_\(pick(places))"              // baron_bowery
+        default:      return "\(pick(places))_\(pick(characters))_\(number())"  // + number
+        }
+    }
+    private static func pick(_ list: [String]) -> String { list.randomElement() ?? "block" }
+    private static func number() -> String { String(Int.random(in: 2...99)) }
 }
 
 // MARK: - Shared onboarding chrome
@@ -164,12 +222,10 @@ struct ProfileCreationView: View {
 struct UsernameCreationView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = ProfileViewModel()
-    @State private var editing = false
     @FocusState private var fieldFocused: Bool
 
     private var displayName: String {
-        let v = viewModel.username.trimmingCharacters(in: .whitespaces)
-        return v.isEmpty ? "BlockTalker" : v
+        viewModel.username.trimmingCharacters(in: .whitespaces)
     }
     private var isErrorState: Bool {
         switch viewModel.usernameState {
@@ -180,13 +236,13 @@ struct UsernameCreationView: View {
     private var usernameError: String? {
         switch viewModel.usernameState {
         case .invalid: return "3–20 characters · letters, numbers, underscores"
-        case .taken:   return "That username is taken. Try another."
-        case .blocked: return "That username isn't allowed."
+        case .taken:   return "That alias is taken. Shuffle or tweak it."
+        case .blocked: return "That alias isn't allowed."
         case .hate:    return "Watch your language. No hate speech."
         default:       return nil
         }
     }
-    private var canConfirmUsername: Bool { viewModel.usernameOk }
+    private var canConfirm: Bool { viewModel.usernameState == .valid }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -196,7 +252,7 @@ struct UsernameCreationView: View {
                 VStack(alignment: .leading, spacing: BTSpacing.xl) {
                     userNumberBanner
                     heading
-                    if editing { usernameField }
+                    aliasField
                 }
                 .padding(.horizontal, BTSpacing.xxl)
                 .padding(.top, BTSpacing.lg)
@@ -206,6 +262,12 @@ struct UsernameCreationView: View {
         }
         .background(Color.btBg.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) { bottomBar }
+        .onAppear {
+            // Everyone starts with a generated NYC alias — no "BlockTalker" default.
+            if viewModel.username.caseInsensitiveCompare("BlockTalker") == .orderedSame {
+                shuffle()
+            }
+        }
         .onChange(of: viewModel.username) { _, _ in
             viewModel.checkUsernameTaken()
         }
@@ -221,31 +283,39 @@ struct UsernameCreationView: View {
     }
 
     private var heading: some View {
-        Text("Go by BlockTalker, or set your own username. Stay Anonymous.")
-            .font(BTFont.display(size: 27))
+        Text("Set an alias. Not your name.")
+            .font(BTFont.display(size: 30))
             .foregroundStyle(Color.btText)
             .tracking(-0.5)
             .lineSpacing(2)
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var usernameField: some View {
+    private var aliasField: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
-            onboardingFieldLabel("USERNAME", tag: "PERMANENT", tagColor: Color.btWarn)
+            onboardingFieldLabel("YOUR ALIAS", tag: "ANONYMOUS", tagColor: Color.btLime)
 
-            HStack(spacing: 0) {
-                Text("@").font(BTFont.body(size: 15)).foregroundStyle(Color.btText3).padding(.trailing, 1)
-                TextField("your username", text: $viewModel.username)
+            HStack(spacing: BTSpacing.sm) {
+                Text("@").font(BTFont.body(size: 15)).foregroundStyle(Color.btText3)
+                TextField("your alias", text: $viewModel.username)
                     .font(BTFont.body(size: 15))
                     .foregroundStyle(Color.btText)
                     .focused($fieldFocused)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                if viewModel.usernameOk {
+                if viewModel.usernameState == .valid {
                     Image(systemName: "checkmark").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.btLime)
                 } else if isErrorState {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.btPink)
                 }
+                // Shuffle a fresh NYC alias
+                Button { shuffle() } label: {
+                    Image(systemName: "shuffle")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.btLime)
+                        .padding(.leading, 4)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 14).padding(.vertical, 14)
             .background(isErrorState ? Color.btPink.opacity(0.05) : Color.btSurface)
@@ -255,36 +325,30 @@ struct UsernameCreationView: View {
             if let msg = usernameError {
                 Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
             } else {
-                Text(ProfileCopy.usernameGuide)
+                Text(ProfileCopy.aliasGuide)
                     .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3).lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    // Two explicit choices — the whole point of the split: you can't skim past
-    // a field, you have to pick one.
-    @ViewBuilder private var bottomBar: some View {
+    // Everyone leaves with an alias — the generated one, an edit of it, or a
+    // fresh shuffle. No "BlockTalker" default to skim past.
+    private var bottomBar: some View {
         VStack(spacing: BTSpacing.sm) {
-            if editing {
-                // Same two-button format as before you tapped in — just relabeled.
-                primaryButton(canConfirmUsername ? "Continue as @\(displayName)" : "Continue",
-                              enabled: canConfirmUsername) {
-                    finish(username: displayName)
-                }
-                secondaryButton("Stay as BlockTalker") { finish(username: "BlockTalker") }
-            } else {
-                primaryButton("Set a username", enabled: true) {
-                    viewModel.username = ""   // start empty — don't make them clear "BlockTalker"
-                    editing = true
-                    fieldFocused = true
-                }
-                secondaryButton("Stay as BlockTalker") { finish(username: "BlockTalker") }
+            primaryButton(canConfirm ? "Continue as @\(displayName)" : "Continue",
+                          enabled: canConfirm) {
+                finish(username: displayName)
             }
+            secondaryButton("Shuffle a new one") { shuffle() }
         }
         .padding(.horizontal, BTSpacing.xxl)
         .padding(.top, BTSpacing.sm)
         .padding(.bottom, BTSpacing.lg)
+    }
+
+    private func shuffle() {
+        viewModel.username = AliasGenerator.generate()
     }
 
     // Disabled state dims the lime (keeps it reading as the SAME button), never
