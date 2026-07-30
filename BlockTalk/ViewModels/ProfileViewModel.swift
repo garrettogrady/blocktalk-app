@@ -85,9 +85,15 @@ final class ProfileViewModel {
 
             do {
                 struct IdRow: Decodable { let id: UUID }
+                // Escape LIKE wildcards — aliases are underscore-heavy and `_`/`%`
+                // would otherwise match unintended rows (false "taken"/missed collision).
+                let pattern = v
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "%", with: "\\%")
+                    .replacingOccurrences(of: "_", with: "\\_")
                 let results: [IdRow] = try await supabase.from("users")
                     .select("id")
-                    .ilike("username", value: v)
+                    .ilike("username", value: pattern)
                     .limit(1)
                     .execute()
                     .value

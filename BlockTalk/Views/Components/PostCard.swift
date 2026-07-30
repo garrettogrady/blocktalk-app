@@ -270,13 +270,20 @@ struct PostCard: View {
 
     // MARK: - Action Row
 
+    /// Persist a vote. VotePills owns the optimistic UI; this writes the set.
+    /// [Backend: clear/switch handled server-side — handoff workstream 1.]
+    private func castVote(_ direction: Int) {
+        guard let userId = appState.currentUser?.id else { return }
+        Task { try? await PostService().vote(postId: post.id, userId: userId, direction: direction) }
+    }
+
     private var actionRow: some View {
         HStack(spacing: 6) {
             // Vote pills
             VotePills(
                 score: post.score,
-                onUpvote: {},
-                onDownvote: {}
+                onUpvote: { castVote(1) },
+                onDownvote: { castVote(-1) }
             )
 
             // Bell — enroll toggle + haptic + toast

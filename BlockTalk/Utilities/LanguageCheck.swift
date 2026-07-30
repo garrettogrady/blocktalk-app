@@ -51,24 +51,42 @@ enum LanguageCheck {
         return result.trimmingCharacters(in: .whitespaces)
     }
 
+    /// Remove spaces that sit between two single-character tokens, so letter-
+    /// spacing evasion ("k i k e", or "k.i.k.e" after normalize → "k i k e")
+    /// collapses to "kike" — while real multi-letter words stay separated
+    /// ("this pic" is left untouched, so it can't fuse into "spic").
+    private static func collapseLetterSpacing(_ spaced: String) -> String {
+        spaced.replacingOccurrences(of: "(?<=\\b\\w) (?=\\w\\b)", with: "", options: .regularExpression)
+    }
+
     static func containsHateSpeech(_ text: String) -> Bool {
         guard !text.isEmpty else { return false }
 
-        // Two views: the spaced form (words separated) and the despaced form so
-        // separator-evasion ("k i k e", "kike.killer") collapses to "kikekiller".
         let spaced = normalize(text)
+        // Real word spaces preserved; only letter-spacing evasion is collapsed.
+        let collapsed = collapseLetterSpacing(spaced)
+        // Fully-despaced form only for compound slurs (long/specific enough that
+        // run-together spelling is safe — "porchmonkey" has no innocent collision).
         let despaced = spaced.replacingOccurrences(of: " ", with: "")
 
-        // Remove benign words first, replacing with a break so we can't create a
-        // new slur by joining leftovers.
-        var cleaned = despaced
-        for safe in allowlist {
-            cleaned = cleaned.replacingOccurrences(of: safe, with: " ")
+        func strip(_ s: String) -> String {
+            var out = s
+            for safe in allowlist { out = out.replacingOccurrences(of: safe, with: " ") }
+            return out
         }
+        let cleanedCollapsed = strip(collapsed)
+        let cleanedDespaced = strip(despaced)
 
         for slur in blocked {
-            let needle = slur.replacingOccurrences(of: " ", with: "")
-            if cleaned.contains(needle) { return true }
+            if slur.contains(" ") {
+                // Compound: allow both spaced and run-together spellings.
+                let needle = slur.replacingOccurrences(of: " ", with: "")
+                if cleanedCollapsed.contains(slur) || cleanedDespaced.contains(needle) { return true }
+            } else {
+                // Single word: match on the space-preserving form so adjacent
+                // innocent words ("this pic") can never join into a slur ("spic").
+                if cleanedCollapsed.contains(slur) { return true }
+            }
         }
         return false
     }

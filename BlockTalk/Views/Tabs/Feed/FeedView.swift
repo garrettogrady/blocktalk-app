@@ -227,6 +227,15 @@ struct FeedView: View {
                     Task { await viewModel.loadPosts() }
                 }
             }
+            // Sort change must re-query — the fetch reads the sort, but nothing
+            // else triggers a reload when only the sort changes.
+            .onChange(of: viewModel.sort) { _, _ in
+                Task { await viewModel.loadPosts() }
+            }
+            // Show a just-created post: reload the feed when Compose dismisses.
+            .onChange(of: showCompose) { _, isShowing in
+                if !isShowing { Task { await viewModel.loadPosts() } }
+            }
             .fullScreenCover(isPresented: $showNeighborhoodPicker) {
                 NeighborhoodPickerView(
                     currentValue: appState.viewingNeighborhood,
