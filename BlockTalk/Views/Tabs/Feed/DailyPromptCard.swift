@@ -2,7 +2,9 @@ import SwiftUI
 
 struct DailyPromptCard: View {
     let prompt: DailyPrompt
-    var answerCount: Int = 0
+    /// Real response count. Nil = not loaded yet — show the CTA without a number
+    /// rather than invent one (no fake activity counts).
+    var answerCount: Int?
     var onTap: (() -> Void)?
 
     @State private var showPromptFeed = false
@@ -45,12 +47,22 @@ struct DailyPromptCard: View {
                     .lineSpacing(4)
                     .multilineTextAlignment(.leading)
 
-                (Text(answerCount.formatted())
-                    .font(BTFont.monoBold(size: 10.5))
-                    .foregroundColor(.btLime)
-                 + Text(" answers · tap to join →")
-                    .font(BTFont.body(size: 10.5))
-                    .foregroundColor(.btText2))
+                // Only show a count once we have a real one (>0); otherwise just
+                // the CTA — never a fabricated number.
+                Group {
+                    if let answerCount, answerCount > 0 {
+                        Text(answerCount.formatted())
+                            .font(BTFont.monoBold(size: 10.5))
+                            .foregroundColor(.btLime)
+                        + Text(" answers · tap to join →")
+                            .font(BTFont.body(size: 10.5))
+                            .foregroundColor(.btText2)
+                    } else {
+                        Text("tap to join →")
+                            .font(BTFont.body(size: 10.5))
+                            .foregroundColor(.btText2)
+                    }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 9)

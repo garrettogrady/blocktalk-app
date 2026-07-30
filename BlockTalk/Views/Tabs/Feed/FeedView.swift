@@ -61,7 +61,7 @@ struct FeedView: View {
 
                         // Daily prompt card — full-width strip
                         if let prompt = viewModel.dailyPrompt {
-                            DailyPromptCard(prompt: prompt, answerCount: 1842)
+                            DailyPromptCard(prompt: prompt, answerCount: viewModel.promptAnswerCount)
                         }
 
                         // Location / neighborhood row

@@ -9,6 +9,10 @@ final class FeedViewModel {
     var timeFilter: TimeFilter = .day
     var viewingNeighborhood: Neighborhood?
     var dailyPrompt: DailyPrompt?
+    /// Real number of responses to the active prompt (drives the card's "N
+    /// answers"). Nil until loaded so the card can hide the count rather than
+    /// show a fake one.
+    var promptAnswerCount: Int?
 
     private let postService = PostService()
     private let promptService = DailyPromptService()
@@ -17,6 +21,15 @@ final class FeedViewModel {
     func loadDailyPrompt() async {
         do {
             dailyPrompt = try await promptService.fetchActivePrompt()
+            // Real response count — a HEAD count query, no rows fetched.
+            if let promptId = dailyPrompt?.id {
+                let response = try await supabase.from("posts")
+                    .select("id", head: true, count: .exact)
+                    .eq("daily_prompt_id", value: promptId.uuidString)
+                    .eq("status", value: "live")
+                    .execute()
+                promptAnswerCount = response.count
+            }
         } catch {
             print("Failed to load daily prompt: \(error)")
         }
