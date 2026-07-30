@@ -71,8 +71,11 @@ The in-app Feedback form throws away what users type. For a TestFlight round you
 ### 11. Offline compose — mock, drops data
 The offline queue shows posts as "sent" but never writes them to Supabase (silent data loss). Either wire real send-on-reconnect (create each queued post + its pin) or disable offline compose for v1.
 
-### 12. Deep links / universal links (app + hosting, not Supabase)
-Shared links are `https://blocktalk.nyc/p/<id>`. The router + landing screen exist in the app but there's **no Associated Domains entitlement and no `apple-app-site-association` file hosted**, so links open Safari, not the app. Add `applinks:blocktalk.nyc` entitlement + host the AASA file (whoever owns the domain).
+### 12. Shared links + Lite Mode entry (web hosting + app; PRD §18)
+Today a shared `https://blocktalk.nyc/p/<id>` link is a **dead end**: no universal-link setup, the custom `blocktalk://` scheme isn't even registered in Info.plist, and there's no web page — so the link just opens Safari to nothing. Per PRD §18 the intended behavior is: **app installed → opens into the post (Lite Mode); not installed → redirect to the App Store.** There is NO web version of the app; the web page is only a preview + redirect. Two halves:
+- **Web/hosting (owner of blocktalk.nyc):** a minimal landing page at `blocktalk.nyc/p/<id>` that (a) serves Open Graph tags (post preview) so iMessage renders a rich card, (b) hosts `/.well-known/apple-app-site-association` so iOS treats the URL as a Universal Link, (c) redirects to the App Store when the app isn't installed (ideally deferred-deep-links to that post after install).
+- **App (Matt):** add the `applinks:blocktalk.nyc` Associated-Domains entitlement + register the `blocktalk://` URL scheme, so the link opens the app. *(Inert until the AASA file is hosted.)*
+- **Lite Mode itself (native, PRD §18) is NOT built** — see the note below. The current `SharedPostView` is only a single-post read screen, not the full 24-hour read-only preview.
 
 ### 13. Image safety / CSAM scanning — REQUIRED before any public/open launch ⚠️
 The app lets users upload photos (§3), and **there is currently no image scanning of any kind** — not for CSAM (child sexual abuse material), not for nudity/violence. This is not optional for a real UGC launch:
