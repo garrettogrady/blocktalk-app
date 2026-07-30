@@ -8,6 +8,8 @@ struct VotePills: View {
     var score: Int
     var onUpvote: () -> Void
     var onDownvote: () -> Void
+    /// Tapping your active arrow again clears the vote — delete the row.
+    var onClear: () -> Void = {}
 
     @State private var vote: Int = 0        // -1, 0, 1
     @State private var hasEverVoted = false
@@ -30,13 +32,13 @@ struct VotePills: View {
 
     private func tapUp() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        if vote == 1 { vote = 0 } else { vote = 1; onUpvote() }
+        if vote == 1 { vote = 0; onClear() } else { vote = 1; onUpvote() }
         hasEverVoted = true
     }
 
     private func tapDown() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        if vote == -1 { vote = 0 } else { vote = -1; onDownvote() }
+        if vote == -1 { vote = 0; onClear() } else { vote = -1; onDownvote() }
         hasEverVoted = true
     }
 

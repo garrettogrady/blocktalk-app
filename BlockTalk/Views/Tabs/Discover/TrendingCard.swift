@@ -13,6 +13,11 @@ struct TrendingCard: View {
         Task { try? await PostService().vote(postId: post.id, userId: userId, direction: direction) }
     }
 
+    private func clearVote() {
+        guard let userId = appState.currentUser?.id else { return }
+        Task { try? await PostService().removeVote(postId: post.id, userId: userId) }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: BTSpacing.sm) {
             // TOP TRENDING chip
@@ -48,7 +53,7 @@ struct TrendingCard: View {
 
             // Action row — matches every other post card
             HStack(spacing: 6) {
-                VotePills(score: post.score, onUpvote: { castVote(1) }, onDownvote: { castVote(-1) })
+                VotePills(score: post.score, onUpvote: { castVote(1) }, onDownvote: { castVote(-1) }, onClear: { clearVote() })
 
                 actionButton(systemName: enrolled ? "bell.fill" : "bell",
                              active: enrolled, activeColor: .btLime) {

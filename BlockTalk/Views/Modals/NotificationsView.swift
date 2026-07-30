@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
     @Environment(NotificationStore.self) private var store
     @State private var isLoading = false
 
@@ -123,7 +124,11 @@ struct NotificationsView: View {
     }
 
     private func markAllRead() {
-        store.markAllRead()
+        store.markAllRead()   // instant local update
+        // Persist so they stay read after relaunch (was memory-only before).
+        if let userId = appState.currentUser?.id {
+            Task { try? await NotificationService().markAllRead(userId: userId) }
+        }
     }
 
     private func timeAgo(_ date: Date) -> String {

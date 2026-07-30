@@ -97,8 +97,6 @@ private func onboardingFieldLabel(_ text: String, tag: String, tagColor: Color) 
     }
 }
 
-private let onboardingUserNumber = "4,827"
-
 // MARK: - Step 1: Home neighborhood
 
 struct ProfileCreationView: View {
@@ -223,6 +221,9 @@ struct UsernameCreationView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = ProfileViewModel()
     @FocusState private var fieldFocused: Bool
+    /// Surfaced if the final profile insert fails — otherwise "Continue" looks
+    /// dead and the user is stranded on the last onboarding screen.
+    @State private var saveError: String?
 
     private var displayName: String {
         viewModel.username.trimmingCharacters(in: .whitespaces)
@@ -271,13 +272,22 @@ struct UsernameCreationView: View {
         .onChange(of: viewModel.username) { _, _ in
             viewModel.checkUsernameTaken()
         }
+        .alert("Couldn't finish setting up", isPresented: Binding(
+            get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK", role: .cancel) { saveError = nil }
+        } message: {
+            Text(saveError ?? "Something went wrong. Check your connection and try again.")
+        }
     }
 
+    // Was "You are user: 4,827" — a hardcoded fake shown to every signup. The
+    // real user number is a DB sequence assigned at account creation (shown on
+    // your profile after onboarding), so we don't invent one here.
     private var userNumberBanner: some View {
-        (Text("You are user: ")
+        (Text("You're in. ")
             .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
-         + Text(onboardingUserNumber)
-            .font(BTFont.monoBold(size: 19)).foregroundColor(Color.btLime))
+         + Text("Now pick your alias.")
+            .font(BTFont.display(size: 20)).foregroundColor(Color.btLime))
             .tracking(-0.2)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -427,6 +437,9 @@ struct UsernameCreationView: View {
                 appState.advanceTo(.app)
             } catch {
                 print("Failed to create user profile: \(error)")
+                await MainActor.run {
+                    saveError = "We couldn't create your profile. That alias may have just been taken — try Shuffle, or check your connection."
+                }
             }
         }
     }

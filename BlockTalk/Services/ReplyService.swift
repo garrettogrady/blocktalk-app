@@ -38,7 +38,7 @@ struct ReplyService {
                 "user_id": userId.uuidString,
                 "reply_id": replyId.uuidString,
                 "direction": "\(direction)",
-            ])
+            ], onConflict: "user_id,reply_id")
             .execute()
     }
 

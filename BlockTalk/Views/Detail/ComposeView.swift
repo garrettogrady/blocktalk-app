@@ -34,6 +34,9 @@ struct ComposeView: View {
     var pinCornerName: String?
     /// NYC-wide daily-prompt compose (from the Daily Prompt Feed)
     var nycWide: Bool = false
+    /// When answering the weekly prompt, the prompt this post responds to — so
+    /// it's tagged with daily_prompt_id and shows up in the prompt's responses.
+    var dailyPromptId: UUID?
 
     @State private var resolvedStreet: String?
 
@@ -427,7 +430,10 @@ struct ComposeView: View {
                     print("Failed to create pin: \(error)")
                 }
             } else {
-                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author) {
+                // Tag prompt answers so they appear in the prompt's response feed
+                // and count toward "N answers".
+                if dailyPromptId != nil { viewModel.isDailyPrompt = true }
+                if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, dailyPromptId: dailyPromptId) {
                     localContent.add(post: post)
                     routeAfterPost()
                 }

@@ -65,12 +65,14 @@ struct PostService {
     }
 
     func vote(postId: UUID, userId: UUID, direction: Int) async throws {
+        // onConflict on (user_id, post_id) so switching up↔down UPDATES the
+        // existing row instead of hitting the UNIQUE constraint and throwing.
         try await supabase.from("votes")
             .upsert([
                 "user_id": userId.uuidString,
                 "post_id": postId.uuidString,
                 "direction": "\(direction)",
-            ])
+            ], onConflict: "user_id,post_id")
             .execute()
     }
 

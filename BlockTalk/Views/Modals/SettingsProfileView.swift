@@ -133,10 +133,10 @@ struct SettingsProfileView: View {
         .alert("Delete your BlockTalk account?", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) { }
             Button("Delete Account", role: .destructive) {
-                appState.signOut()
+                deleteAccount()
             }
         } message: {
-            Text("Any posts you've made will stay up under a retired alias.")
+            Text("This permanently deletes your account, posts, replies, and votes. This can't be undone.")
         }
         .alert("Alias locked", isPresented: $showAliasLocked) {
             Button("OK", role: .cancel) { }
@@ -157,6 +157,27 @@ struct SettingsProfileView: View {
             .padding(.vertical, 2)
             .background(tone.opacity(0.15))
             .clipShape(Capsule())
+    }
+
+    /// Real account deletion (Apple requires this for any app with sign-in).
+    /// Cascades all the user's data via the delete_user_and_data RPC, then signs
+    /// out globally so the next launch starts fresh at onboarding.
+    private func deleteAccount() {
+        let userId = appState.currentUser?.id
+        Task {
+            if let userId {
+                do {
+                    try await supabase.rpc("delete_user_and_data",
+                                           params: ["p_user_id": userId.uuidString]).execute()
+                } catch {
+                    print("Account delete failed: \(error)")
+                }
+            }
+            // Global scope clears the cached token so restoreSession() can't
+            // auto-log the deleted account back in.
+            try? await supabase.auth.signOut(scope: .global)
+            await MainActor.run { appState.signOut() }
+        }
     }
 }
 

@@ -32,12 +32,14 @@ final class AuthService {
     }
 
     func createUserProfile(userId: UUID, username: String, neighborhoodId: UUID) async throws {
-        let userNumber = Int.random(in: 1000...9999)
+        // Do NOT send user_number — the column is a SERIAL sequence in the DB,
+        // so it auto-assigns a unique, monotonic "Nth user" number. (Sending a
+        // random client value overrode the sequence and could collide.) The
+        // caller reads the row back to get the assigned number.
         try await supabase.from("users")
             .insert([
                 "id": userId.uuidString,
                 "username": username,
-                "user_number": "\(userNumber)",
                 "home_neighborhood_id": neighborhoodId.uuidString,
             ])
             .execute()

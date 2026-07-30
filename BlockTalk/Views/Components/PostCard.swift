@@ -281,13 +281,19 @@ struct PostCard: View {
         Task { try? await PostService().vote(postId: post.id, userId: userId, direction: direction) }
     }
 
+    private func clearVote() {
+        guard let userId = appState.currentUser?.id else { return }
+        Task { try? await PostService().removeVote(postId: post.id, userId: userId) }
+    }
+
     private var actionRow: some View {
         HStack(spacing: 6) {
             // Vote pills
             VotePills(
                 score: post.score,
                 onUpvote: { castVote(1) },
-                onDownvote: { castVote(-1) }
+                onDownvote: { castVote(-1) },
+                onClear: { clearVote() }
             )
 
             // Bell — enroll toggle + haptic + toast

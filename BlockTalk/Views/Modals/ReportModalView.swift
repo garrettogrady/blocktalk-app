@@ -214,10 +214,31 @@ struct ReportModalView: View {
 
     private func submitReport() {
         guard let reason = selectedReason else { return }
-        // Local mock: no backend write (Supabase RLS blocks anonymous inserts).
-        // The moderation store handles the hide/tombstone; this just confirms.
-        onReported?(reason.short)
-        dismiss()
+        guard let reporterId = appState.currentUser?.id else { return }
+        isSubmitting = true
+        error = nil
+        let short = reason.short
+        let free = reason == .other
+            ? freeText.trimmingCharacters(in: .whitespacesAndNewlines)
+            : nil
+        Task {
+            do {
+                // Real insert — authenticated users CAN write reports (RLS allows
+                // auth.uid() = reporter_id). This is what fires the server-side
+                // report-threshold auto-moderation trigger.
+                try await PostService().report(postId: postId, reporterId: reporterId,
+                                               reason: short, freeText: free)
+                await MainActor.run {
+                    onReported?(short)
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isSubmitting = false
+                    self.error = "Couldn't send your report. Check your connection and try again."
+                }
+            }
+        }
     }
 }
 
