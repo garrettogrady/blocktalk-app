@@ -69,6 +69,7 @@ struct PostDetailView: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .refreshable {
                 await viewModel.loadReplies(for: post)
             }

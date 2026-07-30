@@ -38,6 +38,13 @@ struct FeedView: View {
         return homeId == viewingId
     }
 
+    /// DB posts minus any already shown from local session content — so a
+    /// just-created post doesn't appear twice (once local, once from the reload).
+    private var dbPosts: [Post] {
+        let localIds = Set(localContent.posts.map(\.id))
+        return viewModel.posts.filter { !localIds.contains($0.id) }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
@@ -157,7 +164,7 @@ struct FeedView: View {
                             .padding(.top, BTSpacing.xxxl)
                         } else {
                             LazyVStack(spacing: 0) {
-                                ForEach(viewModel.posts) { post in
+                                ForEach(dbPosts) { post in
                                     NavigationLink(value: post) {
                                         PostCard(post: post)
                                     }

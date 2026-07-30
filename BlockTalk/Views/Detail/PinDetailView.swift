@@ -65,6 +65,7 @@ struct PinDetailView: View {
                     Spacer(minLength: 100)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
 
             // Reply compose bar — replaced by the location gate when ungated
             if location.permissionState == .granted {

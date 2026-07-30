@@ -409,6 +409,10 @@ struct ComposeView: View {
                         placeSymbol: taggedPlace?.symbol
                     )
                     if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
+                        // Surface your just-placed post + its pin immediately, WITH
+                        // the corner — the DB feed reload doesn't carry the pin's
+                        // corner yet (see handoff: embed pin in the post payload).
+                        localContent.add(post: post, pin: pin)
                         routeAfterPost()
                     }
                 } catch {
@@ -416,6 +420,7 @@ struct ComposeView: View {
                 }
             } else {
                 if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author) {
+                    localContent.add(post: post)
                     routeAfterPost()
                 }
             }
