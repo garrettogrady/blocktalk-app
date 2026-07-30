@@ -321,21 +321,18 @@ struct MapTabView: View {
         }
         .sheet(item: $selectedPinDetail) { detail in
             NavigationStack {
-                // Same detail view as the feed, so a street comment looks
-                // identical whether opened from the map or the feed.
-                PostDetailView(post: detail.post)
+                // Pin detail draws the corner map + business (house-blue) / corner
+                // (lime) color straight from the pin — the corner context a plain
+                // PostDetailView drops. PinDetailView owns its title + share.
+                PinDetailView(pin: detail.pin, post: detail.post)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarLeading) {
                             Button {
                                 selectedPinDetail = nil
                             } label: {
-                                HStack(spacing: BTSpacing.xs) {
-                                    Image(systemName: "arrow.left")
-                                        .font(.system(size: 14, weight: .semibold))
-                                    Text("Pin · \(detail.pin.placeName ?? detail.pin.cornerName ?? "Drop")")
-                                        .font(BTFont.bodySemibold(size: 16))
-                                }
-                                .foregroundStyle(Color.btText)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(Color.btText2)
                             }
                         }
                     }
