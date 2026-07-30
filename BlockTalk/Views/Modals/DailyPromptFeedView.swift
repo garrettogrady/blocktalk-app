@@ -85,7 +85,7 @@ struct DailyPromptFeedView: View {
                 Text("THIS WEEK'S PROMPT · NYC-WIDE")
                     .font(BTFont.monoBold(size: 10)).tracking(1)
                     .foregroundStyle(Color.btLime)
-                Text("Prompt of the day")
+                Text("This week's prompt")
                     .font(BTFont.display(size: 24))
                     .foregroundStyle(Color.btText)
             }

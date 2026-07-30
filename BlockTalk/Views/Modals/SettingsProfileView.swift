@@ -117,7 +117,7 @@ struct SettingsProfileView: View {
                 appState.signOut()
             }
         } message: {
-            Text("Any posts you've made will remain on the platform under the BlockTalker placeholder.")
+            Text("Any posts you've made will stay up under a retired alias.")
         }
         .sheet(isPresented: $showSetUsername) {
             SetUsernameSheet()
