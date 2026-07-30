@@ -139,6 +139,9 @@ struct FeedView: View {
                             ProgressView()
                                 .tint(Color.btText3)
                                 .padding(.top, BTSpacing.xxxl)
+                        } else if viewModel.error != nil {
+                            // A failed load must NOT read as an empty neighborhood.
+                            LoadErrorView { Task { await viewModel.loadPosts() } }
                         } else if viewModel.posts.isEmpty {
                             VStack(spacing: BTSpacing.md) {
                                 Image(systemName: "bubble.left.and.bubble.right")
@@ -149,7 +152,7 @@ struct FeedView: View {
                                     .foregroundStyle(Color.btText3)
                                 Text("Be the first to post in this neighborhood.")
                                     .font(BTFont.body(size: 13))
-                                    .foregroundStyle(Color.btMuted)
+                                    .foregroundStyle(Color.btText3)
                             }
                             .padding(.top, BTSpacing.xxxl)
                         } else {

@@ -80,6 +80,42 @@ struct DiscardedPostRow: View {
     }
 }
 
+/// Shared "couldn't load" state with a retry, so a failed fetch reads as an
+/// error instead of a false "nothing here."
+struct LoadErrorView: View {
+    var message: String = "Couldn't load. Check your connection and try again."
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(spacing: BTSpacing.md) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 30))
+                .foregroundStyle(Color.btText3)
+            Text("Something went wrong")
+                .font(BTFont.bodySemibold(size: 15))
+                .foregroundStyle(Color.btText)
+            Text(message)
+                .font(BTFont.body(size: 13))
+                .foregroundStyle(Color.btText3)
+                .multilineTextAlignment(.center)
+            Button(action: retry) {
+                Text("Try again")
+                    .font(BTFont.bodySemibold(size: 14))
+                    .foregroundStyle(Color.btOnAccent)
+                    .padding(.horizontal, BTSpacing.xl)
+                    .padding(.vertical, BTSpacing.sm)
+                    .background(Color.btLime)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, BTSpacing.xs)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, BTSpacing.xxxl)
+        .padding(.horizontal, BTSpacing.xl)
+    }
+}
+
 #Preview {
     ZStack {
         Color.btBg.ignoresSafeArea()

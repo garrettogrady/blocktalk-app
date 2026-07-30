@@ -26,11 +26,13 @@ final class DiscoverViewModel {
     var boroughCards: [BoroughCardData] = []
     var neighborhoods: [DiscoverNeighborhood] = []
     var isLoading = false
+    var error: String?
 
     private let postService = PostService()
 
     func load() async {
         isLoading = true
+        error = nil
         defer { isLoading = false }
 
         // Trending: top posts by score across all neighborhoods
@@ -43,6 +45,7 @@ final class DiscoverViewModel {
                 .execute()
                 .value
         } catch {
+            self.error = error.localizedDescription
             print("Discover: failed to load trending — \(error)")
         }
 

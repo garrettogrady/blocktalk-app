@@ -5,7 +5,7 @@ final class FeedViewModel {
     var posts: [Post] = []
     var isLoading = false
     var error: String?
-    var sort: PostSort = .mostLiked
+    var sort: PostSort = .newest
     var timeFilter: TimeFilter = .day
     var viewingNeighborhood: Neighborhood?
     var dailyPrompt: DailyPrompt?

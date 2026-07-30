@@ -44,6 +44,16 @@ struct DiscoverView: View {
                     .padding(.horizontal, BTSpacing.lg)
                     }
 
+                    // Content — loading / error / sections (a failed load must
+                    // not read as an empty Discover).
+                    if viewModel.isLoading && viewModel.trendingPosts.isEmpty {
+                        ProgressView()
+                            .tint(Color.btText3)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, BTSpacing.xxxl)
+                    } else if viewModel.error != nil && viewModel.trendingPosts.isEmpty {
+                        LoadErrorView { Task { await viewModel.load() } }
+                    } else {
                     // Trending section
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
                         Text("🔥 Trending in NYC")
@@ -96,6 +106,7 @@ struct DiscoverView: View {
                             neighborhoodRow(n)
                                 .padding(.horizontal, BTSpacing.lg)
                         }
+                    }
                     }
 
                     Spacer(minLength: BTSpacing.xxxl)
