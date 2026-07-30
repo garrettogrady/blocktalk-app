@@ -142,7 +142,7 @@ struct PinDetailView: View {
     // MARK: - Reply Compose Bar
 
     private var replyComposeBar: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: BTSpacing.xs) {
             Divider().background(Color.btLine)
 
             if let replyingTo = viewModel.replyingTo {
@@ -181,7 +181,19 @@ struct PinDetailView: View {
                 .padding(.top, BTSpacing.sm)
             }
 
-            HStack(alignment: .bottom, spacing: BTSpacing.md) {
+            // Char counter — above the pill, only near the limit
+            if viewModel.replyText.count >= replyWarnAt {
+                HStack {
+                    Spacer()
+                    Text("\(viewModel.replyText.count)/\(replyLimit)")
+                        .font(BTFont.mono(size: 10))
+                        .foregroundStyle(replyCounterColor)
+                }
+                .padding(.horizontal, BTSpacing.lg)
+            }
+
+            // Input pill — mirrors the feed compose bar, inline-editable.
+            HStack(spacing: BTSpacing.md) {
                 TextField("Reply on this corner…", text: $viewModel.replyText, axis: .vertical)
                     .font(BTFont.body(size: 15))
                     .foregroundStyle(viewModel.replyHasHate ? Color.btPink : Color.btText)
@@ -191,29 +203,27 @@ struct PinDetailView: View {
                         if v.count > replyLimit { viewModel.replyText = String(v.prefix(replyLimit)) }
                     }
 
-                VStack(alignment: .trailing, spacing: BTSpacing.xs) {
-                    if viewModel.replyText.count >= replyWarnAt {
-                        Text("\(viewModel.replyText.count)/\(replyLimit)")
-                            .font(BTFont.mono(size: 10))
-                            .foregroundStyle(replyCounterColor)
-                    }
-                    Button {
-                        guard let userId = appState.currentUser?.id else { return }
-                        replyFocused = false
-                        viewModel.sendReply(post: post, userId: userId, author: replyAuthor)
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(canSendReply ? Color.btLime : Color.btMuted)
-                    }
-                    .disabled(!canSendReply)
+                Button {
+                    guard let userId = appState.currentUser?.id else { return }
+                    replyFocused = false
+                    viewModel.sendReply(post: post, userId: userId, author: replyAuthor)
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(canSendReply ? Color.btLime : Color.btMuted)
                 }
+                .disabled(!canSendReply)
             }
             .padding(.horizontal, BTSpacing.lg)
-            .padding(.vertical, BTSpacing.md)
+            .padding(.vertical, BTSpacing.sm)
+            .background(Color.btSurface)
+            .cornerRadius(BTRadius.full)
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.full).stroke(Color.btLine, lineWidth: 1))
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.bottom, BTSpacing.sm)
         }
         .background {
-            Color.btSurface.ignoresSafeArea(.container, edges: .bottom)
+            Color.btBg.ignoresSafeArea(.container, edges: .bottom)
         }
     }
 

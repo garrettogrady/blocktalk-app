@@ -8,7 +8,10 @@ struct ReplyNode: View {
     @State private var showReport = false
     @State private var reported = false
 
-    private let maxDepth = 3
+    // Visual indent cap (Reddit-mobile style): stop indenting past this depth so
+    // deep threads don't run off the right edge — but replies are never blocked,
+    // they just render at the capped indent.
+    private let maxIndent = 3
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,7 +19,7 @@ struct ReplyNode: View {
                 // Thread lines on left (vertical bars), indent per depth
                 if reply.depth > 0 {
                     HStack(spacing: 0) {
-                        ForEach(0 ..< reply.depth, id: \.self) { _ in
+                        ForEach(0 ..< min(reply.depth, maxIndent), id: \.self) { _ in
                             Rectangle()
                                 .fill(Color.btLine)
                                 .frame(width: 1.5)
@@ -85,8 +88,9 @@ struct ReplyNode: View {
 
                         Spacer()
 
-                        // Reply pill (hidden at max depth), right-aligned
-                        if reply.depth < maxDepth {
+                        // Reply is always available — deep replies flatten to the
+                        // capped indent, they aren't blocked.
+                        if onReplyTap != nil {
                             Button {
                                 onReplyTap?(reply.id, reply.author?.username ?? "user")
                             } label: {

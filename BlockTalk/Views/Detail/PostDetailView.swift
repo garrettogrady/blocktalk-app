@@ -110,7 +110,7 @@ struct PostDetailView: View {
     // MARK: - Reply Bar
 
     private var replyBar: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: BTSpacing.xs) {
             Divider().background(Color.btLine)
 
             // Reply-to chip
@@ -150,8 +150,21 @@ struct PostDetailView: View {
                 .padding(.top, BTSpacing.sm)
             }
 
-            HStack(alignment: .bottom, spacing: BTSpacing.md) {
-                TextField("Reply...", text: $viewModel.replyText, axis: .vertical)
+            // Char counter — above the pill, only near the limit
+            if viewModel.replyText.count >= replyWarnAt {
+                HStack {
+                    Spacer()
+                    Text("\(viewModel.replyText.count)/\(replyLimit)")
+                        .font(BTFont.mono(size: 10))
+                        .foregroundStyle(replyCounterColor)
+                }
+                .padding(.horizontal, BTSpacing.lg)
+            }
+
+            // Input pill — mirrors the feed compose bar (surface + border + lime
+            // send arrow), but stays inline-editable (a reply is quick, not a post).
+            HStack(spacing: BTSpacing.md) {
+                TextField("Reply…", text: $viewModel.replyText, axis: .vertical)
                     .font(BTFont.body(size: 15))
                     .foregroundStyle(viewModel.replyHasHate ? Color.btPink : Color.btText)
                     .lineLimit(1...5)
@@ -160,33 +173,27 @@ struct PostDetailView: View {
                         if v.count > replyLimit { viewModel.replyText = String(v.prefix(replyLimit)) }
                     }
 
-                VStack(alignment: .trailing, spacing: BTSpacing.xs) {
-                    // Character counter — muted 350 → orange 450 → pink 500
-                    if viewModel.replyText.count >= replyWarnAt {
-                        Text("\(viewModel.replyText.count)/\(replyLimit)")
-                            .font(BTFont.mono(size: 10))
-                            .foregroundStyle(replyCounterColor)
-                    }
-
-                    Button {
-                        guard let userId = appState.currentUser?.id else { return }
-                        replyFocused = false
-                        viewModel.sendReply(post: post, userId: userId, author: replyAuthor)
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(
-                                canSendReply ? Color.btLime : Color.btMuted
-                            )
-                    }
-                    .disabled(!canSendReply)
+                Button {
+                    guard let userId = appState.currentUser?.id else { return }
+                    replyFocused = false
+                    viewModel.sendReply(post: post, userId: userId, author: replyAuthor)
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(canSendReply ? Color.btLime : Color.btMuted)
                 }
+                .disabled(!canSendReply)
             }
             .padding(.horizontal, BTSpacing.lg)
-            .padding(.vertical, BTSpacing.md)
+            .padding(.vertical, BTSpacing.sm)
+            .background(Color.btSurface)
+            .cornerRadius(BTRadius.full)
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.full).stroke(Color.btLine, lineWidth: 1))
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.bottom, BTSpacing.sm)
         }
         .background {
-            Color.btSurface.ignoresSafeArea(.container, edges: .bottom)
+            Color.btBg.ignoresSafeArea(.container, edges: .bottom)
         }
     }
 
