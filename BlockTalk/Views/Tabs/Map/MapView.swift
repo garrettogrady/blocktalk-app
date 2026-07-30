@@ -470,7 +470,7 @@ struct MapTabView: View {
                     }
                 }
                 Spacer()
-                Button { withAnimation { selectedNeighborhood = nil } } label: {
+                Button { selectedNeighborhood = nil } label: {   // snap; see select(_:)
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Color.btText3)
@@ -537,12 +537,16 @@ struct MapTabView: View {
         if let near = nearestPolygon(to: coord), near.dist < 250 {
             select(near.name)               // just outside an edge → snap in
         } else if selectedNeighborhood != nil {
-            withAnimation(.easeOut(duration: 0.2)) { selectedNeighborhood = nil }
+            selectedNeighborhood = nil       // snap; see note in select(_:)
         }
     }
 
     private func select(_ name: String) {
-        withAnimation(.easeOut(duration: 0.18)) { selectedNeighborhood = name }
+        // Snap the highlight (don't animate it). Animating the stroke/fill
+        // restyle across every polygon at the same moment the camera pans is
+        // what made selecting a neighborhood feel laggy/stuttery — let ONLY the
+        // camera move animate.
+        selectedNeighborhood = name
         focus(on: name)                     // zoom-to-fit the neighborhood
         Task { await viewModel.loadTalkingCount(name: name) }
     }

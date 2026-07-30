@@ -399,7 +399,7 @@ struct ComposeView: View {
                 // Street comment: create the pin in Supabase first, then the post.
                 let pinService = PinService()
                 do {
-                    let pin = try await pinService.createPin(
+                    var pin = try await pinService.createPin(
                         userId: userId,
                         coordinate: pinLocation,
                         cornerName: pinCornerName ?? resolvedStreet,
@@ -408,6 +408,14 @@ struct ComposeView: View {
                         placeCategory: taggedPlace?.category,
                         placeSymbol: taggedPlace?.symbol
                     )
+                    // The DB doesn't persist the business tag yet (needs 00004),
+                    // so the returned pin has no place data. Stitch it on locally
+                    // so your own tagged post reads blue this session.
+                    if let place = taggedPlace {
+                        pin.placeName = place.name
+                        pin.placeCategory = place.category
+                        pin.placeSymbol = place.symbol
+                    }
                     if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
                         // Surface your just-placed post + its pin immediately, WITH
                         // the corner — the DB feed reload doesn't carry the pin's

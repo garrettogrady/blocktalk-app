@@ -7,23 +7,25 @@ struct CreatePinParams: Encodable {
     let p_lng: Double
     let p_corner_name: String?
     let p_neighborhood_id: String
-    let p_place_name: String?
-    let p_place_category: String?
-    let p_place_symbol: String?
+    // NOTE: place_* fields are intentionally NOT sent yet. The live `create_pin`
+    // RPC only gains them once Garrett runs Supabase/00004 (handoff §6). Sending
+    // params the function doesn't declare makes PostgREST reject the whole call,
+    // which silently breaks EVERY street post. Re-add these three below (and the
+    // params: place fields in the initializer) the moment 00004 is live.
 }
 
 struct PinService {
     func createPin(userId: UUID, coordinate: CLLocationCoordinate2D, cornerName: String?, neighborhoodId: UUID,
                    placeName: String? = nil, placeCategory: String? = nil, placeSymbol: String? = nil) async throws -> Pin {
+        // placeName/Category/Symbol are accepted but not yet forwarded — see the
+        // note on CreatePinParams. The business tag is carried in the app/local
+        // store meanwhile; it persists to the DB once 00004 ships.
         let params = CreatePinParams(
             p_user_id: userId.uuidString,
             p_lat: coordinate.latitude,
             p_lng: coordinate.longitude,
             p_corner_name: cornerName,
-            p_neighborhood_id: neighborhoodId.uuidString,
-            p_place_name: placeName,
-            p_place_category: placeCategory,
-            p_place_symbol: placeSymbol
+            p_neighborhood_id: neighborhoodId.uuidString
         )
 
         let pins: [Pin] = try await supabase.rpc("create_pin", params: params)

@@ -112,27 +112,8 @@ struct SearchView: View {
 
             Spacer()
 
-            Button {
-                viewModel.sort = viewModel.sort == .recent ? .engaged : .recent
-            } label: {
-                HStack(spacing: BTSpacing.xs) {
-                    Text(viewModel.sort.rawValue)
-                        .font(BTFont.bodySemibold(size: 11))
-                        .foregroundStyle(Color.btText2)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9))
-                        .foregroundStyle(Color.btText2)
-                }
-                .padding(.horizontal, BTSpacing.sm)
-                .padding(.vertical, BTSpacing.xs)
-                .background(Color.btSurface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7)
-                        .stroke(Color.btLine, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-            .buttonStyle(.plain)
+            // Same sort control as the feed — one filter, four orderings.
+            SortFilter(sort: $viewModel.sort)
         }
         .padding(.horizontal, BTSpacing.lg)
         .padding(.vertical, 10)
@@ -147,7 +128,7 @@ struct SearchView: View {
             emptyState(
                 icon: "magnifyingglass",
                 title: scope == .neighborhood ? "Search \(neighborhood?.name ?? "here")." : "Search every neighborhood.",
-                sub: "keyword match · \(viewModel.sort == .recent ? "newest first" : "top first")"
+                sub: "keyword match · \(viewModel.sort.rawValue.lowercased())"
             )
         } else if viewModel.isSearching {
             Spacer(); ProgressView().tint(Color.btText3); Spacer()

@@ -14,11 +14,20 @@ struct PostService {
         case .mostLiked:    orderColumn = "score";      ascending = false
         case .mostDisliked: orderColumn = "score";      ascending = true
         }
-        return try await supabase.from("posts")
+        let ordered = supabase.from("posts")
             .select(PostService.postSelect)
             .eq("neighborhood_id", value: neighborhoodId.uuidString)
             .eq("status", value: "live")
             .order(orderColumn, ascending: ascending)
+        // Score sorts tie constantly (lots of 0/1-score posts) — break ties by
+        // recency so the list is stable instead of reshuffling each fetch.
+        // NOTE: "Most Disliked" ranks by *lowest net score*, which is only a
+        // rough proxy. A true most-downvoted ordering needs a real downvote
+        // tally on the payload — that's the backend voting item (handoff §1).
+        let query = (sort == .mostLiked || sort == .mostDisliked)
+            ? ordered.order("created_at", ascending: false)
+            : ordered
+        return try await query
             .limit(limit)
             .execute()
             .value

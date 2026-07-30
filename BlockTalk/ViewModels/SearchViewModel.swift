@@ -6,18 +6,14 @@ final class SearchViewModel {
     var results: [Post] = []
     var isSearching = false
     var scope: SearchScope = .neighborhood
-    var sort: SearchSort = .recent
+    /// Same four orderings as the feed, so search and feed read identically.
+    var sort: PostSort = .newest
 
     private let postService = PostService()
 
     enum SearchScope {
         case neighborhood
         case global
-    }
-
-    enum SearchSort: String, CaseIterable {
-        case recent = "Recent"
-        case engaged = "Most engaged"
     }
 
     func search(neighborhoodId: UUID?) async {
@@ -31,7 +27,14 @@ final class SearchViewModel {
         defer { isSearching = false }
 
         do {
-            let orderColumn = sort == .recent ? "created_at" : "score"
+            let orderColumn: String
+            let ascending: Bool
+            switch sort {
+            case .newest:       orderColumn = "created_at"; ascending = false
+            case .oldest:       orderColumn = "created_at"; ascending = true
+            case .mostLiked:    orderColumn = "score";      ascending = false
+            case .mostDisliked: orderColumn = "score";      ascending = true
+            }
 
             // Filters must be applied before transforms (.order/.limit)
             var filterBuilder = supabase.from("posts")
@@ -44,7 +47,7 @@ final class SearchViewModel {
             }
 
             results = try await filterBuilder
-                .order(orderColumn, ascending: false)
+                .order(orderColumn, ascending: ascending)
                 .limit(50)
                 .execute()
                 .value
