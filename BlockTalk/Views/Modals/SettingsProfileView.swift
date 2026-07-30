@@ -4,11 +4,24 @@ struct SettingsProfileView: View {
     @Environment(AppState.self) private var appState
     @State private var showDeleteConfirm = false
     @State private var showSetUsername = false
+    @State private var showAliasLocked = false
 
-    /// Still on the default handle → they haven't set a username yet, so they can.
-    private var canSetUsername: Bool {
-        (appState.currentUser?.username ?? "BlockTalker")
-            .caseInsensitiveCompare("BlockTalker") == .orderedSame
+    /// Alias is changeable once every 30 days — the permanent anchor is the user #.
+    /// 0 = never changed, so the first change is instant; after that it locks 30 days.
+    /// [Backend: the actual write persists via the alias-update RPC — handoff §3.]
+    @AppStorage("aliasChangedAt") private var aliasChangedAtEpoch: Double = 0
+    private let aliasLockDays: Double = 30
+
+    private var aliasUnlockDate: Date? {
+        aliasChangedAtEpoch == 0 ? nil
+            : Date(timeIntervalSince1970: aliasChangedAtEpoch).addingTimeInterval(aliasLockDays * 86_400)
+    }
+    private var aliasLocked: Bool {
+        guard let u = aliasUnlockDate else { return false }
+        return Date() < u
+    }
+    private var aliasUnlockLabel: String {
+        aliasUnlockDate.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? ""
     }
 
     var body: some View {
@@ -29,12 +42,12 @@ struct SettingsProfileView: View {
                     chip("LOCKED")
                 }
 
-                // Username — settable once if you're still BlockTalker, else locked.
+                // Alias — changeable once every 30 days (first change is instant).
                 Button {
-                    if canSetUsername { showSetUsername = true }
+                    if aliasLocked { showAliasLocked = true } else { showSetUsername = true }
                 } label: {
                     HStack {
-                        Text("Username")
+                        Text("Alias")
                             .font(BTFont.bodyMedium(size: 15))
                             .foregroundStyle(Color.btText)
                         Spacer()
@@ -42,16 +55,22 @@ struct SettingsProfileView: View {
                             Text("@\(user.username)")
                                 .font(BTFont.bodyMedium(size: 14))
                                 .foregroundStyle(Color.btText2)
+                                .lineLimit(1)
                         }
-                        if canSetUsername {
-                            Text("SET →").font(BTFont.bodySemibold(size: 12)).foregroundStyle(Color.btLime)
+                        if aliasLocked {
+                            Text("UNLOCKS \(aliasUnlockLabel)")
+                                .font(BTFont.mono(size: 9))
+                                .foregroundStyle(Color.btWarn)
+                                .padding(.horizontal, BTSpacing.sm)
+                                .padding(.vertical, 2)
+                                .background(Color.btWarn.opacity(0.15))
+                                .cornerRadius(BTRadius.sm)
                         } else {
-                            chip("LOCKED")
+                            Text("CHANGE →").font(BTFont.bodySemibold(size: 12)).foregroundStyle(Color.btLime)
                         }
                     }
                 }
                 .buttonStyle(.plain)
-                .disabled(!canSetUsername)
 
                 // Neighborhood with UNLOCKS chip
                 HStack {
@@ -119,8 +138,13 @@ struct SettingsProfileView: View {
         } message: {
             Text("Any posts you've made will stay up under a retired alias.")
         }
+        .alert("Alias locked", isPresented: $showAliasLocked) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("You can change your alias again on \(aliasUnlockLabel). Changes are limited to once every 30 days.")
+        }
         .sheet(isPresented: $showSetUsername) {
-            SetUsernameSheet()
+            SetUsernameSheet(onChanged: { aliasChangedAtEpoch = Date().timeIntervalSince1970 })
         }
     }
 
@@ -136,11 +160,13 @@ struct SettingsProfileView: View {
     }
 }
 
-// MARK: - Set username (once) from Settings
+// MARK: - Change alias from Settings
 
-/// Lets a still-BlockTalker user set their permanent username later. Same rules
-/// and copy as onboarding (ProfileCopy).
+/// Lets the user change their alias (subject to the 30-day cooldown enforced by
+/// the caller). Same rules + copy as onboarding (ProfileCopy).
 struct SetUsernameSheet: View {
+    /// Called on a successful change so the caller can stamp the cooldown clock.
+    var onChanged: (() -> Void)? = nil
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ProfileViewModel()
@@ -159,8 +185,8 @@ struct SetUsernameSheet: View {
     private var usernameError: String? {
         switch viewModel.usernameState {
         case .invalid: return "3–20 characters · letters, numbers, underscores"
-        case .taken:   return "That username is taken. Try another."
-        case .blocked: return "That username isn't allowed."
+        case .taken:   return "That alias is taken. Try another."
+        case .blocked: return "That alias isn't allowed."
         case .hate:    return "Watch your language. No hate speech."
         default:       return nil
         }
@@ -169,12 +195,12 @@ struct SetUsernameSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: BTSpacing.lg) {
-                Text("Set your username")
+                Text("Change your alias")
                     .font(BTFont.display(size: 24)).foregroundStyle(Color.btText).tracking(-0.5)
 
                 HStack(spacing: 0) {
                     Text("@").font(BTFont.body(size: 15)).foregroundStyle(Color.btText3).padding(.trailing, 1)
-                    TextField("your username", text: $viewModel.username)
+                    TextField("your alias", text: $viewModel.username)
                         .font(BTFont.body(size: 15)).foregroundStyle(Color.btText)
                         .focused($focused)
                         .autocorrectionDisabled().textInputAutocapitalization(.never)
@@ -189,7 +215,7 @@ struct SetUsernameSheet: View {
                 .cornerRadius(BTRadius.lg)
                 .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(isErrorState ? Color.btPink : Color.btLine, lineWidth: 1))
 
-                Text(usernameError ?? ProfileCopy.usernameGuide)
+                Text(usernameError ?? ProfileCopy.aliasGuide)
                     .font(BTFont.body(size: 12))
                     .foregroundStyle(usernameError == nil ? Color.btText3 : Color.btPink)
                     .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
@@ -198,9 +224,12 @@ struct SetUsernameSheet: View {
 
                 Button {
                     appState.currentUser?.username = displayName
+                    onChanged?()
+                    // [Backend: persist via the alias-update RPC — handoff §3.
+                    //  Until then this updates the session only.]
                     dismiss()
                 } label: {
-                    Text("Set @\(displayName.isEmpty ? "username" : displayName)")
+                    Text("Save @\(displayName.isEmpty ? "alias" : displayName)")
                         .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
                         .foregroundStyle(Color.btOnAccent.opacity(viewModel.usernameOk ? 1 : 0.65))
                         .frame(maxWidth: .infinity).frame(height: 50)
@@ -212,7 +241,7 @@ struct SetUsernameSheet: View {
             .padding(BTSpacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color.btBg.ignoresSafeArea())
-            .navigationTitle("Username")
+            .navigationTitle("Alias")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -220,7 +249,10 @@ struct SetUsernameSheet: View {
                     Button("Cancel") { dismiss() }.foregroundStyle(Color.btText2)
                 }
             }
-            .onAppear { focused = true }
+            .onAppear {
+                viewModel.username = ""   // start empty — type the new alias
+                focused = true
+            }
         }
         .preferredColorScheme(.dark)
     }
