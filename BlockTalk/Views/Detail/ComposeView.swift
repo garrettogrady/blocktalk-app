@@ -403,7 +403,10 @@ struct ComposeView: View {
                         userId: userId,
                         coordinate: pinLocation,
                         cornerName: pinCornerName ?? resolvedStreet,
-                        neighborhoodId: neighborhoodId
+                        neighborhoodId: neighborhoodId,
+                        placeName: taggedPlace?.name,
+                        placeCategory: taggedPlace?.category,
+                        placeSymbol: taggedPlace?.symbol
                     )
                     if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
                         routeAfterPost()

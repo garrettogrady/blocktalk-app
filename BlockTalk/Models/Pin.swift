@@ -24,6 +24,9 @@ struct Pin: Codable, Identifiable, Sendable {
         case cornerName = "corner_name"
         case neighborhoodId = "neighborhood_id"
         case createdAt = "created_at"
+        case placeName = "place_name"
+        case placeCategory = "place_category"
+        case placeSymbol = "place_symbol"
     }
 
     var coordinate: CLLocationCoordinate2D {
