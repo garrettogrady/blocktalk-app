@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(PinStore.self) private var pinStore
     @State private var viewModel = SearchViewModel()
     @FocusState private var searchFocused: Bool
 
@@ -40,6 +41,10 @@ struct SearchView: View {
         }
         .onChange(of: viewModel.query) { _, _ in performSearch() }
         .onChange(of: viewModel.sort) { _, _ in performSearch() }
+        // Resolve pins for any street comments in the results (corner + map).
+        .onChange(of: viewModel.results.map(\.id)) { _, _ in
+            Task { await pinStore.ensureLoaded(for: viewModel.results) }
+        }
     }
 
     // MARK: - Top bar (input + Cancel)

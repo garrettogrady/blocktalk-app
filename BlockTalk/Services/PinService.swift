@@ -60,4 +60,16 @@ struct PinService {
             .execute()
             .value
     }
+
+    /// Fetch a specific set of pins by id — used to resolve the corner/coords for
+    /// street comments shown in a feed/search/trending list, regardless of which
+    /// neighborhood they belong to.
+    func fetchPins(ids: [UUID]) async throws -> [Pin] {
+        guard !ids.isEmpty else { return [] }
+        return try await supabase.from("pins_with_coords")
+            .select()
+            .in("id", values: ids.map(\.uuidString))
+            .execute()
+            .value
+    }
 }

@@ -7,6 +7,7 @@ struct BlockTalkApp: App {
     @State private var moderation = ModerationStore()
     @State private var offline = OfflineStore()
     @State private var localContent = LocalContentStore()
+    @State private var pinStore = PinStore()
     @State private var notifications = NotificationStore()
     @State private var neighborhoodCache = NeighborhoodCache()
     @Environment(\.scenePhase) private var scenePhase
@@ -34,6 +35,7 @@ struct BlockTalkApp: App {
             .environment(moderation)
             .environment(offline)
             .environment(localContent)
+            .environment(pinStore)
             .environment(notifications)
             .environment(neighborhoodCache)
             .preferredColorScheme(.dark)
@@ -47,6 +49,8 @@ struct BlockTalkApp: App {
                     .environment(moderation)
                     .environment(offline)
                     .environment(localContent)
+                    .environment(pinStore)
+                    .environment(notifications)
                     .environment(neighborhoodCache)
                     .preferredColorScheme(.dark)
             }

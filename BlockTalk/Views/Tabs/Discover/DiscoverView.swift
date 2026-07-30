@@ -3,6 +3,7 @@ import SwiftUI
 struct DiscoverView: View {
     @Environment(AppState.self) private var appState
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
+    @Environment(PinStore.self) private var pinStore
     @State private var viewModel = DiscoverViewModel()
     @State private var showSearch = false
 
@@ -122,6 +123,7 @@ struct DiscoverView: View {
             }
             .task {
                 await viewModel.load()
+                await pinStore.ensureLoaded(for: viewModel.trendingPosts)
             }
         }
     }

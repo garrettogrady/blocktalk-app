@@ -249,3 +249,30 @@ final class LocalContentStore {
         repliesByPost = [:]
     }
 }
+
+/// App-level cache of pins fetched from Supabase, keyed by id. LocalContentStore
+/// only holds pins YOU created this session; this holds the pins behind everyone
+/// ELSE's street comments, so any PostCard in any list (feed, search, trending)
+/// can render its corner + map snippet — not just your own. Populated on demand
+/// as post lists load.
+@Observable
+final class PinStore {
+    private(set) var pinsById: [UUID: Pin] = [:]
+
+    func pin(id: UUID) -> Pin? { pinsById[id] }
+
+    /// Fetch (once) any pins referenced by these posts that aren't cached yet.
+    /// PostCard reads reactively, so late-arriving pins pop their map in.
+    func ensureLoaded(for posts: [Post]) async {
+        let needed = posts.compactMap(\.pinId).filter { pinsById[$0] == nil }
+        guard !needed.isEmpty else { return }
+        do {
+            let pins = try await PinService().fetchPins(ids: Array(Set(needed)))
+            for pin in pins { pinsById[pin.id] = pin }
+        } catch {
+            print("PinStore: failed to load pins — \(error)")
+        }
+    }
+
+    func reset() { pinsById = [:] }
+}

@@ -5,6 +5,7 @@ struct PostDetailView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var location
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(PinStore.self) private var pinStore
     @State private var viewModel = PostDetailViewModel()
 
     /// The current user's identity, embedded on replies they send.
@@ -101,6 +102,9 @@ struct PostDetailView: View {
         }
         .task {
             viewModel.post = post
+            // Resolve this post's pin (corner + map) in case we arrived here
+            // directly (deep link / share) without a list preloading it.
+            await pinStore.ensureLoaded(for: [post])
             // Moderated posts are notices, not posts — no replies to load.
             if post.status == .live {
                 await viewModel.loadReplies(for: post)
@@ -238,6 +242,7 @@ struct PostDetailView: View {
 struct SharedPostView: View {
     let post: Post
     @Environment(AppState.self) private var appState
+    @Environment(PinStore.self) private var pinStore
 
     private var isOnboarded: Bool { appState.stage == .app }
 
@@ -311,5 +316,6 @@ struct SharedPostView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.btBg.ignoresSafeArea())
+        .task { await pinStore.ensureLoaded(for: [post]) }
     }
 }

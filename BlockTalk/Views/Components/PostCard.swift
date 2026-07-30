@@ -16,6 +16,7 @@ struct PostCard: View {
     @Environment(AppState.self) private var appState
     @Environment(ModerationStore.self) private var moderation
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(PinStore.self) private var pinStore
     @Environment(NotificationStore.self) private var notifications
     @State private var showReport = false
     @State private var showAppeal = false
@@ -30,7 +31,10 @@ struct PostCard: View {
     private var displayHome: String? { post.author?.home?.shortCode ?? homeShortCode }
     private var streetPin: Pin? {
         guard let id = post.pinId else { return nil }
-        return localContent.pin(id: id)
+        // Your own session pin first (has the business tag before the DB does),
+        // then the fetched DB cache — so EVERY street comment renders its corner
+        // + map, not just ones you dropped this session.
+        return localContent.pin(id: id) ?? pinStore.pin(id: id)
     }
 
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }

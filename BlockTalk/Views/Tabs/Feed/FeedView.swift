@@ -6,6 +6,7 @@ struct FeedView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(OfflineStore.self) private var offline
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(PinStore.self) private var pinStore
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
@@ -220,6 +221,7 @@ struct FeedView: View {
                 if viewModel.posts.isEmpty {
                     await viewModel.loadPosts()
                 }
+                await pinStore.ensureLoaded(for: viewModel.posts)
             }
             .onChange(of: locationService.currentNeighborhood) { _, newNeighborhood in
                 // GPS resolved — override home fallback if we haven't set by location yet
@@ -241,6 +243,12 @@ struct FeedView: View {
             // else triggers a reload when only the sort changes.
             .onChange(of: viewModel.sort) { _, _ in
                 Task { await viewModel.loadPosts() }
+            }
+            // Whenever the loaded posts change, resolve the pins behind any
+            // street comments so their corner + map snippet render (this catches
+            // every reload path above in one place).
+            .onChange(of: viewModel.posts.map(\.id)) { _, _ in
+                Task { await pinStore.ensureLoaded(for: viewModel.posts) }
             }
             // Show a just-created post: reload the feed when Compose dismisses.
             .onChange(of: showCompose) { _, isShowing in
