@@ -1,66 +1,37 @@
 import SwiftUI
 
-struct SortTimeFilters: View {
+/// Single "sort by" control for a post list — one filter, four orderings.
+/// (Collapsed from the old two-filter Sort + Time combo: with both, the priority
+/// between them was ambiguous. Time-windowing can return later Reddit-style, as a
+/// sub-option under a sort — never as a co-equal second dropdown.)
+struct SortFilter: View {
     @Binding var sort: PostSort
-    @Binding var timeFilter: TimeFilter
 
-    @State private var showSortPanel = false
-    @State private var showTimePanel = false
-
+    @State private var showPanel = false
     @State private var pendingSort: PostSort?
-    @State private var pendingTime: TimeFilter?
 
     var body: some View {
         VStack(spacing: BTSpacing.sm) {
-            // Filter buttons row
+            // Filter button row
             HStack(spacing: BTSpacing.md) {
-                filterButton(
-                    title: sort.rawValue,
-                    isActive: showSortPanel
-                ) {
+                filterButton(title: sort.rawValue, isActive: showPanel) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        showSortPanel.toggle()
-                        showTimePanel = false
+                        showPanel.toggle()
                         pendingSort = sort
                     }
                 }
-
-                filterButton(
-                    title: timeFilter.rawValue,
-                    isActive: showTimePanel
-                ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showTimePanel.toggle()
-                        showSortPanel = false
-                        pendingTime = timeFilter
-                    }
-                }
-
                 Spacer()
             }
 
             // Sort panel
-            if showSortPanel {
+            if showPanel {
                 filterPanel(
                     options: PostSort.allCases.map { ($0.rawValue, $0) },
                     selected: pendingSort ?? sort,
                     onSelect: { pendingSort = $0 },
                     onApply: {
                         if let pending = pendingSort { sort = pending }
-                        withAnimation { showSortPanel = false }
-                    }
-                )
-            }
-
-            // Time panel
-            if showTimePanel {
-                filterPanel(
-                    options: TimeFilter.allCases.map { ($0.rawValue, $0) },
-                    selected: pendingTime ?? timeFilter,
-                    onSelect: { pendingTime = $0 },
-                    onApply: {
-                        if let pending = pendingTime { timeFilter = pending }
-                        withAnimation { showTimePanel = false }
+                        withAnimation { showPanel = false }
                     }
                 )
             }
@@ -152,10 +123,7 @@ struct SortTimeFilters: View {
 #Preview {
     ZStack {
         Color.btBg.ignoresSafeArea()
-        SortTimeFilters(
-            sort: .constant(.newest),
-            timeFilter: .constant(.day)
-        )
-        .padding()
+        SortFilter(sort: .constant(.newest))
+            .padding()
     }
 }

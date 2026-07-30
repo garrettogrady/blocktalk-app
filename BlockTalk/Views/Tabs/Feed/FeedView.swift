@@ -66,13 +66,10 @@ struct FeedView: View {
                         // (matches the Expo mock's locRow bottom border).
                         Divider().background(Color.btLine)
 
-                        // Sort/time filters
-                        SortTimeFilters(
-                            sort: $viewModel.sort,
-                            timeFilter: $viewModel.timeFilter
-                        )
-                        .padding(.horizontal, BTSpacing.lg)
-                        .padding(.top, BTSpacing.sm)
+                        // Sort filter (single control)
+                        SortFilter(sort: $viewModel.sort)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.sm)
 
                         // One-time map nudge
                         if !hasSeenMapTip {

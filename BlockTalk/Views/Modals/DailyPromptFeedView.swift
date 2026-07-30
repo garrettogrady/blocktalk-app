@@ -11,6 +11,18 @@ struct DailyPromptFeedView: View {
     @State private var responses: [Post] = []
     @State private var archive: [PromptArchive] = []
     @State private var answerCount = 0
+    @State private var sort: PostSort = .newest
+
+    /// Responses in the selected order — same 4 orderings as the feed. Sorted
+    /// locally (the set is already loaded), so this stays UI-only.
+    private var sortedResponses: [Post] {
+        switch sort {
+        case .newest:       return responses.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        case .oldest:       return responses.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
+        case .mostLiked:    return responses.sorted { $0.score > $1.score }
+        case .mostDisliked: return responses.sorted { $0.score < $1.score }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -19,9 +31,15 @@ struct DailyPromptFeedView: View {
                     VStack(spacing: 0) {
                         activeCard
 
+                        // Sort filter — same single control + layout as the feed
+                        SortFilter(sort: $sort)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.md)
+                            .padding(.bottom, BTSpacing.sm)
+
                         // Cross-NYC responses
                         LazyVStack(spacing: 0) {
-                            ForEach(responses) { post in
+                            ForEach(sortedResponses) { post in
                                 PostCard(post: post)
                                 Divider().background(Color.btLine)
                             }
