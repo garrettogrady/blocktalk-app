@@ -124,6 +124,7 @@ struct BlockTalkApp: App {
             // Resolve home neighborhood for initial viewing
             if let homeId = user.homeNeighborhoodId {
                 if let home = neighborhoodCache.neighborhood(id: homeId) {
+                    appState.homeNeighborhood = home
                     appState.viewingNeighborhood = home
                     appState.physicalNeighborhood = home
                     appState.hasResolvedInitialNeighborhood = true
@@ -136,6 +137,7 @@ struct BlockTalkApp: App {
                         .execute()
                         .value) ?? []
                     if let home = fetched.first {
+                        appState.homeNeighborhood = home
                         appState.viewingNeighborhood = home
                         appState.physicalNeighborhood = home
                         appState.hasResolvedInitialNeighborhood = true

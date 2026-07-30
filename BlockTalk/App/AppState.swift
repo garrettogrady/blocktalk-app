@@ -21,6 +21,10 @@ final class AppState {
     /// The neighborhood the user is currently viewing/interacting with (shared across tabs)
     var viewingNeighborhood: Neighborhood?
 
+    /// The user's HOME neighborhood (resolved at launch) — drives the 🏠 identity
+    /// badge. Distinct from viewing, which changes as you browse.
+    var homeNeighborhood: Neighborhood?
+
     /// The neighborhood the user is PHYSICALLY in — the only place they can post
     /// or reply. Mock: set to their home block. [PROD-DIFF: resolve from live GPS.]
     var physicalNeighborhood: Neighborhood?

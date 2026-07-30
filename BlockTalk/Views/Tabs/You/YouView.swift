@@ -20,7 +20,8 @@ struct YouView: View {
                     // Identity strip
                     if let user = appState.currentUser {
                         IdentityStrip(user: user, postCount: postCount, replyCount: replyCount,
-                                      totalScore: totalScore, downvoteCount: downvoteCount)
+                                      totalScore: totalScore, downvoteCount: downvoteCount,
+                                      homeShortCode: appState.homeNeighborhood?.shortCode ?? "LES")
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.md)
                     }
