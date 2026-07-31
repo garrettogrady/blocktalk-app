@@ -49,7 +49,10 @@ struct PersonalBoard: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(posts) { post in
-                        PostCard(post: post)
+                        NavigationLink(value: post) {
+                            PostCard(post: post)
+                        }
+                        .buttonStyle(.plain)
                         Divider().background(Color.btLine)
                     }
                 }

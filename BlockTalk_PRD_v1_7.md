@@ -160,7 +160,7 @@ A tab, not the default surface. Spatial view of NYC with neighborhood polygons +
 4. **Geofence check.** If the crosshair is inside the user's current neighborhood polygon, "Drop pin here" is live. If outside, the hint turns amber and reads "📍 OUT OF RANGE / you can only drop pins in your current neighborhood", and the button greys out + reads "Out of range".
 5. Tapping "Drop pin here" captures the coordinates and opens the Compose screen with the pin location pre-set.
 
-**Backend:** geofence check uses the user's last verified GPS reading + the polygon data. Pin density limits enforced server-side (see Spam & Rate Limiting).
+**Backend:** geofence check uses the user's last verified GPS reading + the polygon data. Pin writes pass through the server-side write-gate (location re-check + rate limit), see §22.
 
 ## 6. Street Comments (Pins)
 
@@ -827,16 +827,37 @@ Users in subways, dead zones, or on flaky signal frequently lose connectivity at
 - **GPS lat/lng falls in a park, on a bridge, or in the river:** nearest neighborhood polygon (within 100m) wins. Otherwise post is rejected: "We couldn't tell which neighborhood you're in. Try moving a few steps."
 - **Standing on a boundary** (e.g., Houston St): the polygon containing the GPS point wins. If GPS accuracy uncertainty is >50m, prompt: "Which neighborhood are you posting from?" with the two nearest polygon names.
 
-## 22. Spam & Rate Limiting
+## 22. Spam & The Write-Gate
 
-Server-side limits to prevent flooding and bot behavior:
+All spam prevention lives in **one server-side gate** that every write (post, reply, pin) passes through before it is accepted. There is no spam logic scattered across individual features — this is the single chokepoint. The client may show friendly warnings, but the server is the authoritative gate.
 
-- A user may not submit more than **5 posts within any 10-minute window** across all neighborhood feeds combined. 6th attempt: "You're posting too fast. Take a breath and try again in a few minutes."
-- A user may not submit more than **10 replies within any 10-minute window**. Same error.
-- A user may not drop more than **3 street pins within any 60-minute window.** 4th attempt: "You've dropped a lot of pins recently. Try again later."
-- A user may not drop more than **8 street pins within a 500ft radius in any 30-day window** — prevents one user from saturating their own block with pins.
-- **Duplicate content detection:** same or near-identical post text within 24 hours is blocked: "Looks like you've already said that."
-- Accounts that trigger rate limits 3+ times within 24 hours are flagged for human review. No automatic action taken.
+**The gate — four checks, in order:**
+
+1. **Location** — is the user physically inside the neighborhood they're posting to? The server re-verifies the GPS point against the neighborhood polygon at write time (not just the client's check). This closes the client-spoof hole and protects the core "you must be here to post" premise.
+2. **Rate** — is the user under the cap for this action (see table)?
+3. **Duplicate** — is this text identical to something the same user posted in the last 10 minutes?
+4. **Content** — does it pass the hate-speech blocklist (the same list the client checks; the server is authoritative)?
+
+Fail any single check → the write is rejected with a friendly reason. Pass all four → accepted.
+
+**Rate limits** — deliberately generous; a real, active user should never hit these:
+
+| Action | Limit | Window |
+|---|---|---|
+| Posts | 10 | per 10 minutes |
+| Replies | 20 | per 10 minutes |
+| Pins | 5 | per hour |
+| Duplicate text | blocked | if identical to the user's own post in the last 10 minutes |
+
+Post/reply error copy: "You're going a little fast — try again in a few minutes." Duplicate copy: "Looks like you've already said that." Pin copy: "You've dropped a lot of pins recently — try again later."
+
+**Consequences — this layer only throttles, it never punishes:**
+
+- Hitting a limit is a **soft cooldown.** Nothing is deleted. No strike. No warning.
+- **Speed alone never bans anyone.** Bans come only from the moderation/reports path (§19–20), never from the write-gate. Rate limits are the traffic cop; moderation is the judge; the two never touch.
+- *(Optional, low-cost):* an account that trips the limits 5+ times within 24 hours is quietly flagged for human review. No automatic action.
+
+**Deliberately out of scope (add later only if abused):** per-block pin density caps (the old "8 pins within 500ft / 30 days" rule), coordinated-behavior detection, and tuned/tightened numbers. Set the real numbers from live traffic, not up front.
 
 ## 23. Privacy & Aggregation Threat Model
 
@@ -847,8 +868,9 @@ The mitigation is structural — remove every public surface that would aggregat
 - **Usernames are not tappable.** There is no public profile page anywhere in the app. No "all posts by user X" view exists on any surface.
 - **The Personal Board is private to its owner.** No other user can see anyone else's Created or Interacted-With history.
 - **The Pin Detail view shows one pin and one thread.** It does not show "other pins by this user."
-- **Pin density limits cap exposure.** Per Spam & Rate Limiting: a user can't drop more than 8 pins in a 500ft radius over 30 days — preventing self-saturation of one's own block.
 - **Pin coordinates are not fuzzed.** Street comments need precise location to be useful; the privacy work is removing the aggregation surface, not blurring individual pins.
+
+> **Note (v1.7):** an earlier draft capped pins at 8 within a 500ft radius over 30 days as a self-saturation / privacy measure. That per-block density cap was dropped from the v1 write-gate (§22) for simplicity — the map is not open to that kind of abuse yet. Revisit it here if plotting-a-user's-pins ever becomes a real concern.
 
 A determined harasser can still scroll a single feed, note pins from a username, and triangulate manually. The friction is real, and the obvious surface is closed.
 

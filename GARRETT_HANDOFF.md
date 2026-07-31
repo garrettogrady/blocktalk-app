@@ -87,6 +87,33 @@ The app lets users upload photos (§3), and **there is currently no image scanni
 
 *(Text posts are already filtered client-side by the hate-speech check, but that's bypassable by a modified client — a server-side text check is also worth considering long-term.)*
 
+### 14. Server-side write-gate — spam, dedup & location re-check (PRD §22)
+All spam prevention lives in **one server-side gate** that every write (post, reply, pin) passes through before it's accepted — one chokepoint, not logic scattered per feature. This is also where the server-side text check from §13 and the anti-spoof location re-check belong. Four checks, in order; fail any one → reject with a friendly message:
+1. **Location** — re-verify the GPS point is inside the target neighborhood polygon at write time (not just the client's check). Closes the client-spoof hole; protects the core "you must be here to post" premise.
+2. **Rate** — under the cap for this action (table below).
+3. **Duplicate** — text is not identical to the same user's own post in the last 10 minutes.
+4. **Content** — passes the hate-speech blocklist (same list the client uses; server is authoritative).
+
+**Rate limits — deliberately generous (a real active user should never hit these):**
+
+| Action | Limit | Window |
+|---|---|---|
+| Posts | 10 | per 10 min |
+| Replies | 20 | per 10 min |
+| Pins | 5 | per hour |
+| Duplicate text | blocked | if identical to the user's own post in the last 10 min |
+
+**Consequences — this layer only throttles, never punishes:**
+- Hitting a limit is a soft cooldown. Nothing deleted, no strike, no warning.
+- **Speed alone never bans anyone** — bans come only from the moderation/reports path. Rate limits are the traffic cop; moderation is the judge; the two never touch.
+- *(Optional, low-cost):* an account that trips the limits 5+ times in 24h is quietly flagged for human review. No automatic action.
+
+**Out of scope for v1 (add later only if abused):** per-block pin density (the old 500ft/30-day rule), coordinated-behavior detection, tuned/tighter numbers. Set the real numbers from live traffic.
+
+**App side:** mostly done — the app already blocks out-of-range posting and runs the client hate-check; it just needs to surface the server's "rejected / slow down" result. I'll wire that once the gate exists.
+
+**When:** not needed for a small trusted TestFlight (friends won't spam). Build before opening to strangers — same milestone as image/CSAM scanning.
+
 ---
 
 ## Already handled on the app side (context — these light up once the backend above exists)
@@ -111,4 +138,5 @@ With those, the core app (log in, browse, post, street-comment, photo, reply, vo
 
 ## Before you open it up beyond a small trusted TestFlight
 ☐ **Image/CSAM scanning (§13)** — do not let strangers upload photos until this exists. Legal + App Store requirement.
+☐ **Server-side write-gate (§14)** — location re-check + rate limits + dedup. Cheap; stops flooding + spoofing once strangers can join.
 ☐ Push notifications (§8) — not required to test, but the main retention lever.

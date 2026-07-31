@@ -67,8 +67,9 @@ struct FeedView: View {
                         // Location / neighborhood row
                         locationRow
                             .padding(.horizontal, BTSpacing.lg)
-                            .padding(.top, BTSpacing.md)
-                            .padding(.bottom, BTSpacing.sm)
+                            // Symmetric top/bottom so the header band sits evenly
+                            // under the notch (was 12/8, which read lopsided).
+                            .padding(.vertical, BTSpacing.md)
 
                         // Separator under the neighborhood/search header row
                         // (matches the Expo mock's locRow bottom border).
@@ -396,7 +397,9 @@ struct FeedView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, BTSpacing.sm)
+                    // xs (not sm) so this block is 38pt tall — the same height
+                    // as the search button beside it, so the two align cleanly.
+                    .padding(.vertical, BTSpacing.xs)
                 }
                 .buttonStyle(.plain)
 

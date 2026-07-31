@@ -48,6 +48,11 @@ struct YouView: View {
             }
             .background(Color.btBg)
             .toolbar(.hidden, for: .navigationBar)
+            // Personal Board rows push Post Detail onto THIS stack, so the
+            // detail's back button returns to the You tab.
+            .navigationDestination(for: Post.self) { post in
+                PostDetailView(post: post)
+            }
             .task {
                 await loadStats()
                 if let userId = appState.currentUser?.id {

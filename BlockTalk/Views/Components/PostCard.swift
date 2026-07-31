@@ -241,6 +241,8 @@ struct PostCard: View {
             Text("@\(displayUsername)")
                 .font(BTFont.bodySemibold(size: 11))
                 .foregroundStyle(Color.btText)
+                .lineLimit(1)
+                .truncationMode(.tail)
 
             Text("#\(displayNumber.formatted(.number))")
                 .font(BTFont.monoBold(size: 11))

@@ -9,6 +9,8 @@ struct PinBadge: View {
                 .font(.system(size: 9))
             Text(cornerName)
                 .font(BTFont.mono(size: 9))
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .foregroundStyle(Color.btLime)
         .padding(.horizontal, BTSpacing.sm)
