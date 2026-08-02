@@ -123,6 +123,7 @@ All spam prevention lives in **one server-side gate** that every write (post, re
 - Prompt answers tag `daily_prompt_id`; weekly-prompt card shows a real count.
 - `user_number` is left to the DB SERIAL sequence (app no longer sends a random one).
 - Street-comment corner + map now render for all posts (app fetches the pins).
+- **Search-first "Pin a place" (Map → Drop a thought):** you can now search a business by name and the pin drops directly on it, pre-tagged — instead of only dragging a crosshair and then tagging. Fully **app-side**; it produces the same tagged pins as §2b, so it needs **no new backend** beyond the business-tag migration (`00004`) already listed. Results in another neighborhood show but are blocked ("out of range"). *(A future "Recent Presence" rule — let a user post to a neighborhood they were physically in within the last few hours, not just their current one — is designed but **deferred**; NOT in scope for you now. If we build it, it adds a small presence-ping table the write-gate (§14) would check.)*
 
 ---
 

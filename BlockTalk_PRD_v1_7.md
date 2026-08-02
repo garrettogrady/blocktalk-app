@@ -155,12 +155,15 @@ A tab, not the default surface. Spatial view of NYC with neighborhood polygons +
 
 ### Dropping a street comment (pin-placement flow)
 1. User taps "+ Drop a thought" at the bottom of the Map.
-2. The map enters **pin-placement mode**: FAB disappears, top hint changes to "📍 SELECT A LOCATION / drag the map to position the pin", a lime crosshair appears dead-center, bottom shows Cancel + Drop pin here.
-3. The user pans/zooms until the crosshair is over the spot they want.
-4. **Geofence check.** If the crosshair is inside the user's current neighborhood polygon, "Drop pin here" is live. If outside, the hint turns amber and reads "📍 OUT OF RANGE / you can only drop pins in your current neighborhood", and the button greys out + reads "Out of range".
-5. Tapping "Drop pin here" captures the coordinates and opens the Compose screen with the pin location pre-set.
+2. The map enters **pin-placement mode** with **two ways to place the pin on one screen**: a **search bar** pinned to the top, and a lime **crosshair** dead-center. Bottom shows Cancel + Drop pin here.
+   - **Search a place (the fast path).** Type a business/place name; results appear live as you type (closest first). Tapping a result **flies the crosshair onto that place and tags it** (house-blue pin + category glyph) — no dragging. This is the low-friction path for "I'm at / just left a spot and want to post about it." Results in another neighborhood are shown but marked "· out of range" and can't be selected. The search can be dismissed by tapping the map or "Cancel" — this closes the search only, **not** the whole pin-drop; the crosshair stays up.
+   - **Drag to a spot.** Pan/zoom until the crosshair is over the spot you want — for a plain corner or spot with no business.
+3. **Geofence check.** The target is the tagged place (if one was searched), otherwise the crosshair. If it's inside the user's current neighborhood polygon, "Drop pin here" is live; if outside, the hint turns amber ("📍 OUT OF RANGE / you can only drop pins in your current neighborhood") and the button greys out.
+4. Tapping "Drop pin here" opens the Compose screen with the pin location pre-set — and, if a business was searched, **already tagged to it**.
 
-**Backend:** geofence check uses the user's last verified GPS reading + the polygon data. Pin writes pass through the server-side write-gate (location re-check + rate limit), see §22.
+**Search scope.** Results are limited to places near the user and gated to the current neighborhood — you can only pin a place you're actually near. *(Planned enhancement: a "Recent Presence" rule would widen this to neighborhoods the user was physically in within the last few hours — see §21. Deferred; the current rule is current-neighborhood only.)*
+
+**Backend:** the place search uses Apple's MapKit (`MKLocalSearch`) client-side — no server, no third-party. The geofence check uses the user's last verified GPS reading + the polygon data. Pin writes pass through the server-side write-gate (location re-check + rate limit), see §22.
 
 ## 6. Street Comments (Pins)
 
@@ -826,6 +829,21 @@ Users in subways, dead zones, or on flaky signal frequently lose connectivity at
 ### Edge cases
 - **GPS lat/lng falls in a park, on a bridge, or in the river:** nearest neighborhood polygon (within 100m) wins. Otherwise post is rejected: "We couldn't tell which neighborhood you're in. Try moving a few steps."
 - **Standing on a boundary** (e.g., Houston St): the polygon containing the GPS point wins. If GPS accuracy uncertainty is >50m, prompt: "Which neighborhood are you posting from?" with the two nearest polygon names.
+
+### Recent Presence (planned — deferred, not built)
+
+**The problem.** Today posting is strictly "where you are right now." A user gets dinner in the Lower East Side, opens the app there, then travels to Brooklyn and later wants to post a thought about the LES — but they've left, so they're blocked. That's real friction, and the obvious "fix" (always-on background tracking) is explicitly **rejected**: it drains battery and triggers iOS's "used your location N times in the background" nag, which reads as surveillance for a social app. The app uses **"When In Use" location only.**
+
+**The model.** Recent Presence solves this **without any background tracking**:
+- Each time the app is **opened** (foreground) and gets a GPS fix — one silent read, negligible battery — it records a lightweight entry: `{ neighborhood, timestamp }`. Neighborhood-level only, never a precise trail.
+- The posting rule loosens from *"you're in X now"* to *"you're in X now **OR** you were verified in X within the last few hours"* (window TBD; ~3–4h is the working proposal).
+- Compose surfaces it plainly: "You're in Brooklyn Heights. You can also still post in: Lower East Side (2h ago)."
+
+**Honest limitation.** It only works if the app actually *saw* the user there — if they never opened BlockTalk while in the LES, there's no record and they can't post there later. There is no way around this without background tracking, which is off the table. Capture is opportunistic (a silent read on every app open), which covers most engaged users.
+
+**Where it plugs in.** Recent Presence is the rule that replaces the interim "current-neighborhood only" gate on the search-first pin (§5/§6) and becomes the location check inside the write-gate (§22).
+
+**Build status / backend.** Client-side for a first version (presence stored on-device). To make it tamper-proof, the app sends lightweight **presence pings** (`neighborhood, timestamp`) that the server-side write-gate checks — a small new table, neighborhood-granular and auto-expiring (a privacy item: keep it minimal). **Deferred; not scheduled.**
 
 ## 22. Spam & The Write-Gate
 
