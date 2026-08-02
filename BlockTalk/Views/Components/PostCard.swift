@@ -113,7 +113,7 @@ struct PostCard: View {
             }
         }
         .sheet(isPresented: $showAppeal) {
-            AppealView(removedPostText: post.text, violationReason: "Harassment",
+            AppealView(postId: post.id, removedPostText: post.text, violationReason: "Harassment",
                        alreadyAppealed: moderation.hasAppealed(post.id),
                        onSubmitted: {
                            moderation.markAppealed(post.id)

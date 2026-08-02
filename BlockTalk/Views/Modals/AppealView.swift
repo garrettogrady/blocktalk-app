@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AppealView: View {
+    let postId: UUID
     let removedPostText: String
     let violationReason: String
     /// True when reopening a post that was already appealed — shows the locked
@@ -11,9 +12,12 @@ struct AppealView: View {
     var onSubmitted: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
     @State private var appealText = ""
     @State private var isSubmitting = false
     @State private var showSuccess = false
+    @State private var showError = false
+    @State private var errorMessage = ""
 
     private let minLength = 20
     private let maxLength = 280
@@ -57,6 +61,11 @@ struct AppealView: View {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(Color.btText2)
                 }
+            }
+            .alert("Appeal failed", isPresented: $showError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
@@ -216,20 +225,34 @@ struct AppealView: View {
     }
 
     private func submit() {
+        guard let userId = appState.currentUser?.id else { return }
         isSubmitting = true
         Task {
-            try? await Task.sleep(for: .seconds(1))
-            isSubmitting = false
-            showSuccess = true
-            onSubmitted?()
+            do {
+                let row: [String: String] = [
+                    "user_id": userId.uuidString,
+                    "post_id": postId.uuidString,
+                    "appeal_text": appealText.trimmingCharacters(in: .whitespacesAndNewlines)
+                ]
+                try await supabase.from("appeals").insert(row).execute()
+                isSubmitting = false
+                showSuccess = true
+                onSubmitted?()
+            } catch {
+                isSubmitting = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
         }
     }
 }
 
 #Preview {
     AppealView(
+        postId: UUID(),
         removedPostText: "Some post that was removed for violating community guidelines.",
         violationReason: "Hate speech or slurs"
     )
+    .environment(AppState())
     .preferredColorScheme(.dark)
 }

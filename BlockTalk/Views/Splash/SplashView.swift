@@ -5,6 +5,7 @@ import SwiftUI
 struct SplashView: View {
     @Environment(AppState.self) private var appState
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
+    @State private var isSigningIn = false
 
     // Landing composition — flip these two to swap the hero. Easy revert:
     // set showHeroCard = true / showStreetPins = false to restore the
@@ -130,13 +131,22 @@ struct SplashView: View {
                 if appState.forceOnboarding {
                     appleSignInButton { startOnboarding() }
                 } else {
-                    SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.email]
-                    } onCompletion: { result in
-                        handleSignIn(result)
+                    ZStack {
+                        SignInWithAppleButton(.signIn) { request in
+                            request.requestedScopes = [.email]
+                        } onCompletion: { result in
+                            handleSignIn(result)
+                        }
+                        .signInWithAppleButtonStyle(.white)
+                        .frame(height: 50)
+
+                        if isSigningIn {
+                            RoundedRectangle(cornerRadius: BTRadius.md)
+                                .fill(Color.white)
+                                .frame(height: 50)
+                                .overlay(ProgressView().tint(.black))
+                        }
                     }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(height: 50)
                     .padding(.horizontal, BTSpacing.xxl)
                     .padding(.bottom, BTSpacing.lg)
                 }
@@ -256,10 +266,13 @@ struct SplashView: View {
     // MARK: - Sign In Handler
 
     private func handleSignIn(_ result: Result<ASAuthorization, Error>) {
+        guard !isSigningIn else { return }
         switch result {
         case .success(let auth):
             if let credential = auth.credential as? ASAuthorizationAppleIDCredential {
+                isSigningIn = true
                 Task {
+                    defer { isSigningIn = false }
                     do {
                         let authService = AuthService()
                         let session = try await authService.signInWithApple(credential: credential)

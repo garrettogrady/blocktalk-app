@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsProfileView: View {
     @Environment(AppState.self) private var appState
+    @State private var isDeleting = false
     @State private var showDeleteConfirm = false
     @State private var showSetUsername = false
     @State private var showAliasLocked = false
@@ -112,10 +113,15 @@ struct SettingsProfileView: View {
                             .font(BTFont.bodyMedium(size: 15))
                             .foregroundStyle(Color.btPink)
                         Spacer()
-                        Image(systemName: "trash")
-                            .foregroundStyle(Color.btPink)
+                        if isDeleting {
+                            ProgressView().tint(Color.btPink)
+                        } else {
+                            Image(systemName: "trash")
+                                .foregroundStyle(Color.btPink)
+                        }
                     }
                 }
+                .disabled(isDeleting)
             } header: {
                 Text("DANGER ZONE")
                     .font(BTFont.mono(size: 11))
@@ -135,8 +141,11 @@ struct SettingsProfileView: View {
             Button("Delete Account", role: .destructive) {
                 deleteAccount()
             }
+            .disabled(isDeleting)
         } message: {
-            Text("This permanently deletes your account, posts, replies, and votes. This can't be undone.")
+            Text(isDeleting
+                 ? "Deleting your account..."
+                 : "This permanently deletes your account, posts, replies, and votes. This can't be undone.")
         }
         .alert("Alias locked", isPresented: $showAliasLocked) {
             Button("OK", role: .cancel) { }
@@ -163,6 +172,8 @@ struct SettingsProfileView: View {
     /// Cascades all the user's data via the delete_user_and_data RPC, then signs
     /// out globally so the next launch starts fresh at onboarding.
     private func deleteAccount() {
+        guard !isDeleting else { return }
+        isDeleting = true
         let userId = appState.currentUser?.id
         Task {
             if let userId {
@@ -171,6 +182,8 @@ struct SettingsProfileView: View {
                                            params: ["p_user_id": userId.uuidString]).execute()
                 } catch {
                     print("Account delete failed: \(error)")
+                    isDeleting = false
+                    return
                 }
             }
             // Global scope clears the cached token so restoreSession() can't
