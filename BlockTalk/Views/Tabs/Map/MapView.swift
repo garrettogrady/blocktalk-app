@@ -16,6 +16,14 @@ struct MapTabView: View {
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @State private var viewModel = MapViewModel()
     @State private var showComposeForPin = false
+    // Unified drop mode: the place being composed to (a tagged business, if the
+    // user searched one) plus the in-drop search bar's own state.
+    @State private var composePlace: TaggedPlace?
+    @State private var dropSearchQuery = ""
+    @State private var dropSearchResults: [TaggedPlace] = []
+    @State private var dropSearchLoading = false
+    @State private var dropTaggedPlace: TaggedPlace?
+    @FocusState private var dropSearchFocused: Bool
     @State private var polygons: [NeighborhoodPolygon] = []
     /// The neighborhood the user tapped — highlighted + named in a bottom card,
     /// pending confirmation. Tap-to-select-then-confirm (not instant navigate).
@@ -148,12 +156,30 @@ struct MapTabView: View {
             .ignoresSafeArea() // on the MapReader so its `.local` space == tap space
             // MapReader
 
+            // Tap-outside catcher: while the drop search is focused, a tap on the
+            // map (anywhere but the search field/results) drops the keyboard + list.
+            if viewModel.isDropMode && dropSearchFocused {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { dismissDropSearch() }
+            }
+
             // Top pills
             VStack {
                 if viewModel.isDropMode {
-                    dropModePill
-                        .padding(.horizontal, BTSpacing.lg)
-                        .padding(.top, BTSpacing.sm)
+                    VStack(spacing: BTSpacing.sm) {
+                        dropSearchBar
+                        // The results list replaces the status pill while searching;
+                        // the pill returns (with the tag, if one was picked) when idle.
+                        if dropSearchFocused {
+                            dropSearchResultsCard
+                        } else {
+                            dropModePill
+                        }
+                    }
+                    .padding(.horizontal, BTSpacing.lg)
+                    .padding(.top, BTSpacing.sm)
                 } else {
                     VStack(spacing: BTSpacing.sm) {
                         // Top pill — "You're in X" only makes sense once we
@@ -208,6 +234,7 @@ struct MapTabView: View {
                     HStack(spacing: BTSpacing.lg) {
                         Button {
                             viewModel.cancelDrop()
+                            resetDropSearch()
                         } label: {
                             Text("Cancel")
                                 .font(BTFont.bodySemibold(size: 15))
@@ -227,8 +254,10 @@ struct MapTabView: View {
                             // then leave drop mode so we don't return to it after
                             // posting — that stranded the user in the drop overlay.
                             guard dropInRange else { return }
+                            composePlace = dropTaggedPlace   // nil → plain corner pin
                             showComposeForPin = true
                             viewModel.cancelDrop()
+                            resetDropSearch()
                         } label: {
                             Text(dropInRange ? "Drop pin here" : "Out of range")
                                 .font(BTFont.bodySemibold(size: 15))
@@ -257,16 +286,9 @@ struct MapTabView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if locationService.permissionState == .granted {
                         Button {
-                            // Start the drop reticle on your current location — the
-                            // most useful starting point, and it keeps the pin
-                            // in-range even if you'd panned off to browse elsewhere.
-                            selectedNeighborhood = nil
-                            if let here = locationService.currentLocation {
-                                centerReticle(on: here)
-                            } else {
-                                focus(on: activeNeighborhoodName)
-                            }
-                            viewModel.enterDropMode()
+                            // Into unified drop mode: crosshair on the map + a
+                            // search bar up top (search a business OR pick a spot).
+                            enterCrosshairDrop()
                         } label: {
                             HStack(spacing: BTSpacing.sm) {
                                 Image(systemName: "plus")
@@ -309,12 +331,23 @@ struct MapTabView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showComposeForPin) {
-            ComposeView(
-                postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
-                pinDropLocation: dropCoordinate,
-                pinCornerName: snappedCorner(dropCoordinate)
-            )
+        .fullScreenCover(isPresented: $showComposeForPin, onDismiss: { composePlace = nil }) {
+            if let place = composePlace {
+                // Search-first: open compose already pinned to + tagged with the place.
+                ComposeView(
+                    postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
+                    pinDropLocation: place.coordinate,
+                    pinCornerName: snappedCorner(place.coordinate),
+                    initialPlace: place
+                )
+            } else {
+                // Crosshair drop: pin the exact reticle spot.
+                ComposeView(
+                    postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
+                    pinDropLocation: dropCoordinate,
+                    pinCornerName: snappedCorner(dropCoordinate)
+                )
+            }
         }
         .sheet(isPresented: $showPreFrame) {
             LocationPreFrameSheet()
@@ -344,6 +377,20 @@ struct MapTabView: View {
         .onChange(of: appState.pendingPinPlacement) { _, pending in
             if pending { enterDropFromCompose() }
         }
+        // In-drop search bar: debounce typing; load nearby the moment it's focused.
+        .task(id: dropSearchQuery) {
+            guard viewModel.isDropMode else { return }
+            if !dropSearchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                try? await Task.sleep(for: .milliseconds(300))
+                if Task.isCancelled { return }
+            }
+            await runDropSearch()
+        }
+        .onChange(of: dropSearchFocused) { _, focused in
+            if focused && dropSearchResults.isEmpty {
+                Task { await runDropSearch() }
+            }
+        }
         .task {
             polygons = NeighborhoodPolygonLoader.load()
             // Also handle the case where the Map tab is being created for the
@@ -357,6 +404,14 @@ struct MapTabView: View {
 
     /// Enter drop mode in response to the compose → "drop a pin" hand-off.
     private func enterDropFromCompose() {
+        enterCrosshairDrop()
+        appState.pendingPinPlacement = false
+    }
+
+    /// Start the crosshair reticle on your current location — the most useful
+    /// starting point, and it keeps the pin in-range even if you'd panned away.
+    private func enterCrosshairDrop() {
+        resetDropSearch()
         selectedNeighborhood = nil
         if let here = locationService.currentLocation {
             centerReticle(on: here)
@@ -364,7 +419,134 @@ struct MapTabView: View {
             focus(on: activeNeighborhoodName)
         }
         viewModel.enterDropMode()
-        appState.pendingPinPlacement = false
+    }
+
+    /// Where the "near you" business search is centered: live GPS, else the
+    /// active neighborhood's polygon centroid (so it still works in the sim).
+    private var placeSearchCenter: CLLocationCoordinate2D? {
+        locationService.currentLocation
+            ?? polygons.first { $0.name == activeNeighborhoodName }?.center
+    }
+
+    // MARK: - In-drop place search
+
+    private func runDropSearch() async {
+        guard let center = placeSearchCenter else { return }
+        let q = dropSearchQuery
+        dropSearchLoading = true
+        let found = await PlaceSearch.places(query: q, center: center, radius: 800, maxResults: 20)
+        // The user kept typing while this was in flight — drop the stale response.
+        guard q == dropSearchQuery else { return }
+        dropSearchResults = found
+        dropSearchLoading = false
+    }
+
+    /// Picking a result flies the reticle onto that business and tags it — the
+    /// pin is now on the place, ready to confirm with "Drop pin here".
+    private func pickDropPlace(_ place: TaggedPlace) {
+        dropTaggedPlace = place
+        centerReticle(on: place.coordinate)
+        dropSearchQuery = ""
+        dropSearchResults = []
+        dropSearchFocused = false
+    }
+
+    private func resetDropSearch() {
+        dropTaggedPlace = nil
+        dropSearchQuery = ""
+        dropSearchResults = []
+        dropSearchFocused = false
+    }
+
+    /// Back out of the search (tap-outside or Cancel): drop the keyboard + list
+    /// and return to the crosshair. Keeps any business already tagged.
+    private func dismissDropSearch() {
+        dropSearchFocused = false
+        dropSearchQuery = ""
+        dropSearchResults = []
+    }
+
+    private var dropSearchBar: some View {
+        HStack(spacing: BTSpacing.sm) {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: "magnifyingglass").font(.system(size: 14)).foregroundStyle(Color.btText3)
+                TextField("Search a place near you", text: $dropSearchQuery)
+                    .font(BTFont.body(size: 15)).foregroundStyle(Color.btText)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.words)
+                    .focused($dropSearchFocused)
+                    .submitLabel(.search)
+                if !dropSearchQuery.isEmpty {
+                    Button { dropSearchQuery = ""; dropSearchResults = [] } label: {
+                        Image(systemName: "xmark.circle.fill").font(.system(size: 15)).foregroundStyle(Color.btText3)
+                    }
+                }
+            }
+            .padding(.horizontal, BTSpacing.md).padding(.vertical, 11)
+            .background(Color.btSurface.opacity(0.98))
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+            .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
+
+            // iOS-standard: a Cancel appears while typing to back out of search.
+            if dropSearchFocused {
+                Button("Cancel") { dismissDropSearch() }
+                    .font(BTFont.bodySemibold(size: 14))
+                    .foregroundStyle(Color.btText)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: dropSearchFocused)
+    }
+
+    private var dropSearchResultsCard: some View {
+        VStack(spacing: 0) {
+            if dropSearchLoading && dropSearchResults.isEmpty {
+                ProgressView().tint(Color.btText3)
+                    .frame(maxWidth: .infinity).padding(.vertical, BTSpacing.lg)
+            } else if dropSearchResults.isEmpty {
+                Text(dropSearchQuery.isEmpty ? "Search a place to pin it." : "No places found near you.")
+                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3)
+                    .frame(maxWidth: .infinity).padding(.vertical, BTSpacing.lg)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(dropSearchResults) { place in
+                            let ok = inRange(place.coordinate)
+                            Button { pickDropPlace(place) } label: {
+                                HStack(spacing: BTSpacing.sm) {
+                                    Image(systemName: place.symbol)
+                                        .font(.system(size: 14)).foregroundStyle(ok ? Color.btHouse : Color.btText3)
+                                        .frame(width: 32, height: 32)
+                                        .background((ok ? Color.btHouse : Color.btText3).opacity(0.12))
+                                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(place.name).font(BTFont.bodySemibold(size: 14))
+                                            .foregroundStyle(Color.btText).lineLimit(1)
+                                        Text(ok ? place.category : "\(place.category) · out of range")
+                                            .font(BTFont.mono(size: 10))
+                                            .foregroundStyle(ok ? Color.btText3 : Color.btWarn)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: ok ? "mappin.and.ellipse" : "location.slash")
+                                        .font(.system(size: 13)).foregroundStyle(ok ? Color.btHouse : Color.btWarn)
+                                }
+                                .padding(.horizontal, BTSpacing.md).padding(.vertical, BTSpacing.sm)
+                                .opacity(ok ? 1 : 0.6)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!ok)   // in another neighborhood → not pinnable
+                            Divider().background(Color.btLine).padding(.leading, 52)
+                        }
+                    }
+                }
+                .frame(maxHeight: 260)
+            }
+        }
+        .background(Color.btSurface.opacity(0.98))
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        .shadow(color: .black.opacity(0.3), radius: 8, y: 3)
     }
 
     // MARK: - Helpers
@@ -401,11 +583,22 @@ struct MapTabView: View {
     /// region center only before the reticle coordinate has resolved).
     private var dropCoordinate: CLLocationCoordinate2D { reticleCoord ?? mapCenter }
 
-    private var dropInRange: Bool {
+    /// Where the pin will ACTUALLY land: a searched business (if tagged) wins over
+    /// the reticle, so the geofence + confirm validate the real target — not a
+    /// reticle that's mid-fly-animation toward the place.
+    private var effectiveDropCoordinate: CLLocationCoordinate2D {
+        dropTaggedPlace?.coordinate ?? dropCoordinate
+    }
+
+    /// A coordinate is postable iff it sits inside the highlighted (current)
+    /// neighborhood polygon. Nothing highlighted → don't block.
+    private func inRange(_ c: CLLocationCoordinate2D) -> Bool {
         let highlighted = polygons.filter { isCurrentNeighborhood($0.name) }
         guard !highlighted.isEmpty else { return true }
-        return highlighted.contains { $0.contains(dropCoordinate) }
+        return highlighted.contains { $0.contains(c) }
     }
+
+    private var dropInRange: Bool { inRange(effectiveDropCoordinate) }
 
     private func snappedCorner(_ coord: CLLocationCoordinate2D) -> String? {
         let here = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
@@ -420,16 +613,35 @@ struct MapTabView: View {
         let corner = snappedCorner(dropCoordinate)
         let inRange = dropInRange
         return VStack(spacing: 3) {
-            Text(inRange ? "📍 SELECT A LOCATION" : "📍 OUT OF RANGE")
-                .font(BTFont.monoBold(size: 11.5))
-                .tracking(0.8)
-                .foregroundStyle(inRange ? Color.btText : Color.btWarn)
-            Text(inRange
-                 ? (corner ?? "drag the map to position the pin")
-                 : "you can only drop pins in your current neighborhood")
-                .font(inRange && corner != nil ? BTFont.monoBold(size: 11) : BTFont.body(size: 11))
-                .foregroundStyle(inRange && corner != nil ? Color.btLime : (inRange ? Color.btText2 : Color.btWarn.opacity(0.85)))
-                .multilineTextAlignment(.center)
+            if let place = dropTaggedPlace {
+                // A business was searched → the reticle is on it, tag attached.
+                HStack(spacing: BTSpacing.xs) {
+                    Image(systemName: place.symbol).font(.system(size: 11)).foregroundStyle(Color.btHouse)
+                    Text(place.name.uppercased())
+                        .font(BTFont.monoBold(size: 11)).tracking(0.6)
+                        .foregroundStyle(Color.btText).lineLimit(1)
+                    Button { dropTaggedPlace = nil } label: {
+                        Image(systemName: "xmark.circle.fill").font(.system(size: 13)).foregroundStyle(Color.btText3)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text(inRange ? "tap Drop pin here to post"
+                             : "you can only drop pins in your current neighborhood")
+                    .font(BTFont.body(size: 11))
+                    .foregroundStyle(inRange ? Color.btText2 : Color.btWarn.opacity(0.85))
+                    .multilineTextAlignment(.center)
+            } else {
+                Text(inRange ? "📍 SELECT A LOCATION" : "📍 OUT OF RANGE")
+                    .font(BTFont.monoBold(size: 11.5))
+                    .tracking(0.8)
+                    .foregroundStyle(inRange ? Color.btText : Color.btWarn)
+                Text(inRange
+                     ? (corner ?? "drag the map, or search a place above")
+                     : "you can only drop pins in your current neighborhood")
+                    .font(inRange && corner != nil ? BTFont.monoBold(size: 11) : BTFont.body(size: 11))
+                    .foregroundStyle(inRange && corner != nil ? Color.btLime : (inRange ? Color.btText2 : Color.btWarn.opacity(0.85)))
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, BTSpacing.lg)

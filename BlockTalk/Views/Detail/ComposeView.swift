@@ -21,8 +21,10 @@ struct ComposeView: View {
     @State private var showPlacePicker = false
     @FocusState private var textFocused: Bool
 
-    /// Pin can be toggled off locally (the ≡ footer button) without closing
-    private var effectivePin: CLLocationCoordinate2D? { pinCleared ? nil : pinDropLocation }
+    /// Pin can be toggled off locally (the ≡ footer button) without closing.
+    private var effectivePin: CLLocationCoordinate2D? {
+        pinCleared ? nil : pinDropLocation
+    }
     /// Daily-prompt / NYC-wide compose locks its scope — no feed↔pin toggle
     private var canToggleMode: Bool { !nycWide }
 
@@ -37,6 +39,9 @@ struct ComposeView: View {
     /// When answering the weekly prompt, the prompt this post responds to — so
     /// it's tagged with daily_prompt_id and shows up in the prompt's responses.
     var dailyPromptId: UUID?
+    /// Pre-tagged business (search-first pin from the Map): seeds the tag so the
+    /// post opens already pinned to the place (paired with pinDropLocation).
+    var initialPlace: TaggedPlace?
 
     @State private var resolvedStreet: String?
 
@@ -177,6 +182,8 @@ struct ComposeView: View {
                 // Rehydrate a stashed draft after the compose→map→compose round-trip
                 if viewModel.text.isEmpty { viewModel.text = appState.composeDraft }
                 textFocused = true
+                // Search-first pin from the Map: open already tagged to the place.
+                if taggedPlace == nil, let initialPlace { taggedPlace = initialPlace }
                 // No snapped corner → reverse-geocode to nearest street (never show coords)
                 if pinCornerName == nil, let coord = pinDropLocation { resolveStreet(coord) }
             }
@@ -291,7 +298,7 @@ struct ComposeView: View {
             if canToggleMode {
                 if effectivePin != nil {
                     // ≡ — clear the pin, back to feed mode (no map round-trip)
-                    footerIcon("line.3.horizontal") { pinCleared = true }
+                    footerIcon("line.3.horizontal") { clearPin() }
                 } else {
                     // 📍 — stash draft, open Map in drop mode, reopen with the pin
                     footerIcon("mappin") { switchToPinMode() }
@@ -459,6 +466,13 @@ struct ComposeView: View {
         appState.selectedTab = 1
         dismiss()
     }
+
+    // MARK: - Pin helpers
+
+    private func clearPin() {
+        pinCleared = true
+        taggedPlace = nil
+    }
 }
 
 // MARK: - Tagged place (a business a street comment is attached to)
@@ -472,6 +486,90 @@ struct TaggedPlace: Identifiable, Equatable {
     let longitude: Double
     var coordinate: CLLocationCoordinate2D { .init(latitude: latitude, longitude: longitude) }
     static func == (a: TaggedPlace, b: TaggedPlace) -> Bool { a.id == b.id }
+}
+
+// MARK: - Place search (shared by the compose sheet + the Map drop bar)
+
+/// One Apple-Maps POI search used everywhere a user searches a business to pin.
+enum PlaceSearch {
+    static let excludedCategories: [MKPointOfInterestCategory] = [
+        .publicTransport, .parking, .gasStation, .evCharger,
+        .airport, .campground, .marina,
+    ]
+
+    /// Allowed places near `center`, within `radius`, closest first, capped.
+    /// Empty `query` → nearby POIs only; otherwise a text search biased to here.
+    static func places(query: String, center: CLLocationCoordinate2D,
+                       radius: CLLocationDistance, maxResults: Int) async -> [TaggedPlace] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+
+        // Nearby POIs are always fetched — they carry reliable categories that a
+        // bare text hit can borrow for its icon.
+        let poiReq = MKLocalPointsOfInterestRequest(center: center, radius: radius)
+        poiReq.pointOfInterestFilter = MKPointOfInterestFilter(excluding: excludedCategories)
+        let nearby = await items(poiReq)
+
+        let raw: [MKMapItem]
+        if q.isEmpty {
+            raw = nearby
+        } else {
+            let textReq = MKLocalSearch.Request()
+            textReq.naturalLanguageQuery = q
+            textReq.region = MKCoordinateRegion(center: center,
+                                                latitudinalMeters: radius * 2,
+                                                longitudinalMeters: radius * 2)
+            let textHits = await items(textReq)
+            // Type-ahead: also match the already-fetched nearby places by name, so a
+            // partial query ("ess") surfaces nearby hits ("Essex Market") instantly
+            // instead of waiting for the whole-word match Apple's text search needs.
+            // Nearby hits go first — they carry reliable categories (better icons)
+            // and win dedup.
+            let nearbyHits = nearby.filter {
+                $0.name?.localizedCaseInsensitiveContains(q) ?? false
+            }
+            raw = nearbyHits + textHits
+        }
+
+        var seen = Set<String>()
+        let places = raw.compactMap { toPlace($0, nearby: nearby) }.filter { p in
+            // A place can appear in both lists — dedupe by name + rounded coordinate.
+            let key = "\(p.name.lowercased())|\(Int(p.latitude * 1e4))|\(Int(p.longitude * 1e4))"
+            return seen.insert(key).inserted
+        }
+        func dist(_ p: TaggedPlace) -> CLLocationDistance {
+            CLLocation(latitude: center.latitude, longitude: center.longitude)
+                .distance(from: CLLocation(latitude: p.latitude, longitude: p.longitude))
+        }
+        return Array(places.filter { dist($0) <= radius }
+            .sorted { dist($0) < dist($1) }
+            .prefix(maxResults))
+    }
+
+    private static func toPlace(_ item: MKMapItem, nearby: [MKMapItem]) -> TaggedPlace? {
+        guard let name = item.name else { return nil }
+        var (label, symbol) = placeDisplay(name: name, category: item.pointOfInterestCategory)
+        if symbol == "mappin.circle.fill" {
+            let here = item.placemark.coordinate
+            if let match = nearby.first(where: { poi in
+                poi.pointOfInterestCategory != nil &&
+                CLLocation(latitude: here.latitude, longitude: here.longitude)
+                    .distance(from: CLLocation(latitude: poi.placemark.coordinate.latitude,
+                                               longitude: poi.placemark.coordinate.longitude)) < 25
+            }) {
+                (label, symbol) = placeCategoryDisplay(match.pointOfInterestCategory)
+            }
+        }
+        let c = item.placemark.coordinate
+        return TaggedPlace(name: name, category: label, symbol: symbol,
+                           latitude: c.latitude, longitude: c.longitude)
+    }
+
+    private static func items(_ request: MKLocalSearch.Request) async -> [MKMapItem] {
+        (try? await MKLocalSearch(request: request).start())?.mapItems ?? []
+    }
+    private static func items(_ request: MKLocalPointsOfInterestRequest) async -> [MKMapItem] {
+        (try? await MKLocalSearch(request: request).start())?.mapItems ?? []
+    }
 }
 
 /// Apple POI category → friendly label + SF Symbol.
@@ -624,7 +722,7 @@ struct PlacePickerSheet: View {
     private var searchField: some View {
         HStack(spacing: BTSpacing.sm) {
             Image(systemName: "magnifyingglass").font(.system(size: 14)).foregroundStyle(Color.btText3)
-            TextField("Search a business or place", text: $query)
+            TextField("Search a place near you", text: $query)
                 .font(BTFont.body(size: 15)).foregroundStyle(Color.btText)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.words)
