@@ -53,7 +53,7 @@ struct TrendingCard: View {
 
             // Action row — matches every other post card
             HStack(spacing: 6) {
-                VotePills(score: post.score, onUpvote: { castVote(1) }, onDownvote: { castVote(-1) }, onClear: { clearVote() })
+                VotePills(score: post.score, upvoteCount: post.upvoteCount, downvoteCount: post.downvoteCount, onUpvote: { castVote(1) }, onDownvote: { castVote(-1) }, onClear: { clearVote() })
 
                 actionButton(systemName: enrolled ? "bell.fill" : "bell",
                              active: enrolled, activeColor: .btLime) {
@@ -114,7 +114,7 @@ struct TrendingCard: View {
             post: Post(
                 id: UUID(), userId: UUID(), neighborhoodId: UUID(),
                 text: "the bodega cat on 7th just stole someone's breakfast sandwich right off the counter. no regrets.",
-                isDailyPrompt: false, score: 142, replyCount: 38, reportCount: 0, status: .live,
+                isDailyPrompt: false, score: 142, upvoteCount: 150, downvoteCount: 8, replyCount: 38, reportCount: 0, status: .live,
                 author: PostAuthor(username: "streetrat", userNumber: 4827, home: .init(shortCode: "LES"))
             )
         )

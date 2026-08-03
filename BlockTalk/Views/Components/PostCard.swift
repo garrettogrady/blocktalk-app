@@ -293,6 +293,8 @@ struct PostCard: View {
             // Vote pills
             VotePills(
                 score: post.score,
+                upvoteCount: post.upvoteCount,
+                downvoteCount: post.downvoteCount,
                 onUpvote: { castVote(1) },
                 onDownvote: { castVote(-1) },
                 onClear: { clearVote() }
@@ -429,6 +431,8 @@ struct PostCard: View {
                 text: "the bodega cat on 7th just stole someone's breakfast sandwich right off the counter. no regrets.",
                 isDailyPrompt: false,
                 score: 42,
+                upvoteCount: 45,
+                downvoteCount: 3,
                 replyCount: 7,
                 reportCount: 0,
                 status: .live

@@ -13,6 +13,8 @@ enum TestFixtures {
         neighborhoodId: UUID = TestFixtures.neighborhoodId,
         text: String = "Hello neighbors!",
         score: Int = 0,
+        upvoteCount: Int = 0,
+        downvoteCount: Int = 0,
         replyCount: Int = 0,
         reportCount: Int = 0,
         status: PostStatus = .live,
@@ -32,6 +34,8 @@ enum TestFixtures {
             isDailyPrompt: isDailyPrompt,
             dailyPromptId: dailyPromptId,
             score: score,
+            upvoteCount: upvoteCount,
+            downvoteCount: downvoteCount,
             replyCount: replyCount,
             reportCount: reportCount,
             status: status,
@@ -46,6 +50,8 @@ enum TestFixtures {
         userId: UUID = TestFixtures.userId,
         text: String = "Nice post!",
         score: Int = 0,
+        upvoteCount: Int = 0,
+        downvoteCount: Int = 0,
         depth: Int = 0,
         children: [Reply]? = nil,
         createdAt: Date? = Date()
@@ -57,6 +63,8 @@ enum TestFixtures {
             userId: userId,
             text: text,
             score: score,
+            upvoteCount: upvoteCount,
+            downvoteCount: downvoteCount,
             depth: depth,
             createdAt: createdAt,
             children: children,
@@ -80,6 +88,39 @@ enum TestFixtures {
         activeUntil: Date = Date().addingTimeInterval(3600)
     ) -> DailyPrompt {
         DailyPrompt(id: id, question: question, activeFrom: activeFrom, activeUntil: activeUntil)
+    }
+
+    static func makeQueuedPost(
+        post: Post? = nil,
+        text: String = "Hello neighbors!",
+        userId: UUID = TestFixtures.userId,
+        neighborhoodId: UUID = TestFixtures.neighborhoodId,
+        imageData: Data? = nil,
+        pinCoordinate: CLLocationCoordinate2D? = nil,
+        pinCornerName: String? = nil,
+        placeName: String? = nil,
+        placeCategory: String? = nil,
+        placeSymbol: String? = nil,
+        isDailyPrompt: Bool = false,
+        dailyPromptId: UUID? = nil,
+        queuedAt: Date = Date()
+    ) -> OfflineStore.QueuedPost {
+        let p = post ?? makePost(userId: userId, neighborhoodId: neighborhoodId, text: text)
+        return OfflineStore.QueuedPost(
+            post: p,
+            text: text,
+            userId: userId,
+            neighborhoodId: neighborhoodId,
+            imageData: imageData,
+            pinCoordinate: pinCoordinate,
+            pinCornerName: pinCornerName,
+            placeName: placeName,
+            placeCategory: placeCategory,
+            placeSymbol: placeSymbol,
+            isDailyPrompt: isDailyPrompt,
+            dailyPromptId: dailyPromptId,
+            queuedAt: queuedAt
+        )
     }
 
     /// A simple square polygon for testing point-in-polygon

@@ -7,6 +7,8 @@ struct Reply: Codable, Identifiable, Sendable {
     let userId: UUID
     let text: String
     var score: Int
+    var upvoteCount: Int
+    var downvoteCount: Int
     var depth: Int
     var createdAt: Date?
     var children: [Reply]?
@@ -18,7 +20,10 @@ struct Reply: Codable, Identifiable, Sendable {
         case postId = "post_id"
         case parentReplyId = "parent_reply_id"
         case userId = "user_id"
-        case text, score, depth
+        case text, score
+        case upvoteCount = "upvote_count"
+        case downvoteCount = "downvote_count"
+        case depth
         case createdAt = "created_at"
         case author
     }

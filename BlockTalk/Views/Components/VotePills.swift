@@ -6,6 +6,8 @@ import SwiftUI
 // max(0, round(score × 0.06)). Users can vote on their own posts.
 struct VotePills: View {
     var score: Int
+    var upvoteCount: Int
+    var downvoteCount: Int
     var onUpvote: () -> Void
     var onDownvote: () -> Void
     /// Tapping your active arrow again clears the vote — delete the row.
@@ -14,10 +16,8 @@ struct VotePills: View {
     @State private var vote: Int = 0        // -1, 0, 1
     @State private var hasEverVoted = false
 
-    private var upBase: Int { max(0, score) }
-    private var downBase: Int { max(0, Int((Double(score) * 0.06).rounded())) }
-    private var upCount: Int { upBase + (vote == 1 ? 1 : 0) }
-    private var downCount: Int { downBase + (vote == -1 ? 1 : 0) }
+    private var upCount: Int { upvoteCount + (vote == 1 ? 1 : 0) }
+    private var downCount: Int { downvoteCount + (vote == -1 ? 1 : 0) }
 
     var body: some View {
         HStack(spacing: BTSpacing.xs) {
@@ -69,8 +69,8 @@ struct VotePills: View {
     ZStack {
         Color.btBg.ignoresSafeArea()
         VStack(spacing: BTSpacing.xl) {
-            VotePills(score: 42, onUpvote: {}, onDownvote: {})
-            VotePills(score: 0, onUpvote: {}, onDownvote: {})
+            VotePills(score: 42, upvoteCount: 45, downvoteCount: 3, onUpvote: {}, onDownvote: {})
+            VotePills(score: 0, upvoteCount: 0, downvoteCount: 0, onUpvote: {}, onDownvote: {})
         }
     }
 }

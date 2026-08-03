@@ -225,6 +225,8 @@ struct PostDetailView: View {
                 text: "the bodega cat on 7th just stole someone's breakfast sandwich right off the counter.",
                 isDailyPrompt: false,
                 score: 42,
+                upvoteCount: 45,
+                downvoteCount: 3,
                 replyCount: 7,
                 reportCount: 0,
                 status: .live

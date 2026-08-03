@@ -54,7 +54,7 @@ final class PostDetailViewModel {
         // Optimistic UI: insert immediately
         let optimistic = Reply(
             id: UUID(), postId: post.id, parentReplyId: parentId, userId: userId,
-            text: trimmed, score: 0, depth: depth, createdAt: Date(),
+            text: trimmed, score: 0, upvoteCount: 0, downvoteCount: 0, depth: depth, createdAt: Date(),
             children: nil, author: author
         )
         insert(optimistic, under: parentId, into: &replies)

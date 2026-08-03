@@ -6,6 +6,7 @@ struct BlockTalkUser: Codable, Identifiable, Sendable {
     var userNumber: Int
     var homeNeighborhoodId: UUID?
     var homeChangedAt: Date?
+    var usernameChangedAt: Date?
     var createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
@@ -14,6 +15,7 @@ struct BlockTalkUser: Codable, Identifiable, Sendable {
         case userNumber = "user_number"
         case homeNeighborhoodId = "home_neighborhood_id"
         case homeChangedAt = "home_changed_at"
+        case usernameChangedAt = "username_changed_at"
         case createdAt = "created_at"
     }
 

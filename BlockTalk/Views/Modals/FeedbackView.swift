@@ -2,9 +2,11 @@ import SwiftUI
 
 struct FeedbackView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
     @State private var text = ""
     @State private var isSubmitting = false
     @State private var showSuccess = false
+    @State private var submitError: String?
 
     private let minLength = 10
     private let maxLength = 1500
@@ -89,6 +91,12 @@ struct FeedbackView: View {
                     .foregroundStyle(Color.btText3)
             }
 
+            if let submitError {
+                Text(submitError)
+                    .font(BTFont.body(size: 12))
+                    .foregroundStyle(Color.btPink)
+            }
+
             Spacer()
 
             // Submit button
@@ -151,17 +159,31 @@ struct FeedbackView: View {
     }
 
     private func submit() {
+        guard let userId = appState.currentUser?.id else { return }
         isSubmitting = true
-        // Simulate submission
+        submitError = nil
         Task {
-            try? await Task.sleep(for: .seconds(1))
-            isSubmitting = false
-            showSuccess = true
+            do {
+                try await supabase.from("feedback")
+                    .insert(["user_id": userId.uuidString,
+                             "body": text.trimmingCharacters(in: .whitespacesAndNewlines)])
+                    .execute()
+                await MainActor.run {
+                    isSubmitting = false
+                    showSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isSubmitting = false
+                    submitError = "Failed to send. Check your connection."
+                }
+            }
         }
     }
 }
 
 #Preview {
     FeedbackView()
+        .environment(AppState())
         .preferredColorScheme(.dark)
 }

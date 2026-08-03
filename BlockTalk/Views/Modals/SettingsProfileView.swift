@@ -7,15 +7,11 @@ struct SettingsProfileView: View {
     @State private var showSetUsername = false
     @State private var showAliasLocked = false
 
-    /// Alias is changeable once every 30 days — the permanent anchor is the user #.
-    /// 0 = never changed, so the first change is instant; after that it locks 30 days.
-    /// [Backend: the actual write persists via the alias-update RPC — handoff §3.]
-    @AppStorage("aliasChangedAt") private var aliasChangedAtEpoch: Double = 0
     private let aliasLockDays: Double = 30
 
     private var aliasUnlockDate: Date? {
-        aliasChangedAtEpoch == 0 ? nil
-            : Date(timeIntervalSince1970: aliasChangedAtEpoch).addingTimeInterval(aliasLockDays * 86_400)
+        guard let changedAt = appState.currentUser?.usernameChangedAt else { return nil }
+        return changedAt.addingTimeInterval(aliasLockDays * 86_400)
     }
     private var aliasLocked: Bool {
         guard let u = aliasUnlockDate else { return false }
@@ -153,7 +149,7 @@ struct SettingsProfileView: View {
             Text("You can change your alias again on \(aliasUnlockLabel). Changes are limited to once every 30 days.")
         }
         .sheet(isPresented: $showSetUsername) {
-            SetUsernameSheet(onChanged: { aliasChangedAtEpoch = Date().timeIntervalSince1970 })
+            SetUsernameSheet()
         }
     }
 
@@ -197,13 +193,13 @@ struct SettingsProfileView: View {
 // MARK: - Change alias from Settings
 
 /// Lets the user change their alias (subject to the 30-day cooldown enforced by
-/// the caller). Same rules + copy as onboarding (ProfileCopy).
+/// the server via the `update_username` RPC). Same rules + copy as onboarding (ProfileCopy).
 struct SetUsernameSheet: View {
-    /// Called on a successful change so the caller can stamp the cooldown clock.
-    var onChanged: (() -> Void)? = nil
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ProfileViewModel()
+    @State private var isSaving = false
+    @State private var serverError: String?
     @FocusState private var focused: Bool
 
     private var displayName: String {
@@ -256,21 +252,28 @@ struct SetUsernameSheet: View {
 
                 Spacer()
 
-                Button {
-                    appState.currentUser?.username = displayName
-                    onChanged?()
-                    // [Backend: persist via the alias-update RPC — handoff §3.
-                    //  Until then this updates the session only.]
-                    dismiss()
-                } label: {
-                    Text("Save @\(displayName.isEmpty ? "alias" : displayName)")
-                        .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
-                        .foregroundStyle(Color.btOnAccent.opacity(viewModel.usernameOk ? 1 : 0.65))
-                        .frame(maxWidth: .infinity).frame(height: 50)
-                        .background(Color.btLime.opacity(viewModel.usernameOk ? 1 : 0.4))
-                        .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+                if let serverError {
+                    Text(serverError)
+                        .font(BTFont.body(size: 12))
+                        .foregroundStyle(Color.btPink)
                 }
-                .disabled(!viewModel.usernameOk)
+
+                Button {
+                    saveUsername()
+                } label: {
+                    HStack {
+                        if isSaving {
+                            ProgressView().tint(Color.btOnAccent)
+                        }
+                        Text("Save @\(displayName.isEmpty ? "alias" : displayName)")
+                            .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
+                    }
+                    .foregroundStyle(Color.btOnAccent.opacity(viewModel.usernameOk ? 1 : 0.65))
+                    .frame(maxWidth: .infinity).frame(height: 50)
+                    .background(Color.btLime.opacity(viewModel.usernameOk ? 1 : 0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+                }
+                .disabled(!viewModel.usernameOk || isSaving)
             }
             .padding(BTSpacing.xl)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -289,6 +292,44 @@ struct SetUsernameSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private struct UsernameResult: Decodable {
+        let success: Bool
+        let message: String?
+        let username: String?
+    }
+
+    private func saveUsername() {
+        guard let userId = appState.currentUser?.id else { return }
+        isSaving = true
+        serverError = nil
+        Task {
+            do {
+                let result: UsernameResult = try await supabase.rpc(
+                    "update_username",
+                    params: ["p_user_id": userId.uuidString,
+                             "p_new_username": displayName]
+                ).execute().value
+
+                await MainActor.run {
+                    if result.success {
+                        appState.currentUser?.username = displayName
+                        appState.currentUser?.usernameChangedAt = Date()
+                        isSaving = false
+                        dismiss()
+                    } else {
+                        serverError = result.message ?? "Something went wrong. Try again."
+                        isSaving = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    serverError = "Network error. Check your connection."
+                    isSaving = false
+                }
+            }
+        }
     }
 }
 

@@ -384,10 +384,26 @@ struct ComposeView: View {
         // queue too but hold the pin off the map until send.
         if offline.isOffline {
             let body = viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            let queued = Post(
+            let displayPost = Post(
                 id: UUID(), userId: userId, neighborhoodId: neighborhoodId,
-                text: body, isDailyPrompt: false, score: 0, replyCount: 0,
-                reportCount: 0, status: .live, createdAt: Date()
+                text: body, isDailyPrompt: dailyPromptId != nil, score: 0, upvoteCount: 0,
+                downvoteCount: 0, replyCount: 0, reportCount: 0, status: .live, createdAt: Date()
+            )
+            let imageData = viewModel.selectedImage?.jpegData(compressionQuality: 0.8)
+            let queued = OfflineStore.QueuedPost(
+                post: displayPost,
+                text: body,
+                userId: userId,
+                neighborhoodId: neighborhoodId,
+                imageData: imageData,
+                pinCoordinate: effectivePin,
+                pinCornerName: pinCornerName ?? resolvedStreet,
+                placeName: taggedPlace?.name,
+                placeCategory: taggedPlace?.category,
+                placeSymbol: taggedPlace?.symbol,
+                isDailyPrompt: dailyPromptId != nil,
+                dailyPromptId: dailyPromptId,
+                queuedAt: Date()
             )
             offline.enqueue(queued)
             appState.composeDraft = ""

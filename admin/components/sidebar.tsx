@@ -5,14 +5,18 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Shield,
+  Scale,
   Users,
   Database,
+  MessageSquare,
 } from "lucide-react";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/moderation", label: "Moderation", icon: Shield },
+  { href: "/appeals", label: "Appeals", icon: Scale },
   { href: "/users", label: "Users", icon: Users },
+  { href: "/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/seed", label: "Seed DB", icon: Database },
 ];
 

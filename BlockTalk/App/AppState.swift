@@ -1,6 +1,9 @@
+import CoreLocation
 import Foundation
+import Network
 import SwiftUI
 import Supabase
+import UIKit
 
 enum AppStage {
     case splash
@@ -147,38 +150,147 @@ final class NotificationStore {
     }
 }
 
-/// Session-scoped offline queue (mock mechanics). Posts made offline queue
-/// locally; after a grace window they discard; going online flushes them.
-/// [PROD-DIFF: 30s grace → 60min; debug toggle → NWPathMonitor; flushed posts
-/// are shown locally, not actually sent — Garrett wires the real send.]
+/// Session-scoped offline queue. Posts made offline queue locally; when
+/// NWPathMonitor detects connectivity they flush to Supabase for real.
 @Observable
 final class OfflineStore {
     var isOffline = false
     private(set) var pending: [QueuedPost] = []
     private(set) var discarded: [QueuedPost] = []
-    /// Pendings that were flushed on reconnect — shown at the top of the feed
+    /// Posts that were successfully flushed on reconnect — shown at the top of the feed
     private(set) var flushed: [Post] = []
+    private(set) var isFlushing = false
 
-    /// 30 seconds for demoability (PROD: 60 minutes)
-    static let graceSeconds: TimeInterval = 30
+    #if DEBUG
+    static let graceSeconds: TimeInterval = 120
+    #else
+    static let graceSeconds: TimeInterval = 3600
+    #endif
+
+    private var monitor: NWPathMonitor?
+    private let monitorQueue = DispatchQueue(label: "com.blocktalk.network-monitor")
 
     struct QueuedPost: Identifiable {
         let id = UUID()
-        let post: Post
+        let post: Post              // display-only post for the feed UI
+        let text: String
+        let userId: UUID
+        let neighborhoodId: UUID
+        let imageData: Data?
+        let pinCoordinate: CLLocationCoordinate2D?
+        let pinCornerName: String?
+        let placeName: String?
+        let placeCategory: String?
+        let placeSymbol: String?
+        let isDailyPrompt: Bool
+        let dailyPromptId: UUID?
         let queuedAt: Date
     }
 
+    init() {
+        startMonitor()
+    }
+
+    deinit {
+        stopMonitor()
+    }
+
+    // MARK: - Network Monitor
+
+    func startMonitor() {
+        let m = NWPathMonitor()
+        m.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let wasOffline = self.isOffline
+                self.isOffline = path.status != .satisfied
+                if wasOffline && !self.isOffline {
+                    Task { await self.flush() }
+                }
+            }
+        }
+        m.start(queue: monitorQueue)
+        monitor = m
+    }
+
+    func stopMonitor() {
+        monitor?.cancel()
+        monitor = nil
+    }
+
+    #if DEBUG
+    /// Debug-only manual toggle. In debug builds, the toggle still triggers
+    /// flush when going back online — same behavior as NWPathMonitor.
     func toggleOffline() {
         isOffline.toggle()
         if !isOffline {
-            // Going back online: pendings "send" and promote to normal posts
-            flushed.insert(contentsOf: pending.map(\.post), at: 0)
-            pending = []
+            Task { await flush() }
         }
     }
+    #endif
 
-    func enqueue(_ post: Post) {
-        pending.insert(QueuedPost(post: post, queuedAt: Date()), at: 0)
+    // MARK: - Queue
+
+    func enqueue(_ queued: QueuedPost) {
+        pending.insert(queued, at: 0)
+    }
+
+    /// Flush pending posts to Supabase. Called when connectivity returns.
+    /// Posts are sent sequentially in enqueue order (oldest first).
+    func flush() async {
+        guard !pending.isEmpty, !isFlushing else { return }
+        isFlushing = true
+        defer { isFlushing = false }
+
+        // Process oldest first (pending is newest-first, so reverse)
+        let toSend = pending.reversed()
+        for queued in toSend {
+            do {
+                var pinId: UUID?
+
+                // 1. Create pin if this is a street comment
+                if let coord = queued.pinCoordinate {
+                    let pin = try await PinService().createPin(
+                        userId: queued.userId,
+                        coordinate: coord,
+                        cornerName: queued.pinCornerName,
+                        neighborhoodId: queued.neighborhoodId,
+                        placeName: queued.placeName,
+                        placeCategory: queued.placeCategory,
+                        placeSymbol: queued.placeSymbol
+                    )
+                    pinId = pin.id
+                }
+
+                // 2. Upload image if attached
+                var imageUrl: String?
+                if let imageData = queued.imageData,
+                   let image = UIImage(data: imageData) {
+                    imageUrl = try await ImageService().upload(image: image, userId: queued.userId)
+                }
+
+                // 3. Create the post
+                let newPost = NewPost(
+                    userId: queued.userId,
+                    neighborhoodId: queued.neighborhoodId,
+                    text: queued.text,
+                    imageUrl: imageUrl,
+                    pinId: pinId,
+                    isDailyPrompt: queued.isDailyPrompt,
+                    dailyPromptId: queued.dailyPromptId
+                )
+                let created = try await PostService().createPost(newPost)
+
+                // 4. Success → move to flushed
+                flushed.insert(created, at: 0)
+                pending.removeAll { $0.id == queued.id }
+            } catch {
+                // 5. Failure → move to discarded
+                print("OfflineStore: flush failed for post \(queued.id) — \(error)")
+                discarded.insert(queued, at: 0)
+                pending.removeAll { $0.id == queued.id }
+            }
+        }
     }
 
     /// Move any pending older than the grace window to discarded. Runs on a

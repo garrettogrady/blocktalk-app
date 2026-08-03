@@ -61,6 +61,8 @@ struct ReplyNode: View {
                         // Vote pills
                         VotePills(
                             score: reply.score,
+                            upvoteCount: reply.upvoteCount,
+                            downvoteCount: reply.downvoteCount,
                             onUpvote: {
                                 onVote?(reply.id, 1)
                             },
@@ -155,6 +157,8 @@ struct ReplyNode: View {
                     userId: UUID(),
                     text: "That cat is legendary. Been doing that for years.",
                     score: 12,
+                    upvoteCount: 13,
+                    downvoteCount: 1,
                     depth: 0,
                     createdAt: Date().addingTimeInterval(-300),
                     children: [
@@ -164,6 +168,8 @@ struct ReplyNode: View {
                             userId: UUID(),
                             text: "Facts. The owner doesn't even care anymore.",
                             score: 5,
+                            upvoteCount: 5,
+                            downvoteCount: 0,
                             depth: 1,
                             createdAt: Date().addingTimeInterval(-120)
                         ),

@@ -48,3 +48,24 @@ export interface Report {
 export interface ModerationPost extends Post {
   reports: Report[];
 }
+
+export interface Feedback {
+  id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  user?: { username: string; user_number: number };
+}
+
+export type AppealStatus = "pending" | "accepted" | "rejected";
+
+export interface Appeal {
+  id: string;
+  user_id: string;
+  post_id: string;
+  appeal_text: string;
+  status: AppealStatus;
+  created_at: string;
+  user?: { username: string; user_number: number };
+  post?: Post;
+}

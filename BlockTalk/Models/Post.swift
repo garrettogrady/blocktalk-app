@@ -10,6 +10,8 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
     var isDailyPrompt: Bool
     var dailyPromptId: UUID?
     var score: Int
+    var upvoteCount: Int
+    var downvoteCount: Int
     var replyCount: Int
     var reportCount: Int
     var status: PostStatus
@@ -28,6 +30,8 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
         case isDailyPrompt = "is_daily_prompt"
         case dailyPromptId = "daily_prompt_id"
         case score
+        case upvoteCount = "upvote_count"
+        case downvoteCount = "downvote_count"
         case replyCount = "reply_count"
         case reportCount = "report_count"
         case status

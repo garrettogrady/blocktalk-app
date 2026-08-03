@@ -15,6 +15,8 @@ async function getMetrics() {
     { count: postsRemoved },
     { count: totalReports },
     { count: totalReplies },
+    { count: pendingAppeals },
+    { count: totalFeedback },
   ] = await Promise.all([
     supabaseAdmin.from("users").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("posts").select("*", { count: "exact", head: true }),
@@ -32,6 +34,11 @@ async function getMetrics() {
       .eq("status", "removed"),
     supabaseAdmin.from("reports").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("replies").select("*", { count: "exact", head: true }),
+    supabaseAdmin
+      .from("appeals")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabaseAdmin.from("feedback").select("*", { count: "exact", head: true }),
   ]);
 
   const { data: neighborhoodData } = await supabaseAdmin
@@ -51,6 +58,8 @@ async function getMetrics() {
     postsRemoved: postsRemoved ?? 0,
     totalReports: totalReports ?? 0,
     totalReplies: totalReplies ?? 0,
+    pendingAppeals: pendingAppeals ?? 0,
+    totalFeedback: totalFeedback ?? 0,
     activeNeighborhoods,
   };
 }
@@ -91,6 +100,16 @@ export default async function DashboardPage() {
           accent="red"
         />
         <StatCard label="Total Reports" value={metrics.totalReports} accent="red" />
+        <StatCard
+          label="Pending Appeals"
+          value={metrics.pendingAppeals}
+          accent="yellow"
+        />
+        <StatCard
+          label="Total Feedback"
+          value={metrics.totalFeedback}
+          accent="green"
+        />
         <StatCard
           label="Active Neighborhoods"
           value={metrics.activeNeighborhoods}

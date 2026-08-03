@@ -259,6 +259,8 @@ struct PinDetailView: View {
                 text: "This corner always smells like fresh bread at 6am",
                 isDailyPrompt: false,
                 score: 18,
+                upvoteCount: 20,
+                downvoteCount: 2,
                 replyCount: 3,
                 reportCount: 0,
                 status: .live
