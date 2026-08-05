@@ -170,12 +170,14 @@ struct PostCard: View {
                 AsyncImage(url: URL(string: imageUrl)) { phase in
                     switch phase {
                     case .success(let image):
+                        // Fit (not fill) so the full photo shows on the card, matching
+                        // the compose preview — what you post is what you see. Capped
+                        // height keeps a tall photo from taking over the feed.
                         image
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
+                            .aspectRatio(contentMode: .fit)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 220)
-                            .clipped()
+                            .frame(maxHeight: 300)
                             .cornerRadius(BTRadius.md)
                             // Street comment + photo: location badge on the photo
                             // so "where" stays unmistakable without a second map.
