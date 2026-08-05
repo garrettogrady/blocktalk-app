@@ -61,12 +61,15 @@ struct ComposeView: View {
                         // Image preview — ABOVE the input, per the mock
                         if let image = viewModel.selectedImage {
                             ZStack(alignment: .topTrailing) {
+                                // Fit (not fill) so the WHOLE photo is visible in the
+                                // preview — the user should see exactly what they're
+                                // posting, not a cropped middle slice. Capped height
+                                // keeps a tall photo from dominating the compose screen.
                                 Image(uiImage: image)
                                     .resizable()
-                                    .aspectRatio(contentMode: .fill)
+                                    .aspectRatio(contentMode: .fit)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 200)
-                                    .clipped()
+                                    .frame(maxHeight: 280)
                                     .cornerRadius(BTRadius.md)
 
                                 Button {
