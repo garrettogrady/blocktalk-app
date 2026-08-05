@@ -3,7 +3,6 @@ import SwiftUI
 struct PostDetailView: View {
     let post: Post
     @Environment(AppState.self) private var appState
-    @Environment(LocationService.self) private var location
     @Environment(LocalContentStore.self) private var localContent
     @Environment(PinStore.self) private var pinStore
     @State private var viewModel = PostDetailViewModel()
@@ -16,7 +15,6 @@ struct PostDetailView: View {
             homeShortCode: appState.physicalNeighborhood?.shortCode ?? "LES"
         )
     }
-    @State private var showPreFrame = false
     @FocusState private var replyFocused: Bool
 
     private let replyLimit = 500
@@ -49,13 +47,12 @@ struct PostDetailView: View {
                                 ReplyNode(
                                     reply: reply,
                                     onReplyTap: { replyId, username in
-                                        // Replies require physical presence — gate when ungated
-                                        if location.permissionState == .granted {
-                                            viewModel.replyingTo = (id: replyId, username: username)
-                                            replyFocused = true
-                                        } else {
-                                            locationGateTap(location, showPreFrame: $showPreFrame)
-                                        }
+                                        // Replies are NOT presence-gated: you can join any
+                                        // conversation you can read (e.g. from Discover, in a
+                                        // neighborhood you're not in). Only posts + pins require
+                                        // presence — that's what guarantees they're authentic.
+                                        viewModel.replyingTo = (id: replyId, username: username)
+                                        replyFocused = true
                                     },
                                     onVote: { replyId, direction in
                                         guard let userId = appState.currentUser?.id else { return }
@@ -78,11 +75,9 @@ struct PostDetailView: View {
             // Reply compose bar — only for a live post; a moderated post has
             // nothing to reply to.
             if post.status == .live {
-                if location.permissionState == .granted {
-                    replyBar
-                } else {
-                    LocationGateBar(label: "Enable location to reply", showPreFrame: $showPreFrame)
-                }
+                // Replies aren't presence-gated — reading is global, so replying is
+                // too. (Posts + pins still require you to be physically present.)
+                replyBar
             }
         }
         .background(Color.btBg)
@@ -96,9 +91,6 @@ struct PostDetailView: View {
                         .foregroundStyle(Color.btText2)
                 }
             }
-        }
-        .sheet(isPresented: $showPreFrame) {
-            LocationPreFrameSheet()
         }
         .task {
             viewModel.post = post

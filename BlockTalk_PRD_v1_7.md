@@ -14,14 +14,14 @@ BlockTalk is an iPhone app for anonymous, location-locked NYC neighborhood comme
 
 Local commentary is missing from every existing social platform. Twitter is global. Nextdoor is utility. Citizen is fear. BlockTalk is voice.
 
-BlockTalk is NYC-first. Every neighborhood in the five boroughs gets its own running feed. Users can post into a neighborhood feed or pin a comment to a specific corner on the map. Posting and replying require physical presence in the neighborhood. That constraint is the whole point — it's what makes the content real.
+BlockTalk is NYC-first. Every neighborhood in the five boroughs gets its own running feed. Users can post into a neighborhood feed or pin a comment to a specific corner on the map. Posting and pinning require physical presence in the neighborhood; replying and voting do not (§8). That constraint on *originating* content is the whole point — it's what makes the content real.
 
 iPhone-first at launch. The app launches on iOS via Apple ID sign-in. Android is post-MVP.
 
 ### Product principles
 
 - **Anonymous by default.** Users are identified by a sequential user number (e.g. `#4,827`) and an optional unique username — never their real name.
-- **Location-first.** Posting and replying require physical presence in the neighborhood. There are no exceptions.
+- **Location-first.** Posting and pinning require physical presence in the neighborhood — that's what makes originated content real. Replying and voting do not (you can join any conversation you can read). See §8.
 - **NYC-native.** Built around NYC's borough and neighborhood structure (NYC Department of City Planning Neighborhood Tabulation Areas — "NTAs"). Launch corridor expands neighborhood by neighborhood; full-city support is the long arc.
 - **iPhone-first.** MVP ships on iOS only.
 - **Observant, not aggrieved.** Launch tone steers toward observation, humor, and neighborhood specificity — not generic complaints or targeted harassment. Sharp and raunchy commentary is fine. Targeting identifiable individuals is not.
@@ -39,7 +39,7 @@ Short definitions for readers (investors, partners, new contributors) who haven'
 | **User number** | A sequential ID like `#4,827`. Permanent, visible, anonymous. Signals tenure on the platform. |
 | **Username** | An optional handle. Default is "BlockTalker" until the user picks one. Once set, it cannot be changed. |
 | **Home neighborhood** | Where you registered. Changeable once every 30 days. Determines your home feed. |
-| **Currently in** | The neighborhood you're physically standing in right now (verified by GPS). You can only post or reply when physically in a neighborhood. |
+| **Currently in** | The neighborhood you're physically standing in right now (verified by GPS). You can only post or drop a pin when physically in a neighborhood; replying and voting work from anywhere. |
 | **Feed** | The scroll of posts for one neighborhood. Defaults to your home neighborhood's feed. |
 | **Street comment** | A post pinned to a specific corner on the map (e.g. "Stanton & Norfolk"). Appears both on the map as a pulsing pin and in the neighborhood's feed. |
 | **Pin** | The map representation of a street comment. |
@@ -262,7 +262,7 @@ Tap a post → opens Post Detail with the full reply thread and a reply compose 
 - **Reply sort** is not user-controllable at MVP — replies are always newest-first within a level. Customizable reply sort is post-MVP.
 - **Reply draft persistence: session only.**
 - **Replies are immutable.** No editing and no deletion after publish — same rule as posts. Moderation (report → human review → remove) is the only path to take a reply down.
-- Geofence check applies to replies too — same rules as posts.
+- **Replies do NOT require physical presence** *(decision, 2026-08)*. You can reply to any post you can read — including from Discover, in a neighborhood you're not in. Reading is global, so replying is too. **Presence is required only to *originate* content — posts and pins** — because that's the authenticity guarantee (a post/pin genuinely comes from someone who was there). Joining a conversation isn't a presence claim. Votes are likewise not presence-gated. Abuse of open replies is handled by moderation + the write-gate rate limits (§22), not by walling off replies.
 
 ## 9. Voting
 
@@ -335,9 +335,9 @@ A bottom-tab surface for cross-neighborhood discovery. Purely a viewing surface 
 
 ### Sections (top to bottom)
 1. **Search bar.** Opens global search.
-2. **🔥 Trending in NYC.** A featured post (lime-tinted with a `🏆 TOP TRENDING` chip) + 9 more trending posts as standard cards. Mix of all five boroughs visible via the home badges.
-3. **🗺 Top by Borough.** Horizontal scroll of 5 cards (one per borough), each showing 3 mini-posts with stats. Voice-matched to each borough.
-4. **🎲 Random Neighborhoods.** A short list of neighborhoods the user hasn't visited recently. Tap → opens that neighborhood's feed.
+2. **🔥 All of NYC.** The city-wide feed — live posts from *every* neighborhood in one place, with the **same sort control as a neighborhood feed** (Most Liked / Newest / Oldest / Most Disliked). When sorted by Most Liked, the top post gets a featured card; other sorts read as a flat list. Loads a page at a time via a **"Load more"** button at the bottom of this section (which pushes the sections below down) — paginates forever rather than a hard cap. Every post is tappable → opens its detail. *(This is the primary cold-start density hedge: even when any one neighborhood is quiet, the pooled city-wide feed keeps the app lively.)*
+3. **🗺 Top by Borough.** Horizontal scroll of cards (one per borough that has posts), each showing up to 3 top posts. **Each mini-post is tappable → opens its detail.**
+4. **🎲 Random Neighborhoods.** A short, **truly random** list — reshuffled each visit — sampled only from neighborhoods that have **at least one live post**, so a tap never lands on an empty feed. Tap → opens that neighborhood's feed.
 
 ### Why it matters
 Liquidity is everything for a hyperlocal app. The Discover tab is the cross-neighborhood relief valve — a quiet home neighborhood feels less dead when there's a "top NYC posts" tab one tap away. It also drives expansion: a Brooklyn user reads a hot Inwood post, becomes curious, opens the Inwood feed, eventually visits and posts.
