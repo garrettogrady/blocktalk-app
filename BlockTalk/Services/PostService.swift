@@ -5,6 +5,57 @@ struct PostService {
     /// real identity instead of the placeholder default.
     static let postSelect = "*, author:users!posts_user_id_fkey(username, user_number, home:neighborhoods(short_code))"
 
+    /// City-wide feed for Discover — live posts from EVERY neighborhood, ordered
+    /// by the same sort options as a single-neighborhood feed. No neighborhood
+    /// filter. This is the cross-NYC reading surface + a cold-start density hedge:
+    /// even when any one neighborhood is quiet, Discover pools all of them.
+    func fetchCityWide(sort: PostSort = .mostLiked, offset: Int = 0, pageSize: Int = 15) async throws -> [Post] {
+        let orderColumn: String
+        let ascending: Bool
+        switch sort {
+        case .newest:       orderColumn = "created_at"; ascending = false
+        case .oldest:       orderColumn = "created_at"; ascending = true
+        case .mostLiked:    orderColumn = "score";      ascending = false
+        case .mostDisliked: orderColumn = "score";      ascending = true
+        }
+        let ordered = supabase.from("posts")
+            .select(PostService.postSelect)
+            .eq("status", value: "live")
+            .order(orderColumn, ascending: ascending)
+        // Break score-sort ties by recency so paging is stable (a stable secondary
+        // key prevents rows from reshuffling between pages).
+        let query = (sort == .mostLiked || sort == .mostDisliked)
+            ? ordered.order("created_at", ascending: false)
+            : ordered
+        // Page via range so the feed can load forever, a page at a time.
+        return try await query.range(from: offset, to: offset + pageSize - 1).execute().value
+    }
+
+    /// Neighborhoods that have at least one live post — the pool the Discover
+    /// "Random Neighborhoods" section samples from (so we never send someone into
+    /// an empty feed). Deduped client-side from a capped recent-posts fetch; at
+    /// scale this should become an RPC (`SELECT DISTINCT … ORDER BY random()`).
+    func neighborhoodsWithPosts(sampleCap: Int = 400) async throws -> [(name: String, borough: String)] {
+        struct Row: Decodable {
+            let neighborhood: Nb?
+            struct Nb: Decodable { let name: String; let borough: String }
+        }
+        let rows: [Row] = try await supabase.from("posts")
+            .select("neighborhood:neighborhoods!inner(name, borough)")
+            .eq("status", value: "live")
+            .order("created_at", ascending: false)
+            .limit(sampleCap)
+            .execute()
+            .value
+        var seen = Set<String>()
+        var out: [(name: String, borough: String)] = []
+        for r in rows {
+            guard let nb = r.neighborhood, seen.insert(nb.name).inserted else { continue }
+            out.append((name: nb.name, borough: nb.borough))
+        }
+        return out
+    }
+
     func fetchPosts(neighborhoodId: UUID, sort: PostSort = .newest, limit: Int = 50) async throws -> [Post] {
         let orderColumn: String
         let ascending: Bool
