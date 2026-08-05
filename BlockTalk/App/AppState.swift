@@ -48,6 +48,9 @@ final class AppState {
     var composeDraft = ""
     /// Signal the Map to auto-enter drop mode (set when compose switches to pin mode)
     var pendingPinPlacement = false
+    /// Set by "View on map" on a street-comment detail: the Map tab centers on this
+    /// pin and opens its detail, then clears it.
+    var focusPin: Pin?
 
     /// Debug: force the splash to lead into onboarding (bypasses the
     /// returning-user skip) so "Replay onboarding" can show the full flow.

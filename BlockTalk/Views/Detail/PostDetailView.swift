@@ -20,13 +20,54 @@ struct PostDetailView: View {
     private let replyLimit = 500
     private let replyWarnAt = 350
 
+    /// The pin this post is attached to (street comment), if any — session pin
+    /// first, then the fetched cache. Drives the "View on map" button.
+    private var detailPin: Pin? {
+        guard let id = post.pinId else { return nil }
+        return localContent.pin(id: id) ?? pinStore.pin(id: id)
+    }
+
+    /// Jump to the Map tab centered on this pin (extracted so the main body stays
+    /// simple enough for the SwiftUI type-checker).
+    private func viewOnMapButton(_ pin: Pin) -> some View {
+        let accent = pin.placeName != nil ? Color.btHouse : Color.btLime
+        return Button {
+            appState.focusPin = pin
+            appState.selectedTab = 1
+        } label: {
+            HStack(spacing: BTSpacing.sm) {
+                Image(systemName: "map.fill").font(.system(size: 13))
+                Text("View on map").font(BTFont.bodySemibold(size: 14))
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(accent)
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.vertical, BTSpacing.md)
+            .frame(maxWidth: .infinity)
+            .background(Color.btSurface)
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, BTSpacing.lg)
+        .padding(.bottom, BTSpacing.md)
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Full post display at top
-                    PostCard(post: post)
+                    // Full post display at top — expanded (full text, standard
+                    // layout, not the feed's clamped place-split).
+                    PostCard(post: post, expandedText: true)
                         .padding(.bottom, BTSpacing.md)
+
+                    // Street comment → jump to the Map tab, centered on this pin,
+                    // for the full interactive map (read cross-streets, pan/zoom).
+                    if let pin = detailPin {
+                        viewOnMapButton(pin)
+                    }
 
                     // A removed / under-review post is a notice, not a post: the
                     // tombstone (shown by PostCard above) is the whole screen —

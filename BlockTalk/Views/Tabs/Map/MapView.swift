@@ -377,6 +377,11 @@ struct MapTabView: View {
         .onChange(of: appState.pendingPinPlacement) { _, pending in
             if pending { enterDropFromCompose() }
         }
+        // "View on map" from a street-comment detail — center on the pin + open it.
+        // Observe the pin's id (UUID is Equatable; Pin is not) — onChange requires it.
+        .onChange(of: appState.focusPin?.id) { _, _ in
+            if let pin = appState.focusPin { goToPin(pin) }
+        }
         // In-drop search bar: debounce typing; load nearby the moment it's focused.
         .task(id: dropSearchQuery) {
             guard viewModel.isDropMode else { return }
@@ -397,9 +402,22 @@ struct MapTabView: View {
             // first time by this very hand-off — onChange never saw the flip,
             // so honor the pending request as soon as the polygons are ready.
             if appState.pendingPinPlacement { enterDropFromCompose() }
+            if let pin = appState.focusPin { goToPin(pin) }
             await viewModel.loadNeighborhoods()
             await viewModel.loadAllPins()
         }
+    }
+
+    /// "View on map" hand-off: fly to the pin at street zoom and open its detail.
+    private func goToPin(_ pin: Pin) {
+        selectedNeighborhood = nil
+        viewModel.cancelDrop()
+        let region = MKCoordinateRegion(
+            center: pin.coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.003))
+        withAnimation(.easeInOut(duration: 0.45)) { cameraPosition = .region(region) }
+        openPinDetail(pin)
+        appState.focusPin = nil
     }
 
     /// Enter drop mode in response to the compose → "drop a pin" hand-off.
