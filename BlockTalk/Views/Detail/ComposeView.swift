@@ -610,6 +610,15 @@ func placeCategoryDisplay(_ c: MKPointOfInterestCategory?) -> (label: String, sy
     case .some(.bank), .some(.atm):     return ("Bank", "banknote.fill")
     case .some(.library):               return ("Library", "books.vertical.fill")
     case .some(.laundry):               return ("Laundry", "washer.fill")
+    case .some(.hospital):              return ("Hospital", "cross.fill")
+    case .some(.school):                return ("School", "graduationcap.fill")
+    case .some(.university):            return ("University", "graduationcap.fill")
+    case .some(.stadium):               return ("Stadium", "sportscourt.fill")
+    case .some(.aquarium):              return ("Aquarium", "fish.fill")
+    case .some(.zoo):                   return ("Zoo", "pawprint.fill")
+    case .some(.beach):                 return ("Beach", "beach.umbrella.fill")
+    case .some(.amusementPark):         return ("Fun", "sparkles")
+    case .some(.postOffice):            return ("Post Office", "envelope.fill")
     default:                            return ("Place", "mappin.circle.fill")
     }
 }
@@ -621,39 +630,94 @@ func inferPlaceFromName(_ name: String) -> (label: String, symbol: String)? {
     let n = name.lowercased()
     func has(_ words: [String]) -> Bool { words.contains { n.contains($0) } }
 
-    if has(["gym", "fitness", "crossfit", "pilates", "yoga", "climbing", "barre",
-            "spin studio", "cycle", "boxing", "martial",
-            // common gym brands that carry no category hint in their name
-            "vital", "equinox", "crunch", "blink", "soulcycle", "barry",
-            "planet fitness", "orangetheory", "f45", "solidcore", "rumble",
-            "chelsea piers", "dogpound"]) { return ("Gym", "dumbbell.fill") }
-    if has(["coffee", "café", "cafe", "espresso", "roaster"]) { return ("Café", "cup.and.saucer.fill") }
-    if has(["pizza", "pizzeria"]) { return ("Restaurant", "fork.knife") }
-    if has(["bakery", "bagel", "patisserie", "bread", "donut", "doughnut"]) { return ("Bakery", "birthday.cake.fill") }
-    if has(["restaurant", "kitchen", "grill", "taco", "taqueria", "sushi", "ramen",
-            "thai", "noodle", "diner", "bistro", "trattoria", "deli"]) { return ("Restaurant", "fork.knife") }
-    if has(["bar", "pub", "tavern", "lounge", "cocktail"]) { return ("Bar", "wineglass.fill") }
-    if has(["brewery", "beer", "taproom"]) { return ("Brewery", "mug.fill") }
-    if has(["wine", "winery", "vintner"]) { return ("Wine", "wineglass.fill") }
-    if has(["pharmacy", "drug", "chemist", "rx"]) { return ("Pharmacy", "cross.case.fill") }
-    if has(["laundry", "laundromat", "cleaners", "dry clean"]) { return ("Laundry", "washer.fill") }
-    if has(["barber", "salon", "nails", "spa", "beauty", "hair"]) { return ("Salon", "scissors") }
-    if has(["hotel", "inn", "suites", "hostel"]) { return ("Hotel", "bed.double.fill") }
-    if has(["bank", "atm", "credit union"]) { return ("Bank", "banknote.fill") }
-    if has(["market", "grocery", "bodega", "mart", "grocer"]) { return ("Market", "cart.fill") }
-    if has(["books", "bookstore", "library"]) { return ("Books", "books.vertical.fill") }
-    if has(["museum", "gallery"]) { return ("Museum", "building.columns.fill") }
-    if has(["theater", "theatre", "cinema"]) { return ("Theater", "theatermasks.fill") }
-    if has(["park", "garden"]) { return ("Park", "tree.fill") }
+    // Order matters — first match wins. Collision-prone tokens (bar/barber/bbq,
+    // deli/delivery) are ordered so the more specific one is checked first.
+
+    // Coffee / juice
+    if has(["coffee", "café", "cafe", "espresso", "roaster", "coffeehouse"]) { return ("Café", "cup.and.saucer.fill") }
+    if has(["juice", "smoothie", "açaí", "acai"]) { return ("Juice Bar", "cup.and.saucer.fill") }
+
+    // Bakery / sweets (checked before "bar" — none contain it)
+    if has(["bakery", "bagel", "patisserie", "boulangerie", "bread", "donut", "doughnut", "croissant"]) { return ("Bakery", "birthday.cake.fill") }
+    if has(["ice cream", "gelato", "creamery", "frozen yogurt", "froyo", "dessert", "candy shop", "chocolate", "sweets"]) { return ("Sweets", "birthday.cake.fill") }
+
+    // BBQ + barber BEFORE "bar" (both contain the substring "bar")
+    if has(["bbq", "barbecue", "smokehouse", "smoke house"]) { return ("BBQ", "flame.fill") }
+    if has(["barber", "barbershop"]) { return ("Barber", "scissors") }
+
+    // Food — specific cuisines
+    if has(["pizza", "pizzeria"]) { return ("Pizza", "fork.knife") }
+    if has(["sushi", "omakase", "izakaya"]) { return ("Sushi", "fork.knife") }
+    if has(["ramen", "noodle", "pho ", "udon", "soba"]) { return ("Noodles", "fork.knife") }
+    if has(["taco", "taqueria", "burrito", "cantina", "mexican"]) { return ("Tacos", "fork.knife") }
+    if has(["burger", "smashburger", "shake shack"]) { return ("Burgers", "fork.knife") }
+    if has(["delicatessen", "sandwich", "hoagie", "sub shop", "bodega"]) { return ("Deli", "fork.knife") }
+
+    // Bar / brewery / wine (after barber + bbq)
+    if has(["brewery", "brewing", "taproom", "beer garden", "biergarten"]) { return ("Brewery", "mug.fill") }
+    if has(["wine bar", "wine shop", "vintner", "enoteca", "winery"]) { return ("Wine", "wineglass.fill") }
+    if has(["cocktail", "speakeasy", "pub", "tavern", "lounge", "saloon", "beer hall", "dive bar", "sports bar", " bar", "bar "]) { return ("Bar", "wineglass.fill") }
+
+    // Fitness
+    if has(["yoga", "pilates", "barre"]) { return ("Yoga", "figure.yoga") }
+    if has(["gym", "fitness", "crossfit", "climbing", "spin studio", "cycle", "boxing", "martial",
+            "vital", "equinox", "crunch", "blink", "soulcycle", "barry", "planet fitness",
+            "orangetheory", "f45", "solidcore", "rumble", "chelsea piers", "dogpound"]) { return ("Gym", "dumbbell.fill") }
+
+    // Beauty / personal care
+    if has(["nail", "manicure", "pedicure"]) { return ("Nails", "sparkles") }
+    if has(["massage", "day spa", "med spa", "sauna", "bathhouse", "wellness center"]) { return ("Spa", "sparkles") }
+    if has(["salon", "hair", "blowout", "brow", "lash"]) { return ("Salon", "scissors") }
+    if has(["tattoo", "piercing"]) { return ("Tattoo", "paintbrush.pointed.fill") }
+
+    // Health
+    if has(["pharmacy", "drug store", "chemist", " rx", "duane reade", "walgreens", "cvs"]) { return ("Pharmacy", "cross.case.fill") }
+    if has(["dental", "dentist", "orthodont"]) { return ("Dentist", "cross.case.fill") }
+    if has(["veterin", "animal hospital", "animal clinic", "vet clinic"]) { return ("Vet", "pawprint.fill") }
+    if has(["urgent care", "medical center", "health center", "clinic", "hospital"]) { return ("Clinic", "cross.fill") }
+    if has(["optic", "eyewear", "eyeglass", "vision center"]) { return ("Eyewear", "eyeglasses") }
+
+    // Retail
+    if has(["bookstore", "bookshop", "books", "library"]) { return ("Books", "books.vertical.fill") }
+    if has(["florist", "flowers", "floral"]) { return ("Florist", "leaf.fill") }
+    if has(["hardware", "lumber", "home depot", "ace hardware"]) { return ("Hardware", "hammer.fill") }
+    if has(["boutique", "clothing", "apparel", "menswear", "womenswear", "vintage", "thrift"]) { return ("Clothing", "tshirt.fill") }
+    if has(["shoe", "sneaker", "footwear"]) { return ("Shoes", "bag.fill") }
+    if has(["jewel", "diamonds", "goldsmith"]) { return ("Jewelry", "sparkles") }
+    if has(["electronics", "computer", "phone repair", "apple store", "best buy"]) { return ("Electronics", "iphone") }
+    if has(["record", "vinyl", "music store", "instruments", "guitar"]) { return ("Music", "music.note") }
+    if has(["pet shop", "pet store", "petco", "petsmart", "pet supply"]) { return ("Pet Shop", "pawprint.fill") }
+    if has(["grocery", "grocer", "supermarket", "greenmarket", "farmers market", "market"]) { return ("Market", "cart.fill") }
+
+    // Services / civic
+    if has(["laundry", "laundromat", "cleaners", "dry clean", "wash & fold"]) { return ("Laundry", "washer.fill") }
+    if has(["bank", "atm", "credit union", "chase", "citibank"]) { return ("Bank", "banknote.fill") }
+    if has(["hotel", "inn", "suites", "hostel", "motel"]) { return ("Hotel", "bed.double.fill") }
+    if has(["museum", "gallery", "exhibit"]) { return ("Museum", "building.columns.fill") }
+    if has(["theater", "theatre", "cinema", "playhouse"]) { return ("Theater", "theatermasks.fill") }
+    if has(["park", "garden", "playground", "greenway"]) { return ("Park", "tree.fill") }
+    if has(["church", "cathedral", "temple", "synagogue", "mosque"]) { return ("Worship", "building.columns.fill") }
+
+    // Generic sit-down food (last, so specifics above win)
+    if has(["restaurant", "kitchen", "grill", "thai", "diner", "bistro", "trattoria", "osteria",
+            "steakhouse", "eatery", "brasserie", "ristorante"]) { return ("Restaurant", "fork.knife") }
+
     return nil
 }
 
-/// Resolve a place's label + symbol: trust Apple's category when it's specific,
-/// otherwise fall back to name keywords, otherwise a generic pin.
+/// Resolve a place's label + symbol. Apple's category is coarse — it buckets most
+/// places as a generic Shop (.store), Restaurant (.restaurant), or Place (nil). For
+/// those, refine from the business name first (a bookstore → Books, a pizzeria →
+/// Pizza), which is what makes the tags granular instead of "Shop, Shop, Shop".
+/// A specific Apple category (Café, Gym, Bakery…) is trusted as-is.
 func placeDisplay(name: String, category: MKPointOfInterestCategory?) -> (label: String, symbol: String) {
     let byCategory = placeCategoryDisplay(category)
-    if byCategory.symbol != "mappin.circle.fill" { return byCategory }   // Apple was specific
-    return inferPlaceFromName(name) ?? byCategory
+    // The generic buckets Apple over-uses — refine these from the name when we can.
+    let genericSymbols: Set<String> = ["mappin.circle.fill", "bag.fill", "fork.knife"]
+    if genericSymbols.contains(byCategory.symbol), let refined = inferPlaceFromName(name) {
+        return refined
+    }
+    return byCategory
 }
 
 // MARK: - Place Picker (Apple Maps POI search)
