@@ -28,6 +28,11 @@ struct VotePills: View {
         }
         .animation(.easeOut(duration: 0.16), value: hasEverVoted)
         .animation(.easeOut(duration: 0.16), value: vote)
+        // When a reload delivers fresh server counts (which already include this
+        // user's persisted vote), drop the local optimistic +1 so it isn't counted
+        // twice. Counts stay visible (hasEverVoted) — only the highlight resets.
+        .onChange(of: upvoteCount) { _, _ in vote = 0 }
+        .onChange(of: downvoteCount) { _, _ in vote = 0 }
     }
 
     private func tapUp() {

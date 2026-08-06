@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct SettingsNotificationsView: View {
-    @State private var masterEnabled = true
-    @State private var repliesEnabled = true
-    @State private var repliedToEnabled = true
-    @State private var manuallyFollowed = true
-    @State private var dailyPromptEnabled = true
-    @State private var moderationEnabled = true
+    // Persisted so a toggle survives navigation + relaunch (was @State → a no-op
+    // that reset on nav-away). Push delivery will read these once the backend
+    // notification stack exists; until then they at least persist the intent.
+    @AppStorage("notif_master") private var masterEnabled = true
+    @AppStorage("notif_replies") private var repliesEnabled = true
+    @AppStorage("notif_repliedTo") private var repliedToEnabled = true
+    @AppStorage("notif_manuallyFollowed") private var manuallyFollowed = true
+    @AppStorage("notif_dailyPrompt") private var dailyPromptEnabled = true
+    @AppStorage("notif_moderation") private var moderationEnabled = true
 
     var body: some View {
         List {

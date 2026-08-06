@@ -31,6 +31,7 @@ struct MapTabView: View {
     // Item-driven so the sheet only presents once the post is resolved — avoids
     // the blank-first-tap sheet that `.sheet(isPresented:)` + separate state hits.
     @State private var selectedPinDetail: PinDetailItem?
+    @State private var pinLoadFailed = false
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
     // The geographic coordinate directly under the drop reticle. Range-checking
     // and pin placement both use THIS (not region.center) so what you aim is
@@ -352,6 +353,11 @@ struct MapTabView: View {
         .sheet(isPresented: $showPreFrame) {
             LocationPreFrameSheet()
         }
+        .alert("Couldn't open this pin", isPresented: $pinLoadFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("We couldn't load this street comment. Check your connection and try again.")
+        }
         .sheet(item: $selectedPinDetail) { detail in
             NavigationStack {
                 // Pin detail draws the corner map + business (house-blue) / corner
@@ -416,7 +422,9 @@ struct MapTabView: View {
             center: pin.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.003))
         withAnimation(.easeInOut(duration: 0.45)) { cameraPosition = .region(region) }
-        openPinDetail(pin)
+        // Fly to the pin and leave the user ON the map (its pulsing marker is right
+        // there to tap) — don't auto-open the detail sheet, which would defeat the
+        // whole point of "View on map".
         appState.focusPin = nil
     }
 
@@ -744,9 +752,12 @@ struct MapTabView: View {
                 let postService = PostService()
                 if let post = try await postService.fetchPostForPin(pin.id) {
                     selectedPinDetail = PinDetailItem(pin: pin, post: post)
+                } else {
+                    pinLoadFailed = true   // pin exists but its post couldn't be found
                 }
             } catch {
                 print("Failed to load post for pin: \(error)")
+                pinLoadFailed = true
             }
         }
     }

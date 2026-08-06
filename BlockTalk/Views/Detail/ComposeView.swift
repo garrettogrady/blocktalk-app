@@ -16,6 +16,7 @@ struct ComposeView: View {
     @State private var showCamera = false
     @State private var showLibrary = false
     @State private var pinCleared = false
+    @State private var submitError: String?
     // Optional business the street comment is tagged to (Apple Maps POI).
     @State private var taggedPlace: TaggedPlace?
     @State private var showPlacePicker = false
@@ -149,6 +150,14 @@ struct ComposeView: View {
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .alert("Couldn't post", isPresented: Binding(
+                get: { submitError != nil },
+                set: { if !$0 { submitError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(submitError ?? "")
+            }
             .confirmationDialog("Add a photo", isPresented: $showAttachDialog, titleVisibility: .hidden) {
                 Button("Take Photo") {
                     if UIImagePickerController.isSourceTypeAvailable(.camera) { showCamera = true }
@@ -451,9 +460,12 @@ struct ComposeView: View {
                         // corner yet (see handoff: embed pin in the post payload).
                         localContent.add(post: post, pin: pin)
                         routeAfterPost()
+                    } else {
+                        submitError = viewModel.error ?? "Couldn't post. Try again."
                     }
                 } catch {
                     print("Failed to create pin: \(error)")
+                    submitError = "Couldn't drop your pin. Check your connection and try again."
                 }
             } else {
                 // Tag prompt answers so they appear in the prompt's response feed
@@ -462,6 +474,8 @@ struct ComposeView: View {
                 if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, dailyPromptId: dailyPromptId) {
                     localContent.add(post: post)
                     routeAfterPost()
+                } else {
+                    submitError = viewModel.error ?? "Couldn't post. Try again."
                 }
             }
         }
