@@ -70,30 +70,25 @@ struct PostCard: View {
     /// the banner's top corners follow the rounded rect.
     @ViewBuilder private var businessMapBanner: some View {
         if let name = streetPin?.placeName {
-            HStack(spacing: 6) {
-                Image(systemName: streetPin?.placeSymbol ?? "mappin.circle.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.btHouse)
+            VStack(alignment: .leading, spacing: 3) {
+                // Row 1: the business name.
                 Text(name)
-                    .font(BTFont.bodyBold(size: 15))
+                    .font(BTFont.bodyBold(size: 14))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                if let cat = streetPin?.placeCategory {
-                    Text(cat.uppercased())
-                        .font(BTFont.mono(size: 9.5))
-                        .tracking(0.6)
-                        .foregroundStyle(Color.btHouse.opacity(0.9))
+                // Row 2: house-blue type icon + label.
+                HStack(spacing: 4) {
+                    Image(systemName: streetPin?.placeSymbol ?? "mappin.circle.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(streetPin?.placeCategory ?? "Place")
+                        .font(BTFont.mono(size: 10))
                 }
-                Spacer(minLength: 0)
+                .foregroundStyle(Color.btHouse)
             }
-            .padding(.horizontal, BTSpacing.md)
-            .padding(.top, BTSpacing.sm)
-            .padding(.bottom, BTSpacing.xl)   // fade extends below the text
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(colors: [Color.black.opacity(0.8), Color.black.opacity(0)],
-                               startPoint: .top, endPoint: .bottom)
-            )
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color.black.opacity(0.55), in: RoundedRectangle(cornerRadius: BTRadius.sm))
+            .padding(BTSpacing.sm)   // inset from the map's top-left corner
         }
     }
 
@@ -205,10 +200,9 @@ struct PostCard: View {
                 .frame(height: 150)
                 .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
                 .colorScheme(.dark)
-                // Business-tagged: name the place across the top of the map (before
-                // the clip so the fade follows the rounded corners). The map snippet
-                // itself stays identical to a plain corner comment's.
-                .overlay(alignment: .top) {
+                // Business-tagged: a top-left label naming the place (name over its
+                // type). The map snippet itself stays identical to a plain corner's.
+                .overlay(alignment: .topLeading) {
                     if isBusinessTagged { businessMapBanner }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
@@ -231,10 +225,9 @@ struct PostCard: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(maxWidth: .infinity)
                             .frame(maxHeight: 300)
-                            // Business-tagged → the name banner across the top; a
-                            // plain corner comment → the lime corner chip bottom-left.
-                            // Both before the clip so they follow the rounded corners.
-                            .overlay(alignment: .top) {
+                            // Business-tagged → the top-left name label; a plain
+                            // corner comment → the lime corner chip bottom-left.
+                            .overlay(alignment: .topLeading) {
                                 if isBusinessTagged { businessMapBanner }
                             }
                             .overlay(alignment: .bottomLeading) { photoPinChip }
