@@ -69,8 +69,21 @@ enum AliasGenerator {
 // MARK: - Shared onboarding chrome
 
 /// Progress bar used by both profile steps (fill = current/total).
-private func onboardingStepBar(_ current: Int, _ total: Int) -> some View {
+@ViewBuilder
+private func onboardingStepBar(_ current: Int, _ total: Int, onBack: (() -> Void)? = nil) -> some View {
     HStack(spacing: BTSpacing.sm) {
+        // Back to the previous step — nothing is saved until the final step, so
+        // going back to fix your neighborhood/username is safe.
+        if let onBack {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.btText2)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 2).fill(Color.btSurface2).frame(height: 3)
@@ -108,7 +121,7 @@ struct ProfileCreationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            onboardingStepBar(2, 3)
+            onboardingStepBar(2, 3, onBack: { appState.advanceTo(.tone) })
 
             VStack(alignment: .leading, spacing: BTSpacing.xl) {
                 heading
@@ -247,7 +260,7 @@ struct UsernameCreationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            onboardingStepBar(3, 3)
+            onboardingStepBar(3, 3, onBack: { appState.advanceTo(.profile) })
 
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xl) {
