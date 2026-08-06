@@ -55,8 +55,40 @@ struct DiscoverView: View {
                     } else if viewModel.error != nil && viewModel.trendingPosts.isEmpty {
                         LoadErrorView { Task { await viewModel.load() } }
                     } else {
-                    // City-wide feed section — every neighborhood's posts in one
-                    // place, with the same sort control as a neighborhood feed.
+                    // Top by Borough — above the feed so it's always reachable
+                    // (the paginated feed below grows downward and would otherwise
+                    // bury these). [Reorder: git revert this commit for the old order.]
+                    VStack(alignment: .leading, spacing: BTSpacing.md) {
+                        Text("🗺 Top by Borough")
+                            .font(BTFont.bodyBold(size: 16))
+                            .foregroundStyle(Color.btText)
+                            .padding(.horizontal, BTSpacing.lg)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: BTSpacing.md) {
+                                ForEach(viewModel.boroughCards) { card in
+                                    BoroughCard(borough: card.borough, posts: card.posts)
+                                }
+                            }
+                            .padding(.horizontal, BTSpacing.lg)
+                        }
+                    }
+
+                    // Random neighborhoods list
+                    VStack(alignment: .leading, spacing: BTSpacing.md) {
+                        Text("🎲 Random Neighborhoods")
+                            .font(BTFont.bodyBold(size: 16))
+                            .foregroundStyle(Color.btText)
+                            .padding(.horizontal, BTSpacing.lg)
+
+                        ForEach(viewModel.neighborhoods) { n in
+                            neighborhoodRow(n)
+                                .padding(.horizontal, BTSpacing.lg)
+                        }
+                    }
+
+                    // City-wide feed — LAST, so its "Load more" growth extends the
+                    // bottom of the page instead of pushing the sections above away.
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
                         HStack {
                             Text("🔥 All of NYC")
@@ -92,8 +124,7 @@ struct DiscoverView: View {
                             }
                         }
 
-                        // Load more — appends the next page and pushes the
-                        // sections below further down. Hidden once we've hit the end.
+                        // Load more — appends the next page at the very bottom.
                         if viewModel.canLoadMore {
                             Button {
                                 Task {
@@ -122,36 +153,6 @@ struct DiscoverView: View {
                             .disabled(viewModel.isLoadingMore)
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.sm)
-                        }
-                    }
-
-                    // Borough cards horizontal scroll
-                    VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        Text("🗺 Top by Borough")
-                            .font(BTFont.bodyBold(size: 16))
-                            .foregroundStyle(Color.btText)
-                            .padding(.horizontal, BTSpacing.lg)
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: BTSpacing.md) {
-                                ForEach(viewModel.boroughCards) { card in
-                                    BoroughCard(borough: card.borough, posts: card.posts)
-                                }
-                            }
-                            .padding(.horizontal, BTSpacing.lg)
-                        }
-                    }
-
-                    // Random neighborhoods list
-                    VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        Text("🎲 Random Neighborhoods")
-                            .font(BTFont.bodyBold(size: 16))
-                            .foregroundStyle(Color.btText)
-                            .padding(.horizontal, BTSpacing.lg)
-
-                        ForEach(viewModel.neighborhoods) { n in
-                            neighborhoodRow(n)
-                                .padding(.horizontal, BTSpacing.lg)
                         }
                     }
                     }
