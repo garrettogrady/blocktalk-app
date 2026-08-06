@@ -64,50 +64,52 @@ struct PostCard: View {
         return localContent.posts.contains { $0.id == post.id }
     }
 
-    /// Lime location pill overlaid on a street comment's photo (bottom-left).
-    /// Prefers a tagged business name over the raw corner.
-    /// Prominent business name overlaid on the street comment's map (or photo) —
-    /// names the place the comment is about without altering the map snippet.
-    @ViewBuilder private var businessMapLabel: some View {
+    /// Business name across the TOP of the street comment's map (or photo) on a
+    /// soft dark-to-transparent fade — prominent + always readable, without a hard
+    /// pill or altering the map itself. Overlay it BEFORE the container's clip so
+    /// the banner's top corners follow the rounded rect.
+    @ViewBuilder private var businessMapBanner: some View {
         if let name = streetPin?.placeName {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Image(systemName: streetPin?.placeSymbol ?? "mappin.circle.fill")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.btHouse)
                 Text(name)
-                    .font(BTFont.bodyBold(size: 13))
+                    .font(BTFont.bodyBold(size: 15))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                 if let cat = streetPin?.placeCategory {
-                    Text("· \(cat)")
-                        .font(BTFont.mono(size: 10))
-                        .opacity(0.85)
+                    Text(cat.uppercased())
+                        .font(BTFont.mono(size: 9.5))
+                        .tracking(0.6)
+                        .foregroundStyle(Color.btHouse.opacity(0.9))
                 }
+                Spacer(minLength: 0)
             }
-            .foregroundStyle(Color.btBg)
-            .padding(.horizontal, BTSpacing.sm)
-            .padding(.vertical, 6)
-            .background(Color.btHouse)
-            .clipShape(Capsule())
-            .shadow(color: .black.opacity(0.3), radius: 4, y: 1)
-            .padding(BTSpacing.sm)
+            .padding(.horizontal, BTSpacing.md)
+            .padding(.top, BTSpacing.sm)
+            .padding(.bottom, BTSpacing.xl)   // fade extends below the text
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(colors: [Color.black.opacity(0.8), Color.black.opacity(0)],
+                               startPoint: .top, endPoint: .bottom)
+            )
         }
     }
 
+    /// Lime corner chip on a PLAIN corner comment's photo (bottom-left). A
+    /// business-tagged photo uses the top banner instead.
     @ViewBuilder private var photoPinChip: some View {
-        // Business-tagged → the blue place label; a plain corner comment → the
-        // lime corner chip.
-        if isBusinessTagged {
-            businessMapLabel
-        } else if post.isStreetComment,
-                  let label = streetPin?.cornerName ?? cornerName {
+        if !isBusinessTagged, post.isStreetComment,
+           let label = streetPin?.cornerName ?? cornerName {
             HStack(spacing: 4) {
-                Image(systemName: streetPin?.placeName != nil ? (streetPin?.placeSymbol ?? "mappin.circle.fill") : "mappin.circle.fill")
-                    .font(.system(size: 11))
+                Image(systemName: "mappin.circle.fill").font(.system(size: 11))
                 Text(label).font(BTFont.monoBold(size: 10)).tracking(0.3)
             }
             .foregroundStyle(Color.btBg)
             .padding(.horizontal, BTSpacing.sm)
             .padding(.vertical, 5)
-            .background(tagColor)
+            .background(Color.btLime)
             .clipShape(Capsule())
             .padding(BTSpacing.sm)
         }
@@ -203,16 +205,17 @@ struct PostCard: View {
                 .frame(height: 150)
                 .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
                 .colorScheme(.dark)
+                // Business-tagged: name the place across the top of the map (before
+                // the clip so the fade follows the rounded corners). The map snippet
+                // itself stays identical to a plain corner comment's.
+                .overlay(alignment: .top) {
+                    if isBusinessTagged { businessMapBanner }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
                 .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
                 // In detail, allow pinch-zoom so you can zoom in until street names
                 // appear; in the feed the snippet stays static (the card owns the tap).
                 .allowsHitTesting(expandedText)
-                // Business-tagged: name the place prominently over the map (the map
-                // snippet itself stays identical to a plain corner comment's).
-                .overlay(alignment: .bottomLeading) {
-                    if isBusinessTagged { businessMapLabel }
-                }
             }
 
             // Optional image — renders ABOVE the body to match the mock
@@ -228,10 +231,14 @@ struct PostCard: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(maxWidth: .infinity)
                             .frame(maxHeight: 300)
-                            .cornerRadius(BTRadius.md)
-                            // Street comment + photo: location badge on the photo
-                            // so "where" stays unmistakable without a second map.
+                            // Business-tagged → the name banner across the top; a
+                            // plain corner comment → the lime corner chip bottom-left.
+                            // Both before the clip so they follow the rounded corners.
+                            .overlay(alignment: .top) {
+                                if isBusinessTagged { businessMapBanner }
+                            }
                             .overlay(alignment: .bottomLeading) { photoPinChip }
+                            .cornerRadius(BTRadius.md)
                     case .failure:
                         EmptyView()
                     default:
