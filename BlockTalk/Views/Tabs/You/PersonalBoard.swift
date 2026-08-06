@@ -99,10 +99,16 @@ struct PersonalBoard: View {
             let repliedPostIds = repliedRows.map(\.postId)
 
             let allInteractedIds = Array(Set(votedPostIds + repliedPostIds))
-            if !allInteractedIds.isEmpty {
+            if allInteractedIds.isEmpty {
+                interactedPosts = []
+                interactedCount = 0
+            } else {
                 let interacted: [Post] = try await supabase.from("posts")
                     .select(PostService.postSelect)
                     .in("id", values: allInteractedIds.map(\.uuidString))
+                    // Exclude your own posts — voting/replying on your own post keeps
+                    // it in "Created", not "Interacted With" (no double-listing).
+                    .neq("user_id", value: userId.uuidString)
                     .eq("status", value: "live")
                     .order("created_at", ascending: false)
                     .limit(20)
