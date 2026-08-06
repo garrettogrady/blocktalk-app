@@ -2,7 +2,7 @@ import SwiftUI
 
 struct BoroughCard: View {
     let borough: String
-    let posts: [BoroughMini]
+    let posts: [Post]
 
     var body: some View {
         VStack(alignment: .leading, spacing: BTSpacing.md) {
@@ -13,7 +13,12 @@ struct BoroughCard: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(posts.enumerated()), id: \.element.id) { i, post in
-                    miniPostRow(post)
+                    // Each mini-post opens its full detail (relies on the
+                    // navigationDestination(for: Post.self) on the Discover stack).
+                    NavigationLink(value: post) {
+                        miniPostRow(post)
+                    }
+                    .buttonStyle(.plain)
                     if i < posts.count - 1 {
                         Divider().background(Color.btLine)
                     }
@@ -30,29 +35,21 @@ struct BoroughCard: View {
         )
     }
 
-    private func miniPostRow(_ post: BoroughMini) -> some View {
+    private func miniPostRow(_ post: Post) -> some View {
         VStack(alignment: .leading, spacing: BTSpacing.xs) {
             Text(post.text)
                 .font(BTFont.body(size: 12))
                 .foregroundStyle(Color.btText)
                 .lineLimit(3)
                 .lineSpacing(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("▲ \(post.score) · \(post.replies) replies")
+            Text("▲ \(post.score) · \(post.replyCount) replies")
                 .font(BTFont.monoBold(size: 9))
                 .foregroundStyle(Color.btText3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, BTSpacing.sm)
-    }
-}
-
-#Preview {
-    ZStack {
-        Color.btBg.ignoresSafeArea()
-        BoroughCard(borough: "Manhattan", posts: [
-            BoroughMini(text: "the woman walking 9 dogs on Ave A is maintaining the EV", score: 631, replies: 52),
-        ])
-        .padding()
+        .contentShape(Rectangle())   // whole row is tappable, not just the text
     }
 }

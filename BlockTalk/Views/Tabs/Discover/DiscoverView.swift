@@ -55,27 +55,73 @@ struct DiscoverView: View {
                     } else if viewModel.error != nil && viewModel.trendingPosts.isEmpty {
                         LoadErrorView { Task { await viewModel.load() } }
                     } else {
-                    // Trending section
+                    // City-wide feed section — every neighborhood's posts in one
+                    // place, with the same sort control as a neighborhood feed.
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
-                        Text("🔥 Trending in NYC")
-                            .font(BTFont.bodyBold(size: 16))
-                            .foregroundStyle(Color.btText)
+                        HStack {
+                            Text("🔥 All of NYC")
+                                .font(BTFont.bodyBold(size: 16))
+                                .foregroundStyle(Color.btText)
+                            Spacer()
+                        }
+                        .padding(.horizontal, BTSpacing.lg)
+
+                        // Sort control (Most Liked / Newest / …) — reloads the feed.
+                        SortFilter(sort: $viewModel.sort)
                             .padding(.horizontal, BTSpacing.lg)
 
-                        if let topPost = viewModel.trendingPosts.first {
-                            TrendingCard(post: topPost)
-                                .padding(.horizontal, BTSpacing.lg)
+                        // The top post gets the featured treatment only when sorted
+                        // by "top" (Most Liked); other sorts read as a flat list.
+                        if viewModel.sort == .mostLiked, let topPost = viewModel.trendingPosts.first {
+                            NavigationLink(value: topPost) {
+                                TrendingCard(post: topPost)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, BTSpacing.lg)
+
+                            LazyVStack(spacing: 0) {
+                                ForEach(Array(viewModel.trendingPosts.dropFirst())) { post in
+                                    postRow(post)
+                                }
+                            }
+                        } else {
+                            LazyVStack(spacing: 0) {
+                                ForEach(viewModel.trendingPosts) { post in
+                                    postRow(post)
+                                }
+                            }
                         }
 
-                        // #2–10 as regular post cards
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(viewModel.trendingPosts.dropFirst())) { post in
-                                NavigationLink(value: post) {
-                                    PostCard(post: post)
+                        // Load more — appends the next page and pushes the
+                        // sections below further down. Hidden once we've hit the end.
+                        if viewModel.canLoadMore {
+                            Button {
+                                Task {
+                                    await viewModel.loadMore()
+                                    await pinStore.ensureLoaded(for: viewModel.trendingPosts)
                                 }
-                                .buttonStyle(.plain)
-                                Divider().background(Color.btLine)
+                            } label: {
+                                HStack(spacing: BTSpacing.sm) {
+                                    if viewModel.isLoadingMore {
+                                        ProgressView().tint(Color.btText3)
+                                    } else {
+                                        Text("Load more")
+                                            .font(BTFont.bodySemibold(size: 14))
+                                        Image(systemName: "arrow.down")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                }
+                                .foregroundStyle(Color.btText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, BTSpacing.md)
+                                .background(Color.btSurface)
+                                .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+                                .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
                             }
+                            .buttonStyle(.plain)
+                            .disabled(viewModel.isLoadingMore)
+                            .padding(.horizontal, BTSpacing.lg)
+                            .padding(.top, BTSpacing.sm)
                         }
                     }
 
@@ -125,6 +171,24 @@ struct DiscoverView: View {
                 await viewModel.load()
                 await pinStore.ensureLoaded(for: viewModel.trendingPosts)
             }
+            // Changing the sort re-fetches just the city-wide feed.
+            .onChange(of: viewModel.sort) {
+                Task {
+                    await viewModel.reloadTrending()
+                    await pinStore.ensureLoaded(for: viewModel.trendingPosts)
+                }
+            }
+        }
+    }
+
+    /// One post in the city-wide feed — tappable into its detail.
+    private func postRow(_ post: Post) -> some View {
+        Group {
+            NavigationLink(value: post) {
+                PostCard(post: post)
+            }
+            .buttonStyle(.plain)
+            Divider().background(Color.btLine)
         }
     }
 
@@ -137,13 +201,13 @@ struct DiscoverView: View {
                     Text(n.name)
                         .font(BTFont.bodySemibold(size: 15))
                         .foregroundStyle(Color.btText)
-                    Text("\(n.borough) · \(n.talking) TALKING")
+                    Text(n.borough.uppercased())
                         .font(BTFont.monoBold(size: 9))
                         .tracking(0.5)
                         .foregroundStyle(Color.btText3)
                 }
                 Spacer()
-                Text("OPEN →")
+                Text("EXPLORE →")
                     .font(BTFont.bodySemibold(size: 12))
                     .foregroundStyle(Color.btLime)
             }
