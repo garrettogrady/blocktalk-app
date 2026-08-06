@@ -862,23 +862,8 @@ struct PlacePickerSheet: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: BTSpacing.sm) {
-            Image(systemName: "magnifyingglass").font(.system(size: 14)).foregroundStyle(Color.btText3)
-            TextField("Search a place near you", text: $query)
-                .font(BTFont.body(size: 15)).foregroundStyle(Color.btText)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.words)
-            if !query.isEmpty {
-                Button { query = "" } label: {
-                    Image(systemName: "xmark.circle.fill").font(.system(size: 15)).foregroundStyle(Color.btText3)
-                }
-            }
-        }
-        .padding(.horizontal, BTSpacing.md).padding(.vertical, 11)
-        .background(Color.btSurface)
-        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
-        .padding(BTSpacing.lg)
+        BTSearchField(text: $query, placeholder: "Search a place near you", autocapitalization: .words)
+            .padding(BTSpacing.lg)
     }
 
     private var noPlaceRow: some View {

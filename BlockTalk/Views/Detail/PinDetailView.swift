@@ -47,12 +47,10 @@ struct PinDetailView: View {
                             ReplyNode(
                                 reply: reply,
                                 onReplyTap: { replyId, username in
-                                    if location.permissionState == .granted {
-                                        viewModel.replyingTo = (id: replyId, username: username)
-                                        replyFocused = true
-                                    } else {
-                                        locationGateTap(location, showPreFrame: $showPreFrame)
-                                    }
+                                    // Replies aren't presence-gated — same as PostDetailView.
+                                    // Only posts + pins require you to be here.
+                                    viewModel.replyingTo = (id: replyId, username: username)
+                                    replyFocused = true
                                 },
                                 onVote: { replyId, direction in
                                     guard let userId = appState.currentUser?.id else { return }
@@ -67,18 +65,12 @@ struct PinDetailView: View {
             }
             .scrollDismissesKeyboard(.interactively)
 
-            // Reply compose bar — replaced by the location gate when ungated
-            if location.permissionState == .granted {
-                replyComposeBar
-            } else {
-                LocationGateBar(label: "Enable location to reply on this corner", showPreFrame: $showPreFrame)
-            }
+            // Reply compose bar — replies aren't presence-gated (reading is global,
+            // so replying is too; posts + pins still require presence).
+            replyComposeBar
         }
         .background(Color.btBg)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showPreFrame) {
-            LocationPreFrameSheet()
-        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 if let label = pin.placeName ?? pin.cornerName {

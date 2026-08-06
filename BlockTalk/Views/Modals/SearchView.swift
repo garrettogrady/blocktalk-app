@@ -39,7 +39,14 @@ struct SearchView: View {
             viewModel.scope = scope
             searchFocused = true
         }
-        .onChange(of: viewModel.query) { _, _ in performSearch() }
+        // Debounce typing (~300ms) — was a DB query per keystroke.
+        .task(id: viewModel.query) {
+            if !viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                try? await Task.sleep(for: .milliseconds(300))
+                if Task.isCancelled { return }
+            }
+            await viewModel.search(neighborhoodId: neighborhood?.id)
+        }
         .onChange(of: viewModel.sort) { _, _ in performSearch() }
         // Resolve pins for any street comments in the results (corner + map).
         .onChange(of: viewModel.results.map(\.id)) { _, _ in
@@ -51,40 +58,9 @@ struct SearchView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            HStack(spacing: BTSpacing.sm) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.btText3)
-                TextField(placeholder, text: $viewModel.query)
-                    .font(BTFont.body(size: 13))
-                    .foregroundStyle(Color.btText)
-                    .focused($searchFocused)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .submitLabel(.search)
-                if hasQuery {
-                    Button {
-                        viewModel.query = ""
-                        viewModel.results = []
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.btText3)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .frame(height: 38)
-            .padding(.horizontal, BTSpacing.md)
-            .background(Color.btSurface)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.btLine, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
+            BTSearchField(text: $viewModel.query, placeholder: placeholder, focus: $searchFocused)
             Button("Cancel") { dismiss() }
-                .font(BTFont.bodyMedium(size: 13))
+                .font(BTFont.bodyMedium(size: 14))
                 .foregroundStyle(Color.btText2)
         }
         .padding(.horizontal, 14)
@@ -137,6 +113,8 @@ struct SearchView: View {
             )
         } else if viewModel.isSearching {
             Spacer(); ProgressView().tint(Color.btText3); Spacer()
+        } else if viewModel.error != nil {
+            LoadErrorView { performSearch() }
         } else if viewModel.results.isEmpty {
             emptyState(
                 icon: nil,
@@ -194,6 +172,54 @@ struct SearchView: View {
 
     private func performSearch() {
         Task { await viewModel.search(neighborhoodId: neighborhood?.id) }
+    }
+}
+
+// MARK: - Shared search field
+
+/// The one canonical search input — used by SearchView and the place picker so
+/// every search field looks and behaves the same (magnifier + field + clear X,
+/// body-15, radius md). The caller owns debounce/results.
+struct BTSearchField: View {
+    @Binding var text: String
+    var placeholder: String
+    var autocapitalization: TextInputAutocapitalization = .never
+    var focus: FocusState<Bool>.Binding? = nil
+
+    var body: some View {
+        HStack(spacing: BTSpacing.sm) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.btText3)
+            fieldView
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.btText3)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, BTSpacing.md)
+        .padding(.vertical, 11)
+        .background(Color.btSurface)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+    }
+
+    @ViewBuilder private var fieldView: some View {
+        let tf = TextField(placeholder, text: $text)
+            .font(BTFont.body(size: 15))
+            .foregroundStyle(Color.btText)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(autocapitalization)
+            .submitLabel(.search)
+        if let focus {
+            tf.focused(focus)
+        } else {
+            tf
+        }
     }
 }
 
