@@ -62,7 +62,9 @@ struct DailyPromptFeedView: View {
             .background(Color.btBg)
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top) { header }
-            .fullScreenCover(isPresented: $showCompose) { ComposeView(nycWide: true, dailyPromptId: prompt.id) }
+            .fullScreenCover(isPresented: $showCompose, onDismiss: {
+                Task { await loadPromptData() }   // your answer + the count show right away
+            }) { ComposeView(nycWide: true, dailyPromptId: prompt.id) }
             .sheet(isPresented: $showPreFrame) { LocationPreFrameSheet() }
             .task { await loadPromptData() }
         }

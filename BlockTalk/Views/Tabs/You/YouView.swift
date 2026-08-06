@@ -21,7 +21,7 @@ struct YouView: View {
                     if let user = appState.currentUser {
                         IdentityStrip(user: user, postCount: postCount, replyCount: replyCount,
                                       totalScore: totalScore, downvoteCount: downvoteCount,
-                                      homeShortCode: appState.homeNeighborhood?.shortCode ?? "LES")
+                                      homeShortCode: appState.homeNeighborhood?.shortCode)
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, BTSpacing.md)
                     }
@@ -53,10 +53,14 @@ struct YouView: View {
             .navigationDestination(for: Post.self) { post in
                 PostDetailView(post: post)
             }
-            .task {
-                await loadStats()
-                if let userId = appState.currentUser?.id {
-                    await notifications.load(userId: userId)
+            // onAppear so stats + notifications also refresh when you return to
+            // the tab (e.g. after posting), not just on first launch.
+            .onAppear {
+                Task {
+                    await loadStats()
+                    if let userId = appState.currentUser?.id {
+                        await notifications.load(userId: userId)
+                    }
                 }
             }
             .sheet(isPresented: $showNotifications) {

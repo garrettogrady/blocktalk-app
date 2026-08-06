@@ -20,6 +20,15 @@ struct PostDetailView: View {
     private let replyLimit = 500
     private let replyWarnAt = 350
 
+    /// Total replies actually loaded (including nested) — so the header ticks up
+    /// the instant you reply, instead of showing the stale passed-in server count.
+    private var loadedReplyCount: Int {
+        func count(_ nodes: [Reply]) -> Int {
+            nodes.reduce(0) { $0 + 1 + count($1.children ?? []) }
+        }
+        return count(viewModel.replies)
+    }
+
     /// The pin this post is attached to (street comment), if any — session pin
     /// first, then the fetched cache. Drives the "View on map" button.
     private var detailPin: Pin? {
@@ -76,7 +85,7 @@ struct PostDetailView: View {
                         Divider().background(Color.btLine)
 
                         // Reply count header — matches the post's count on the card.
-                        Text("\(post.replyCount) REPLIES")
+                        Text("\(max(post.replyCount, loadedReplyCount)) REPLIES")
                             .font(BTFont.mono(size: 11))
                             .foregroundStyle(Color.btText3)
                             .padding(.horizontal, BTSpacing.lg)

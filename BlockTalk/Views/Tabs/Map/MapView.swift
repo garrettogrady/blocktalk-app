@@ -286,25 +286,42 @@ struct MapTabView: View {
                             .padding(.bottom, BTSpacing.xxxl)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if locationService.permissionState == .granted {
-                        Button {
-                            // Into unified drop mode: crosshair on the map + a
-                            // search bar up top (search a business OR pick a spot).
-                            enterCrosshairDrop()
-                        } label: {
+                        if appState.physicalNeighborhood != nil || locationService.currentNeighborhood != nil {
+                            Button {
+                                // Into unified drop mode: crosshair on the map + a
+                                // search bar up top (search a business OR pick a spot).
+                                enterCrosshairDrop()
+                            } label: {
+                                HStack(spacing: BTSpacing.sm) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 15, weight: .bold))
+                                    Text("Drop a thought")
+                                        .font(BTFont.bodySemibold(size: 14))
+                                }
+                                .foregroundStyle(Color.btOnAccent)
+                                .padding(.horizontal, BTSpacing.xl)
+                                .padding(.vertical, BTSpacing.md)
+                                .background(Color.btLime)
+                                .clipShape(Capsule())
+                                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                            }
+                            .padding(.bottom, BTSpacing.xxxl)
+                        } else {
+                            // GPS granted but not resolved yet — don't offer a drop
+                            // that would geofence against the LES fallback.
                             HStack(spacing: BTSpacing.sm) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Drop a thought")
+                                ProgressView().tint(Color.btText2).scaleEffect(0.8)
+                                Text("Finding your neighborhood…")
                                     .font(BTFont.bodySemibold(size: 14))
                             }
-                            .foregroundStyle(Color.btOnAccent)
+                            .foregroundStyle(Color.btText2)
                             .padding(.horizontal, BTSpacing.xl)
                             .padding(.vertical, BTSpacing.md)
-                            .background(Color.btLime)
+                            .background(Color.btSurface2)
                             .clipShape(Capsule())
-                            .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                            .overlay(Capsule().stroke(Color.btLine, lineWidth: 1))
+                            .padding(.bottom, BTSpacing.xxxl)
                         }
-                        .padding(.bottom, BTSpacing.xxxl)
                     } else {
                         // Location gate — same centered-capsule shape + position as
                         // the "Drop a thought" FAB above, so the two map states are
