@@ -5,8 +5,12 @@ struct ReplyNode: View {
     var onReplyTap: ((_ replyId: UUID, _ username: String) -> Void)?
     var onVote: ((_ replyId: UUID, _ direction: Int) -> Void)?
 
+    @Environment(AppState.self) private var appState
     @State private var showReport = false
     @State private var reported = false
+
+    /// You can't report your own reply (same rule as posts).
+    private var isOwnReply: Bool { reply.userId == appState.currentUser?.id }
 
     // Visual indent cap (Reddit-mobile style): stop indenting past this depth so
     // deep threads don't run off the right edge — but replies are never blocked,
@@ -71,22 +75,25 @@ struct ReplyNode: View {
                             }
                         )
 
-                        // Flag — boxed to match the main comment's action buttons
-                        Button {
-                            if !reported { showReport = true }
-                        } label: {
-                            Image(systemName: reported ? "flag.fill" : "flag")
-                                .font(.system(size: 13))
-                                .foregroundStyle(reported ? Color.btPink : Color.btText2)
-                                .frame(width: 30, height: 30)
-                                .background(reported ? Color.btPink.opacity(0.12) : Color.btSurface)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: BTRadius.sm)
-                                        .stroke(reported ? Color.btPink.opacity(0.45) : Color.btLine, lineWidth: 1)
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+                        // Flag — boxed to match the main comment's action buttons.
+                        // Hidden on your own reply (you can't report yourself).
+                        if !isOwnReply {
+                            Button {
+                                if !reported { showReport = true }
+                            } label: {
+                                Image(systemName: reported ? "flag.fill" : "flag")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(reported ? Color.btPink : Color.btText2)
+                                    .frame(width: 30, height: 30)
+                                    .background(reported ? Color.btPink.opacity(0.12) : Color.btSurface)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: BTRadius.sm)
+                                            .stroke(reported ? Color.btPink.opacity(0.45) : Color.btLine, lineWidth: 1)
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
 
                         Spacer()
 
@@ -177,5 +184,6 @@ struct ReplyNode: View {
                 )
             )
         }
+        .environment(AppState())
     }
 }
