@@ -28,5 +28,9 @@ export async function searchPosts(
   }
 
   const { data } = await q;
-  return data ?? [];
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    author: Array.isArray(row.author) ? row.author[0] ?? null : row.author,
+    neighborhood: Array.isArray(row.neighborhood) ? row.neighborhood[0] ?? null : row.neighborhood,
+  }));
 }
