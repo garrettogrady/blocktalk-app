@@ -14,6 +14,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private let neighborhoodService = NeighborhoodService()
     /// The horizontal accuracy (meters) of the fix that produced `currentNeighborhood`.
     private var resolvedAccuracy: CLLocationAccuracy = .greatestFiniteMagnitude
+    /// The location that produced the current resolved neighborhood.
+    private var resolvedLocation: CLLocation?
 
     var permissionState: PermissionState = .unknown
     var currentLocation: CLLocationCoordinate2D?
@@ -64,15 +66,17 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         let accuracy = location.horizontalAccuracy
         guard accuracy >= 0 else { return } // negative = invalid
 
-        // Re-resolve if this fix is meaningfully more accurate than the one
-        // that produced the current neighborhood (at least 2× better).
-        let dominated = currentNeighborhood != nil && accuracy < resolvedAccuracy * 0.5
         let firstTime = currentNeighborhood == nil
+        // Re-resolve if this fix is meaningfully more accurate (2× better),
+        // OR the user has moved 200+ meters (crossed into another neighborhood).
+        let dominated = !firstTime && accuracy < resolvedAccuracy * 0.5
+        let moved = resolvedLocation.map { location.distance(from: $0) > 200 } ?? false
 
-        guard firstTime || dominated else { return }
+        guard firstTime || dominated || moved else { return }
 
         let coordinate = location.coordinate
         resolvedAccuracy = accuracy
+        resolvedLocation = location
 
         Task { @MainActor in
             do {

@@ -222,9 +222,9 @@ struct PostCard: View {
                         // height keeps a tall photo from taking over the feed.
                         image
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: .infinity)
+                            .scaledToFit()
                             .frame(maxHeight: 300)
+                            .frame(maxWidth: .infinity, alignment: .center)
                             // Business-tagged → the top-left name label; a plain
                             // corner comment → the lime corner chip bottom-left.
                             .overlay(alignment: .topLeading) {

@@ -41,7 +41,12 @@ final class ComposeViewModel {
 
         var imageUrl: String?
         if let image = selectedImage {
-            imageUrl = try? await imageService.upload(image: image, userId: userId)
+            do {
+                imageUrl = try await imageService.upload(image: image, userId: userId)
+            } catch {
+                self.error = "Couldn't upload your photo. Check your connection and try again."
+                return nil
+            }
         }
 
         let newPost = NewPost(

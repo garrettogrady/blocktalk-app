@@ -68,9 +68,9 @@ struct ComposeView: View {
                                 // keeps a tall photo from dominating the compose screen.
                                 Image(uiImage: image)
                                     .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(maxWidth: .infinity)
+                                    .scaledToFit()
                                     .frame(maxHeight: 280)
+                                    .frame(maxWidth: .infinity, alignment: .center)
                                     .cornerRadius(BTRadius.md)
 
                                 Button {
