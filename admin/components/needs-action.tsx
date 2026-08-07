@@ -122,7 +122,7 @@ export default function NeedsAction({
                       </span>
                       <span className="text-xs text-gray-400">
                         [{[
-                          ...new Set(post.reports.map((r) => r.reason)),
+                          ...Array.from(new Set(post.reports.map((r) => r.reason))),
                         ].join(", ")}]
                       </span>
                       <span

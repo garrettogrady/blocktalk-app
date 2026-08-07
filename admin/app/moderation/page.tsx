@@ -36,7 +36,7 @@ async function getModerationPosts(): Promise<{
 
   // Fetch strike counts per author
   const authorIds = [
-    ...new Set(posts.map((p) => p.author?.id).filter(Boolean)),
+    ...Array.from(new Set(posts.map((p) => p.author?.id).filter(Boolean))),
   ];
   const { data: strikes } = await supabaseAdmin
     .from("strikes")
