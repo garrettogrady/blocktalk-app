@@ -14,7 +14,18 @@ async function getAppeals(): Promise<Appeal[]> {
 
   if (error || !data) return [];
 
-  return data as Appeal[];
+  return data.map((row: any) => {
+    const post = Array.isArray(row.post) ? row.post[0] ?? null : row.post;
+    return {
+      ...row,
+      user: Array.isArray(row.user) ? row.user[0] ?? null : row.user,
+      post: post ? {
+        ...post,
+        author: Array.isArray(post.author) ? post.author[0] ?? null : post.author,
+        neighborhood: Array.isArray(post.neighborhood) ? post.neighborhood[0] ?? null : post.neighborhood,
+      } : null,
+    };
+  }) as Appeal[];
 }
 
 export default async function AppealsPage() {

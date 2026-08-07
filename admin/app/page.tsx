@@ -31,8 +31,10 @@ async function getNeedsActionData() {
     reportsByPost.set(report.post_id, existing);
   }
 
-  const enrichedPosts = (reportedPosts ?? []).map((post) => ({
+  const enrichedPosts = (reportedPosts ?? []).map((post: any) => ({
     ...post,
+    author: Array.isArray(post.author) ? post.author[0] ?? null : post.author,
+    neighborhood: Array.isArray(post.neighborhood) ? post.neighborhood[0] ?? null : post.neighborhood,
     reports: reportsByPost.get(post.id) ?? [],
   }));
 
@@ -52,12 +54,17 @@ async function getNeedsActionData() {
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
+  const unwrappedAppeals = (appeals ?? []).map((a: any) => ({
+    ...a,
+    user: Array.isArray(a.user) ? a.user[0] ?? null : a.user,
+  }));
+
   return {
     p1Posts: p1Posts.slice(0, 10),
     p1Total: p1Posts.length,
     p2Count: p2Posts.length,
-    pendingAppeals: (appeals ?? []).slice(0, 5),
-    appealsTotal: (appeals ?? []).length,
+    pendingAppeals: unwrappedAppeals.slice(0, 5),
+    appealsTotal: unwrappedAppeals.length,
   };
 }
 
@@ -226,7 +233,11 @@ async function getRecentPosts() {
     .order("created_at", { ascending: false })
     .limit(15);
 
-  return data ?? [];
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    author: Array.isArray(row.author) ? row.author[0] ?? null : row.author,
+    neighborhood: Array.isArray(row.neighborhood) ? row.neighborhood[0] ?? null : row.neighborhood,
+  }));
 }
 
 export default async function DashboardPage() {

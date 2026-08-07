@@ -51,13 +51,22 @@ async function getModerationPosts(): Promise<{
     );
   }
 
-  const enrichedPosts = posts.map((post) => ({
-    ...post,
-    reports: reportsByPost.get(post.id) ?? [],
-    authorStrikeCount: post.author?.id
-      ? strikeCountByUser.get(post.author.id) ?? 0
-      : 0,
-  })) as (ModerationPost & { authorStrikeCount: number })[];
+  const enrichedPosts = posts.map((post: any) => {
+    const author = Array.isArray(post.author) ? post.author[0] ?? null : post.author;
+    const neighborhood = Array.isArray(post.neighborhood) ? post.neighborhood[0] ?? null : post.neighborhood;
+    return {
+      ...post,
+      author,
+      neighborhood,
+      reports: (reportsByPost.get(post.id) ?? []).map((r: any) => ({
+        ...r,
+        reporter: Array.isArray(r.reporter) ? r.reporter[0] ?? null : r.reporter,
+      })),
+      authorStrikeCount: author?.id
+        ? strikeCountByUser.get(author.id) ?? 0
+        : 0,
+    };
+  }) as (ModerationPost & { authorStrikeCount: number })[];
 
   const p1Posts = enrichedPosts.filter((post) =>
     post.reports.some((r) => P1_REASONS.has(r.reason))
