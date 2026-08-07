@@ -38,11 +38,11 @@ async function getNeedsActionData() {
     reports: reportsByPost.get(post.id) ?? [],
   }));
 
-  const p1Posts = enrichedPosts.filter((post) =>
-    post.reports.some((r) => P1_REASONS.has(r.reason))
+  const p1Posts = enrichedPosts.filter((post: any) =>
+    post.reports.some((r: any) => P1_REASONS.has(r.reason))
   );
   const p2Posts = enrichedPosts.filter(
-    (post) => !post.reports.some((r) => P1_REASONS.has(r.reason))
+    (post: any) => !post.reports.some((r: any) => P1_REASONS.has(r.reason))
   );
 
   // Pending appeals
