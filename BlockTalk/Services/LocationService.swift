@@ -89,9 +89,14 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
+            let previousState = permissionState
             updatePermissionState()
             if permissionState == .granted {
                 manager.startUpdatingLocation()
+            }
+            // Fire analytics when permission transitions from undetermined
+            if previousState == .undetermined && (permissionState == .granted || permissionState == .denied) {
+                Analytics.locationPermissionResult(granted: permissionState == .granted)
             }
         }
     }

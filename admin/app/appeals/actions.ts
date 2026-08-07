@@ -27,7 +27,15 @@ export async function updateAppealStatus(
     return { error: updateError.message };
   }
 
+  // Get post author for audit log
+  const { data: post } = await supabaseAdmin
+    .from("posts")
+    .select("user_id")
+    .eq("id", appeal.post_id)
+    .single();
+
   if (newStatus === "accepted") {
+    // Overturn: restore post, log action, remove strike
     const { error: postError } = await supabaseAdmin
       .from("posts")
       .update({ status: "live", report_count: 0 })
@@ -41,6 +49,26 @@ export async function updateAppealStatus(
       .from("reports")
       .delete()
       .eq("post_id", appeal.post_id);
+
+    // Log overturn action
+    await supabaseAdmin.from("moderation_actions").insert({
+      post_id: appeal.post_id,
+      user_id: post?.user_id ?? null,
+      action: "overturn",
+    });
+
+    // Remove strike for this post if one exists
+    await supabaseAdmin
+      .from("strikes")
+      .delete()
+      .eq("post_id", appeal.post_id);
+  } else {
+    // Reject (uphold removal): log action
+    await supabaseAdmin.from("moderation_actions").insert({
+      post_id: appeal.post_id,
+      user_id: post?.user_id ?? null,
+      action: "uphold",
+    });
   }
 
   revalidatePath("/appeals");

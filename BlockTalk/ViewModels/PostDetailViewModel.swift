@@ -71,6 +71,7 @@ final class PostDetailViewModel {
                     parentReplyId: parentId,
                     depth: depth
                 )
+                Analytics.replyCreated()
             } catch {
                 print("Failed to persist reply: \(error)")
             }

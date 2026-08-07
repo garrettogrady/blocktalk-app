@@ -447,6 +447,8 @@ struct UsernameCreationView: View {
                 }
                 appState.hasResolvedInitialNeighborhood = true
                 appState.selectedTab = 0
+                Analytics.identify(userId: user.id, isSeed: false)
+                Analytics.signupCompleted()
                 appState.advanceTo(.app)
             } catch {
                 print("Failed to create user profile: \(error)")

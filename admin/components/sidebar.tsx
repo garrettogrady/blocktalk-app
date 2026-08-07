@@ -9,11 +9,13 @@ import {
   Users,
   Database,
   MessageSquare,
+  Search,
 } from "lucide-react";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/moderation", label: "Moderation", icon: Shield },
+  { href: "/moderation/search", label: "Post Search", icon: Search },
   { href: "/appeals", label: "Appeals", icon: Scale },
   { href: "/users", label: "Users", icon: Users },
   { href: "/feedback", label: "Feedback", icon: MessageSquare },

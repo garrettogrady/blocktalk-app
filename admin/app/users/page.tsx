@@ -6,7 +6,7 @@ async function getUsers() {
   const { data: users } = await supabaseAdmin
     .from("users")
     .select(
-      "id, username, user_number, created_at, neighborhood:neighborhoods!users_home_neighborhood_id_fkey(name, borough)"
+      "id, username, user_number, is_seed, created_at, neighborhood:neighborhoods!users_home_neighborhood_id_fkey(name, borough)"
     )
     .order("created_at", { ascending: false });
 
@@ -59,6 +59,9 @@ export default async function UsersPage() {
                 Username
               </th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">
+                Type
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">
                 #
               </th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">
@@ -82,6 +85,17 @@ export default async function UsersPage() {
             {users.map((user: any) => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium">{user.username}</td>
+                <td className="px-4 py-3">
+                  {user.is_seed ? (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                      Seed
+                    </span>
+                  ) : (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                      Organic
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-gray-500">{user.user_number}</td>
                 <td className="px-4 py-3 text-gray-600">
                   {user.neighborhood?.name ?? "—"}

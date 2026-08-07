@@ -56,10 +56,14 @@ struct BlockTalkApp: App {
             }
             .onOpenURL { url in handleDeepLink(url) }
             .task {
+                Analytics.setup()
                 await restoreSession()
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { locationService.checkPermission() }
+                if phase == .active {
+                    locationService.checkPermission()
+                    Analytics.appOpened()
+                }
             }
             .onChange(of: locationService.currentNeighborhood) { old, resolved in
                 if let resolved, locationService.permissionState == .granted {
@@ -124,6 +128,7 @@ struct BlockTalkApp: App {
             }
 
             appState.currentUser = user
+            Analytics.identify(userId: user.id, isSeed: user.isSeed ?? true)
 
             // Resolve home neighborhood for initial viewing
             if let homeId = user.homeNeighborhoodId {

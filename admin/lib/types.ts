@@ -13,6 +13,7 @@ export interface User {
   user_number: number;
   home_neighborhood_id: string | null;
   home_changed_at: string | null;
+  is_seed: boolean;
   created_at: string;
   neighborhood?: Neighborhood;
 }
@@ -55,6 +56,24 @@ export interface Feedback {
   body: string;
   created_at: string;
   user?: { username: string; user_number: number };
+}
+
+export interface ModerationAction {
+  id: string;
+  post_id: string;
+  user_id: string | null;
+  action: "remove" | "restore" | "uphold" | "overturn";
+  reason: string | null;
+  admin_note: string | null;
+  created_at: string;
+}
+
+export interface Strike {
+  id: string;
+  user_id: string;
+  post_id: string;
+  moderation_action_id: string;
+  created_at: string;
 }
 
 export type AppealStatus = "pending" | "accepted" | "rejected";

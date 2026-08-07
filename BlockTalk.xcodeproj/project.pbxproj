@@ -54,6 +54,7 @@
 		68171B5C4D0BCAC138ED6E56 /* neighborhoods.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 90E0C238892C7BEAD637359D /* neighborhoods.geojson */; };
 		6C20055A8AEB17F5445B4917 /* BlockTalkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC7C3AD91E4FFE158B2AB2F /* BlockTalkApp.swift */; };
 		6E882DC626579BB8879B4438 /* ProfileViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02518E83A184EEA9AF610093 /* ProfileViewModelTests.swift */; };
+		6FEB2B58301C156C62729BD2 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = DD2CA7A93C666DEF3BB92114 /* PostHog */; };
 		708F02014BADD6BFC84BEC3A /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 473A22DBDF583BF0A6100EC0 /* Inter-SemiBold.ttf */; };
 		7325764D40C48AD9A0798C2F /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF748309660D275BA9D2E2A /* YouView.swift */; };
 		766DD925D666F360C9B71B8B /* DailyPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC87FE3D5AB031413CAFFC68 /* DailyPrompt.swift */; };
@@ -72,6 +73,7 @@
 		9D20CA6820605D6C87590ABB /* ComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B3233DDE0CE3C88553B576 /* ComposeView.swift */; };
 		9D2673F901E90BB5264A3B88 /* OfflineBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7FEA9F4DEFCE4F3DEFAE23 /* OfflineBanner.swift */; };
 		A1F8D536FA02A8F4568A0EBB /* SortTimeFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5FE90A44818E79173DDDFF /* SortTimeFilters.swift */; };
+		A65FB0EE82CC1A8A0A303D22 /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D39F2A2925E518DE529D56 /* AnalyticsService.swift */; };
 		A7E5A554F730A50BFFBC5065 /* ComposeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8A9D37A97AED3C71F9E07A1 /* ComposeViewModel.swift */; };
 		A95103587046A308F652F37D /* SettingsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE3E17DB2FCB4647CCAABD5 /* SettingsHubView.swift */; };
 		AC1E51D91D14DDBAA288AE34 /* NeighborhoodPolygonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94E3EDFCE7A454D0964E1BCE /* NeighborhoodPolygonTests.swift */; };
@@ -159,6 +161,7 @@
 		61769B3B86105BF2099F4047 /* PostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostDetailView.swift; sourceTree = "<group>"; };
 		61EF10B92BE3EBE75C539898 /* NeighborhoodPolygons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborhoodPolygons.swift; sourceTree = "<group>"; };
 		62BFA10E8E1095C6C597AAA0 /* DiscoverViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverViewModel.swift; sourceTree = "<group>"; };
+		62D39F2A2925E518DE529D56 /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
 		6726E70B518A82D2008C21C7 /* ShareHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
 		71E59CF76A0E9800592AD5A9 /* Inter-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Inter-Bold.ttf"; sourceTree = "<group>"; };
 		743E2154D0BBBFC96CA45A90 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
@@ -234,6 +237,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B16C6D435CFBC3D6FD1E0090 /* Supabase in Frameworks */,
+				6FEB2B58301C156C62729BD2 /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -443,6 +447,7 @@
 		A2D28BF628A41DCCCD336D88 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				62D39F2A2925E518DE529D56 /* AnalyticsService.swift */,
 				8E01E2D69D33637C17CD8BAE /* AuthService.swift */,
 				2C1FEFFF514B238E66BC1B90 /* ImageService.swift */,
 				030C402FE90609B895FADFE8 /* LocationService.swift */,
@@ -592,6 +597,7 @@
 			name = BlockTalk;
 			packageProductDependencies = (
 				B92F52269FB4BF6809BA0C7C /* Supabase */,
+				DD2CA7A93C666DEF3BB92114 /* PostHog */,
 			);
 			productName = BlockTalk;
 			productReference = 79E684DD1135333402323F9E /* BlockTalk.app */;
@@ -639,6 +645,7 @@
 			mainGroup = 456D93A8E1071EFB47987EDC;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				3BD7A12209E304273FED34AA /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				90F1F5DFE93E0B471F6B3018 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -678,6 +685,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A65FB0EE82CC1A8A0A303D22 /* AnalyticsService.swift in Sources */,
 				2912CE373E649CC4563AEEDA /* AppState.swift in Sources */,
 				4BD528694FC79322D55FF50A /* AppealView.swift in Sources */,
 				8B166B0AA13C68D3434EBEFA /* AuthService.swift in Sources */,
@@ -1017,6 +1025,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		3BD7A12209E304273FED34AA /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.0;
+			};
+		};
 		90F1F5DFE93E0B471F6B3018 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
@@ -1032,6 +1048,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 90F1F5DFE93E0B471F6B3018 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		DD2CA7A93C666DEF3BB92114 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3BD7A12209E304273FED34AA /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -338,6 +338,7 @@ struct PostCard: View {
     private func castVote(_ direction: Int) {
         guard let userId = appState.currentUser?.id else { return }
         Task { try? await PostService().vote(postId: post.id, userId: userId, direction: direction) }
+        Analytics.voteCast(direction: direction)
     }
 
     private func clearVote() {
@@ -368,6 +369,7 @@ struct PostCard: View {
             // Share — native share sheet
             actionButton(systemName: "square.and.arrow.up") {
                 ShareHelper.sharePost(post)
+                Analytics.shareTapped()
             }
 
             // Flag (hidden on your own posts — you can't report yourself; filled+pink once reported)
@@ -411,6 +413,7 @@ struct PostCard: View {
         // mirroring the Expo app's Vibration.vibrate(30) feedback.
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         enrolled.toggle()
+        Analytics.bellEnrolled(enrolled: enrolled)
         showToast(
             enrolled ? "Notifications on. We'll let you know about new replies."
                      : "Notifications off for this post.",

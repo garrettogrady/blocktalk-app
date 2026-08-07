@@ -228,6 +228,7 @@ struct ReportModalView: View {
                 // report-threshold auto-moderation trigger.
                 try await PostService().report(postId: postId, reporterId: reporterId,
                                                reason: short, freeText: free)
+                Analytics.reportSubmitted(reason: short)
                 await MainActor.run {
                     onReported?(short)
                     dismiss()

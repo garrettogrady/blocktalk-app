@@ -68,6 +68,16 @@ export default function SeedPage() {
       <h2 className="text-2xl font-bold mb-6">Database Seeding</h2>
 
       <div className="max-w-lg">
+        <div className="bg-red-50 border border-red-300 rounded-lg p-4 mb-4 flex items-start gap-3">
+          <AlertTriangle size={20} className="text-red-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">Production Database</p>
+            <p className="text-sm text-red-700 mt-0.5">
+              This will modify the production database. All seed operations affect live data.
+            </p>
+          </div>
+        </div>
+
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-start gap-3 mb-4">
             <Database size={20} className="text-gray-500 mt-0.5" />

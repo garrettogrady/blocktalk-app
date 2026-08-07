@@ -1,15 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, CheckCircle, XCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
 import { updateAppealStatus } from "./actions";
 import type { Appeal } from "@/lib/types";
+
+function formatAge(createdAt: string): string {
+  const diffMs = Date.now() - new Date(createdAt).getTime();
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 1) {
+    const mins = Math.floor(diffMs / (1000 * 60));
+    return `${mins}m`;
+  }
+  if (hours < 48) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+function isOverdue(createdAt: string): boolean {
+  const diffMs = Date.now() - new Date(createdAt).getTime();
+  return diffMs > 48 * 60 * 60 * 1000;
+}
 
 export default function AppealsTable({ appeals }: { appeals: Appeal[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
 
-  async function handleAction(appealId: string, newStatus: "accepted" | "rejected") {
+  async function handleAction(
+    appealId: string,
+    newStatus: "accepted" | "rejected"
+  ) {
     setLoading(appealId);
     const result = await updateAppealStatus(appealId, newStatus);
     if (result.error) {
@@ -32,34 +59,61 @@ export default function AppealsTable({ appeals }: { appeals: Appeal[] }) {
         const expanded = expandedId === appeal.id;
         const isLoading = loading === appeal.id;
         const isPending = appeal.status === "pending";
+        const overdue = isPending && isOverdue(appeal.created_at);
 
         return (
           <div
             key={appeal.id}
-            className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+            className={`bg-white rounded-lg border overflow-hidden ${
+              overdue ? "border-red-300" : "border-gray-200"
+            }`}
           >
             <div className="px-4 py-3 flex items-start gap-3">
               <button
                 onClick={() => setExpandedId(expanded ? null : appeal.id)}
                 className="mt-1 text-gray-400 hover:text-gray-600"
               >
-                {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                {expanded ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                )}
               </button>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="font-medium text-sm">
                     {appeal.user?.username ?? "Unknown"}
                     {appeal.user?.user_number != null && (
-                      <span className="text-gray-400 ml-1">#{appeal.user.user_number}</span>
+                      <span className="text-gray-400 ml-1">
+                        #{appeal.user.user_number}
+                      </span>
                     )}
                   </span>
                   <AppealStatusBadge status={appeal.status} />
                   <span className="text-xs text-gray-400">
                     {new Date(appeal.created_at).toLocaleDateString()}
                   </span>
+                  {isPending && (
+                    <span
+                      className={`flex items-center gap-1 text-xs ${
+                        overdue ? "text-red-600 font-semibold" : "text-gray-400"
+                      }`}
+                    >
+                      <Clock size={12} />
+                      {formatAge(appeal.created_at)}
+                      {overdue && (
+                        <span className="flex items-center gap-0.5">
+                          <AlertTriangle size={12} />
+                          OVERDUE
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
-                <p className="text-sm text-gray-700 line-clamp-2">{appeal.appeal_text}</p>
+                <p className="text-sm text-gray-700 line-clamp-2">
+                  {appeal.appeal_text}
+                </p>
               </div>
 
               {isPending && (
@@ -86,14 +140,16 @@ export default function AppealsTable({ appeals }: { appeals: Appeal[] }) {
 
             {expanded && appeal.post && (
               <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
-                <p className="text-xs font-medium text-gray-500 mb-2">Original Post</p>
+                <p className="text-xs font-medium text-gray-500 mb-2">
+                  Original Post
+                </p>
                 <div className="bg-white rounded border border-gray-200 px-3 py-2 text-sm">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-medium text-xs">
                       {appeal.post.author?.username ?? "Unknown"}
                     </span>
                     <span className="text-xs text-gray-400">
-                      in {appeal.post.neighborhood?.name ?? "—"}
+                      in {appeal.post.neighborhood?.name ?? "\u2014"}
                     </span>
                     <PostStatusBadge status={appeal.post.status} />
                   </div>

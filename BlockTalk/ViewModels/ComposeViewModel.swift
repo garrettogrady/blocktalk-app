@@ -56,6 +56,7 @@ final class ComposeViewModel {
 
         do {
             let post = try await postService.createPost(newPost)
+            Analytics.postCreated(isDailyPrompt: isDailyPrompt)
             return post
         } catch {
             self.error = error.localizedDescription
