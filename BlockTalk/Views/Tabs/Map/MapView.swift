@@ -31,6 +31,7 @@ struct MapTabView: View {
     // Item-driven so the sheet only presents once the post is resolved — avoids
     // the blank-first-tap sheet that `.sheet(isPresented:)` + separate state hits.
     @State private var selectedPinDetail: PinDetailItem?
+    @State private var pinLoadFailed = false
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
     // The geographic coordinate directly under the drop reticle. Range-checking
     // and pin placement both use THIS (not region.center) so what you aim is
@@ -285,25 +286,42 @@ struct MapTabView: View {
                             .padding(.bottom, BTSpacing.xxxl)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else if locationService.permissionState == .granted {
-                        Button {
-                            // Into unified drop mode: crosshair on the map + a
-                            // search bar up top (search a business OR pick a spot).
-                            enterCrosshairDrop()
-                        } label: {
+                        if appState.physicalNeighborhood != nil || locationService.currentNeighborhood != nil {
+                            Button {
+                                // Into unified drop mode: crosshair on the map + a
+                                // search bar up top (search a business OR pick a spot).
+                                enterCrosshairDrop()
+                            } label: {
+                                HStack(spacing: BTSpacing.sm) {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 15, weight: .bold))
+                                    Text("Drop a thought")
+                                        .font(BTFont.bodySemibold(size: 14))
+                                }
+                                .foregroundStyle(Color.btOnAccent)
+                                .padding(.horizontal, BTSpacing.xl)
+                                .padding(.vertical, BTSpacing.md)
+                                .background(Color.btLime)
+                                .clipShape(Capsule())
+                                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                            }
+                            .padding(.bottom, BTSpacing.xxxl)
+                        } else {
+                            // GPS granted but not resolved yet — don't offer a drop
+                            // that would geofence against the LES fallback.
                             HStack(spacing: BTSpacing.sm) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Drop a thought")
+                                ProgressView().tint(Color.btText2).scaleEffect(0.8)
+                                Text("Finding your neighborhood…")
                                     .font(BTFont.bodySemibold(size: 14))
                             }
-                            .foregroundStyle(Color.btOnAccent)
+                            .foregroundStyle(Color.btText2)
                             .padding(.horizontal, BTSpacing.xl)
                             .padding(.vertical, BTSpacing.md)
-                            .background(Color.btLime)
+                            .background(Color.btSurface2)
                             .clipShape(Capsule())
-                            .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                            .overlay(Capsule().stroke(Color.btLine, lineWidth: 1))
+                            .padding(.bottom, BTSpacing.xxxl)
                         }
-                        .padding(.bottom, BTSpacing.xxxl)
                     } else {
                         // Location gate — same centered-capsule shape + position as
                         // the "Drop a thought" FAB above, so the two map states are
@@ -351,6 +369,11 @@ struct MapTabView: View {
         }
         .sheet(isPresented: $showPreFrame) {
             LocationPreFrameSheet()
+        }
+        .alert("Couldn't open this pin", isPresented: $pinLoadFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("We couldn't load this street comment. Check your connection and try again.")
         }
         .sheet(item: $selectedPinDetail) { detail in
             NavigationStack {
@@ -416,7 +439,9 @@ struct MapTabView: View {
             center: pin.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.003))
         withAnimation(.easeInOut(duration: 0.45)) { cameraPosition = .region(region) }
-        openPinDetail(pin)
+        // Fly to the pin and leave the user ON the map (its pulsing marker is right
+        // there to tap) — don't auto-open the detail sheet, which would defeat the
+        // whole point of "View on map".
         appState.focusPin = nil
     }
 
@@ -744,9 +769,12 @@ struct MapTabView: View {
                 let postService = PostService()
                 if let post = try await postService.fetchPostForPin(pin.id) {
                     selectedPinDetail = PinDetailItem(pin: pin, post: post)
+                } else {
+                    pinLoadFailed = true   // pin exists but its post couldn't be found
                 }
             } catch {
                 print("Failed to load post for pin: \(error)")
+                pinLoadFailed = true
             }
         }
     }

@@ -58,8 +58,10 @@ struct PersonalBoard: View {
                 }
             }
         }
-        .task {
-            await loadPosts()
+        // onAppear (not task) so it also re-fetches when you return to the You tab
+        // after posting elsewhere — was stale until relaunch.
+        .onAppear {
+            Task { await loadPosts() }
         }
     }
 

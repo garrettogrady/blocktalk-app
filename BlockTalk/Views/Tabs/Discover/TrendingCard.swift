@@ -5,8 +5,17 @@ struct TrendingCard: View {
 
     @Environment(AppState.self) private var appState
     @Environment(ModerationStore.self) private var moderation
+    @Environment(LocalContentStore.self) private var localContent
+    @Environment(NotificationStore.self) private var notifications
     @State private var enrolled = false
     @State private var showReport = false
+
+    /// Match PostCard: a post is "yours" by author id OR anything you made this
+    /// session (local store) — so you never get a report/flag on your own post.
+    private var isOwnPost: Bool {
+        if let uid = appState.currentUser?.id, uid == post.userId { return true }
+        return localContent.posts.contains { $0.id == post.id }
+    }
 
     private func castVote(_ direction: Int) {
         guard let userId = appState.currentUser?.id else { return }
@@ -45,7 +54,7 @@ struct TrendingCard: View {
 
             // Body
             Text(post.text)
-                .font(BTFont.body(size: 14))
+                .font(BTFont.body(size: 13))
                 .foregroundStyle(Color.btText)
                 .lineSpacing(4)
                 .lineLimit(4)
@@ -57,13 +66,13 @@ struct TrendingCard: View {
 
                 actionButton(systemName: enrolled ? "bell.fill" : "bell",
                              active: enrolled, activeColor: .btLime) {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
                     enrolled.toggle()
                 }
                 actionButton(systemName: "square.and.arrow.up") {
                     ShareHelper.sharePost(post)
                 }
-                if appState.currentUser?.id != post.userId {
+                if !isOwnPost {
                     if moderation.isReported(post.id) {
                         actionButton(systemName: "flag.fill", active: true, activeColor: .btPink) {}
                     } else {
@@ -86,6 +95,9 @@ struct TrendingCard: View {
         .sheet(isPresented: $showReport) {
             ReportModalView(postId: post.id) { short in
                 moderation.report(postId: post.id, reasonShort: short)
+                notifications.add(kind: "moderation", title: "Report received",
+                                  preview: "Thanks — we're reviewing this post.",
+                                  relatedPostId: post.id)
             }
         }
     }
@@ -120,6 +132,8 @@ struct TrendingCard: View {
         )
         .environment(AppState())
         .environment(ModerationStore())
+        .environment(LocalContentStore())
+        .environment(NotificationStore())
         .padding()
     }
 }

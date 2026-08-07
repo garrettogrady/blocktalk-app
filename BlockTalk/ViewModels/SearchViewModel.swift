@@ -5,6 +5,7 @@ final class SearchViewModel {
     var query = ""
     var results: [Post] = []
     var isSearching = false
+    var error: String?
     var scope: SearchScope = .neighborhood
     /// Same four orderings as the feed, so search and feed read identically.
     var sort: PostSort = .newest
@@ -20,10 +21,12 @@ final class SearchViewModel {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else {
             results = []
+            error = nil
             return
         }
 
         isSearching = true
+        error = nil
         defer { isSearching = false }
 
         do {
@@ -46,14 +49,17 @@ final class SearchViewModel {
                 filterBuilder = filterBuilder.eq("neighborhood_id", value: nid.uuidString)
             }
 
-            results = try await filterBuilder
+            let found: [Post] = try await filterBuilder
                 .order(orderColumn, ascending: ascending)
                 .limit(50)
                 .execute()
                 .value
+            // Drop a stale response if the user kept typing.
+            guard q == query.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+            results = found
         } catch {
             print("Search failed: \(error)")
-            results = []
+            self.error = "Search failed. Check your connection and try again."
         }
     }
 }

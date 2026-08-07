@@ -10,6 +10,14 @@ struct ToneRulesView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Step 01 / 03 — rule, then neighborhood, then username
             HStack(spacing: BTSpacing.sm) {
+                Button { appState.advanceTo(.how) } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.btText2)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2)

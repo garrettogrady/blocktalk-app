@@ -69,25 +69,17 @@ struct SettingsProfileView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Neighborhood with UNLOCKS chip
+                // Home neighborhood — read-only for now. Changing it isn't supported
+                // yet, so this is a plain info row (no tappable/countdown affordance
+                // that would imply an action or an unlock that never happens).
                 HStack {
                     Text("Neighborhood")
                         .font(BTFont.bodyMedium(size: 15))
                         .foregroundStyle(Color.btText)
                     Spacer()
-                    HStack(spacing: BTSpacing.sm) {
-                        Text("UNLOCKS")
-                            .font(BTFont.mono(size: 9))
-                            .foregroundStyle(Color.btWarn)
-                            .padding(.horizontal, BTSpacing.sm)
-                            .padding(.vertical, 2)
-                            .background(Color.btWarn.opacity(0.15))
-                            .cornerRadius(BTRadius.sm)
-
-                        Text("30d")
-                            .font(BTFont.body(size: 13))
-                            .foregroundStyle(Color.btText3)
-                    }
+                    Text(appState.homeNeighborhood?.name ?? "—")
+                        .font(BTFont.body(size: 15))
+                        .foregroundStyle(Color.btText3)
                 }
             } header: {
                 Text("IDENTITY")

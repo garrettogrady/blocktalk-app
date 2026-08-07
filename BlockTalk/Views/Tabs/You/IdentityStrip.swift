@@ -6,7 +6,7 @@ struct IdentityStrip: View {
     var replyCount: Int = 0
     var totalScore: Int = 0
     var downvoteCount: Int = 0
-    var homeShortCode: String = "LES"
+    var homeShortCode: String?   // nil until the real home resolves — no fake "LES"
 
     var body: some View {
         HStack(alignment: .top, spacing: BTSpacing.lg) {
@@ -31,7 +31,9 @@ struct IdentityStrip: View {
                     Text("@\(user.username)")
                         .font(BTFont.bodySemibold(size: 13))
                         .foregroundStyle(Color.btText2)
-                    HomeBadge(shortCode: homeShortCode)
+                    if let homeShortCode {
+                        HomeBadge(shortCode: homeShortCode)
+                    }
                 }
 
                 // Stats — one text run so it lays out on a single baseline and
