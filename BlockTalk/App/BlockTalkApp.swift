@@ -2,6 +2,11 @@ import SwiftUI
 import UserNotifications
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        application.registerForRemoteNotifications()
+        return true
+    }
+
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         pushManager.didRegisterToken(deviceToken)
     }
@@ -188,7 +193,6 @@ struct BlockTalkApp: App {
             }
 
             await enrollments.load(userId: user.id)
-            pushManager.saveToken(userId: user.id)
             appState.advanceTo(.app)
         } catch {
             // No valid session — stay on splash
