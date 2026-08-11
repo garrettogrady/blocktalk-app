@@ -39,9 +39,12 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
             DispatchQueue.main.async {
                 self.permissionState = granted ? .granted : .denied
                 if granted {
-                    print("[Push] Calling registerForRemoteNotifications() after permission grant")
-                    UIApplication.shared.registerForRemoteNotifications()
                     Analytics.pushPermissionGranted()
+                    // Delay slightly so iOS processes the registration on a fresh run loop
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        print("[Push] Calling registerForRemoteNotifications() after permission grant (delayed)")
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
                 } else {
                     Analytics.pushPermissionDenied()
                 }
