@@ -76,6 +76,13 @@ struct BlockTalkApp: App {
                 Analytics.setup()
                 await restoreSession()
             }
+            .onChange(of: appState.stage) { _, stage in
+                if stage == .app, let userId = appState.currentUser?.id {
+                    pushManager.currentUserId = userId
+                    pushManager.checkPermission()
+                    pushManager.saveToken(userId: userId)
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     locationService.checkPermission()
