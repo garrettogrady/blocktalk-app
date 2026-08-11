@@ -18,6 +18,7 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     func checkPermission() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
+                print("[Push] checkPermission: authorizationStatus = \(settings.authorizationStatus.rawValue)")
                 switch settings.authorizationStatus {
                 case .authorized, .provisional, .ephemeral:
                     self.permissionState = .granted
@@ -33,10 +34,12 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     }
 
     func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            print("[Push] requestAuthorization result: granted=\(granted) error=\(error?.localizedDescription ?? "none")")
             DispatchQueue.main.async {
                 self.permissionState = granted ? .granted : .denied
                 if granted {
+                    print("[Push] Calling registerForRemoteNotifications() after permission grant")
                     UIApplication.shared.registerForRemoteNotifications()
                     Analytics.pushPermissionGranted()
                 } else {
@@ -49,23 +52,31 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     func didRegisterToken(_ deviceToken: Data) {
         let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
         deviceTokenHex = hex
+        print("[Push] didRegisterToken: \(hex.prefix(16))… currentUserId=\(currentUserId?.uuidString.prefix(8) ?? "nil")")
         if let userId = currentUserId {
             saveToken(userId: userId)
+        } else {
+            print("[Push] ⚠️ Token captured but no userId yet — will save when userId is set")
         }
     }
 
     func saveToken(userId: UUID) {
-        guard let hex = deviceTokenHex else { return }
+        guard let hex = deviceTokenHex else {
+            print("[Push] saveToken called but no token captured yet")
+            return
+        }
         #if DEBUG
         let sandbox = true
         #else
         let sandbox = false
         #endif
+        print("[Push] Saving token \(hex.prefix(16))… for user \(userId.uuidString.prefix(8))… sandbox=\(sandbox)")
         Task {
             do {
                 try await tokenService.register(userId: userId, token: hex, sandbox: sandbox)
+                print("[Push] ✅ Token saved to Supabase successfully")
             } catch {
-                print("[Push] Failed to save device token: \(error)")
+                print("[Push] ❌ Failed to save device token: \(error)")
             }
         }
     }
