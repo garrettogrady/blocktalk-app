@@ -10,6 +10,7 @@ enum PushPermissionState {
 final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate {
     var permissionState: PushPermissionState = .undetermined
     var showSoftAsk = false
+    var currentUserId: UUID?
 
     private var deviceTokenHex: String?
     private let tokenService = DeviceTokenService()
@@ -20,6 +21,8 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
                 switch settings.authorizationStatus {
                 case .authorized, .provisional, .ephemeral:
                     self.permissionState = .granted
+                    // Re-register to ensure we have a current token
+                    UIApplication.shared.registerForRemoteNotifications()
                 case .denied:
                     self.permissionState = .denied
                 case .notDetermined:
@@ -48,6 +51,10 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     func didRegisterToken(_ deviceToken: Data) {
         let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
         deviceTokenHex = hex
+        // Save immediately if we already know the user
+        if let userId = currentUserId {
+            saveToken(userId: userId)
+        }
     }
 
     func saveToken(userId: UUID) {

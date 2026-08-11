@@ -152,6 +152,7 @@ struct BlockTalkApp: App {
             }
 
             appState.currentUser = user
+            pushManager.currentUserId = user.id
             Analytics.identify(userId: user.id, isSeed: user.isSeed ?? true)
 
             // Resolve home neighborhood for initial viewing
