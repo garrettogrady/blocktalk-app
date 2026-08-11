@@ -21,9 +21,11 @@ struct PostCard: View {
     @Environment(LocalContentStore.self) private var localContent
     @Environment(PinStore.self) private var pinStore
     @Environment(NotificationStore.self) private var notifications
+    @Environment(EnrollmentStore.self) private var enrollments
     @State private var showReport = false
     @State private var showAppeal = false
-    @State private var enrolled = false
+    @State private var showPushAsk = false
+    @State private var showSettingsAlert = false
     @State private var toastMessage = ""
     @State private var toastIcon = "bell.fill"
     @State private var toastVisible = false
@@ -278,6 +280,19 @@ struct PostCard: View {
                     .frame(width: 3)
             }
         }
+        .sheet(isPresented: $showPushAsk) {
+            PushPermissionSheet()
+        }
+        .alert("Notifications are off", isPresented: $showSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Turn on notifications in Settings to get replies on this post.")
+        }
         .sheet(isPresented: $showReport) {
             ReportModalView(postId: post.id) { short in
                 moderation.report(postId: post.id, reasonShort: short)
@@ -360,8 +375,8 @@ struct PostCard: View {
 
             // Bell — enroll toggle + haptic + toast
             actionButton(
-                systemName: enrolled ? "bell.fill" : "bell",
-                active: enrolled,
+                systemName: enrollments.isEnrolled(post.id) ? "bell.fill" : "bell",
+                active: enrollments.isEnrolled(post.id),
                 activeColor: .btLime,
                 action: toggleBell
             )
@@ -409,16 +424,32 @@ struct PostCard: View {
     }
 
     private func toggleBell() {
-        // Notification-style buzz (like a received text) for enroll/de-enroll,
-        // mirroring the Expo app's Vibration.vibrate(30) feedback.
+        guard let userId = appState.currentUser?.id else { return }
+        let wasEnrolled = enrollments.isEnrolled(post.id)
+
+        // Unenrolling always works regardless of push permission
+        if wasEnrolled {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            enrollments.unenroll(userId: userId, postId: post.id)
+            Analytics.bellEnrolled(enrolled: false)
+            showToast("Notifications off for this post.", icon: "bell.slash")
+            return
+        }
+
+        // Enrolling: check push permission first
+        switch pushManager.permissionState {
+        case .undetermined:
+            showPushAsk = true
+        case .denied:
+            showSettingsAlert = true
+        case .granted:
+            break
+        }
+
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        enrolled.toggle()
-        Analytics.bellEnrolled(enrolled: enrolled)
-        showToast(
-            enrolled ? "Notifications on. We'll let you know about new replies."
-                     : "Notifications off for this post.",
-            icon: enrolled ? "bell.fill" : "bell.slash"
-        )
+        enrollments.enroll(userId: userId, postId: post.id)
+        Analytics.bellEnrolled(enrolled: true)
+        showToast("Notifications on. We'll let you know about new replies.", icon: "bell.fill")
     }
 
     private func showToast(_ message: String, icon: String) {
@@ -503,5 +534,6 @@ struct PostCard: View {
         )
         .environment(AppState())
         .environment(ModerationStore())
+        .environment(EnrollmentStore())
     }
 }

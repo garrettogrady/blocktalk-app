@@ -9,6 +9,7 @@ struct ComposeView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(OfflineStore.self) private var offline
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(EnrollmentStore.self) private var enrollments
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ComposeViewModel()
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -20,6 +21,7 @@ struct ComposeView: View {
     // Optional business the street comment is tagged to (Apple Maps POI).
     @State private var taggedPlace: TaggedPlace?
     @State private var showPlacePicker = false
+    @State private var showPushAsk = false
     @FocusState private var textFocused: Bool
 
     /// Pin can be toggled off locally (the ≡ footer button) without closing.
@@ -189,6 +191,11 @@ struct ComposeView: View {
                     }
                     .presentationDetents([.large])
                 }
+            }
+            .sheet(isPresented: $showPushAsk, onDismiss: {
+                navigateAfterPost()
+            }) {
+                PushPermissionSheet()
             }
             .onAppear {
                 // Rehydrate a stashed draft after the compose→map→compose round-trip
@@ -455,10 +462,8 @@ struct ComposeView: View {
                         pin.placeSymbol = place.symbol
                     }
                     if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
-                        // Surface your just-placed post + its pin immediately, WITH
-                        // the corner — the DB feed reload doesn't carry the pin's
-                        // corner yet (see handoff: embed pin in the post payload).
                         localContent.add(post: post, pin: pin)
+                        enrollments.enroll(userId: userId, postId: post.id)
                         routeAfterPost()
                     } else {
                         submitError = viewModel.error ?? "Couldn't post. Try again."
@@ -473,6 +478,7 @@ struct ComposeView: View {
                 if dailyPromptId != nil { viewModel.isDailyPrompt = true }
                 if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, dailyPromptId: dailyPromptId) {
                     localContent.add(post: post)
+                    enrollments.enroll(userId: userId, postId: post.id)
                     routeAfterPost()
                 } else {
                     submitError = viewModel.error ?? "Couldn't post. Try again."
@@ -485,6 +491,14 @@ struct ComposeView: View {
     /// NYC-wide prompt answers skip routing.
     private func routeAfterPost() {
         appState.composeDraft = ""
+        if pushManager.permissionState == .undetermined {
+            showPushAsk = true
+            return
+        }
+        navigateAfterPost()
+    }
+
+    private func navigateAfterPost() {
         if effectivePin != nil {
             appState.selectedTab = 1
         } else if !nycWide {

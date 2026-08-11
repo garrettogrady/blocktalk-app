@@ -259,6 +259,7 @@ struct PinDetailView: View {
             )
         )
         .environment(AppState())
+        .environment(EnrollmentStore())
     }
     .preferredColorScheme(.dark)
 }

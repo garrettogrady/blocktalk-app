@@ -7,8 +7,10 @@ struct TrendingCard: View {
     @Environment(ModerationStore.self) private var moderation
     @Environment(LocalContentStore.self) private var localContent
     @Environment(NotificationStore.self) private var notifications
-    @State private var enrolled = false
+    @Environment(EnrollmentStore.self) private var enrollments
     @State private var showReport = false
+    @State private var showPushAsk = false
+    @State private var showSettingsAlert = false
 
     /// Match PostCard: a post is "yours" by author id OR anything you made this
     /// session (local store) — so you never get a report/flag on your own post.
@@ -64,10 +66,20 @@ struct TrendingCard: View {
             HStack(spacing: 6) {
                 VotePills(score: post.score, upvoteCount: post.upvoteCount, downvoteCount: post.downvoteCount, onUpvote: { castVote(1) }, onDownvote: { castVote(-1) }, onClear: { clearVote() })
 
-                actionButton(systemName: enrolled ? "bell.fill" : "bell",
-                             active: enrolled, activeColor: .btLime) {
+                actionButton(systemName: enrollments.isEnrolled(post.id) ? "bell.fill" : "bell",
+                             active: enrollments.isEnrolled(post.id), activeColor: .btLime) {
+                    guard let userId = appState.currentUser?.id else { return }
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    enrolled.toggle()
+                    if enrollments.isEnrolled(post.id) {
+                        enrollments.unenroll(userId: userId, postId: post.id)
+                    } else {
+                        switch pushManager.permissionState {
+                        case .undetermined: showPushAsk = true
+                        case .denied: showSettingsAlert = true
+                        case .granted: break
+                        }
+                        enrollments.enroll(userId: userId, postId: post.id)
+                    }
                 }
                 actionButton(systemName: "square.and.arrow.up") {
                     ShareHelper.sharePost(post)
@@ -92,6 +104,19 @@ struct TrendingCard: View {
         .background(Color.btLime.opacity(0.04))
         .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLime.opacity(0.3), lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
+        .sheet(isPresented: $showPushAsk) {
+            PushPermissionSheet()
+        }
+        .alert("Notifications are off", isPresented: $showSettingsAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Turn on notifications in Settings to get replies on this post.")
+        }
         .sheet(isPresented: $showReport) {
             ReportModalView(postId: post.id) { short in
                 moderation.report(postId: post.id, reasonShort: short)
@@ -134,6 +159,7 @@ struct TrendingCard: View {
         .environment(ModerationStore())
         .environment(LocalContentStore())
         .environment(NotificationStore())
+        .environment(EnrollmentStore())
         .padding()
     }
 }

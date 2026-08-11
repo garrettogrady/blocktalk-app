@@ -243,5 +243,6 @@ struct DiscoverView: View {
     DiscoverView()
         .environment(AppState())
         .environment(NeighborhoodCache())
+        .environment(EnrollmentStore())
         .preferredColorScheme(.dark)
 }

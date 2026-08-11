@@ -1,7 +1,19 @@
 import SwiftUI
+import UserNotifications
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        pushManager.didRegisterToken(deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("[Push] Failed to register for remote notifications: \(error)")
+    }
+}
 
 @main
 struct BlockTalkApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var appState = AppState()
     @State private var locationService = LocationService()
     @State private var moderation = ModerationStore()
@@ -10,6 +22,7 @@ struct BlockTalkApp: App {
     @State private var pinStore = PinStore()
     @State private var notifications = NotificationStore()
     @State private var neighborhoodCache = NeighborhoodCache()
+    @State private var enrollments = EnrollmentStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -38,6 +51,7 @@ struct BlockTalkApp: App {
             .environment(pinStore)
             .environment(notifications)
             .environment(neighborhoodCache)
+            .environment(enrollments)
             .preferredColorScheme(.dark)
             .fullScreenCover(item: Binding(
                 get: { appState.deepLinkedPost },
@@ -52,17 +66,27 @@ struct BlockTalkApp: App {
                     .environment(pinStore)
                     .environment(notifications)
                     .environment(neighborhoodCache)
+                    .environment(enrollments)
                     .preferredColorScheme(.dark)
             }
             .onOpenURL { url in handleDeepLink(url) }
             .task {
+                UNUserNotificationCenter.current().delegate = pushManager
+                pushManager.checkPermission()
                 Analytics.setup()
                 await restoreSession()
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     locationService.checkPermission()
+                    pushManager.checkPermission()
                     Analytics.appOpened()
+                    UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .pushNotificationTapped)) { notification in
+                if let post = notification.userInfo?["post"] as? Post {
+                    appState.deepLinkedPost = post
                 }
             }
             .onChange(of: locationService.currentNeighborhood) { old, resolved in
@@ -155,6 +179,8 @@ struct BlockTalkApp: App {
                 }
             }
 
+            await enrollments.load(userId: user.id)
+            pushManager.saveToken(userId: user.id)
             appState.advanceTo(.app)
         } catch {
             // No valid session — stay on splash

@@ -3,7 +3,7 @@ import PostHog
 
 enum Analytics {
     static func setup() {
-        let config = PostHogConfig(apiKey: "phc_PLACEHOLDER_KEY", host: "https://us.i.posthog.com")
+        let config = PostHogConfig(apiKey: "phc_mRG44ZoagZjHHVWggXRh9nSF4B3GsH32HRLhKq6o98rX", host: "https://us.i.posthog.com")
         PostHogSDK.shared.setup(config)
     }
 
@@ -63,5 +63,27 @@ enum Analytics {
         PostHogSDK.shared.capture("bell_enrolled", properties: [
             "enrolled": enrolled,
         ])
+    }
+
+    // MARK: - Push Notifications
+
+    static func pushPermissionGranted() {
+        PostHogSDK.shared.capture("push_permission_granted")
+    }
+
+    static func pushPermissionDenied() {
+        PostHogSDK.shared.capture("push_permission_denied")
+    }
+
+    static func pushSoftAskShown() {
+        PostHogSDK.shared.capture("push_soft_ask_shown")
+    }
+
+    static func pushSoftAskAccepted() {
+        PostHogSDK.shared.capture("push_soft_ask_accepted")
+    }
+
+    static func pushSoftAskDeclined() {
+        PostHogSDK.shared.capture("push_soft_ask_declined")
     }
 }

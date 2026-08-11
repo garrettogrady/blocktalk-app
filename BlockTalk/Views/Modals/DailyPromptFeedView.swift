@@ -304,5 +304,6 @@ struct DailyPromptFeedView: View {
         activeUntil: Date().addingTimeInterval(5 * 86400)
     ))
     .environment(LocationService())
+    .environment(EnrollmentStore())
     .preferredColorScheme(.dark)
 }

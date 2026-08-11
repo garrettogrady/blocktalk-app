@@ -5,6 +5,7 @@ struct PostDetailView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocalContentStore.self) private var localContent
     @Environment(PinStore.self) private var pinStore
+    @Environment(EnrollmentStore.self) private var enrollments
     @State private var viewModel = PostDetailViewModel()
 
     /// The current user's identity, embedded on replies they send.
@@ -144,6 +145,9 @@ struct PostDetailView: View {
         }
         .task {
             viewModel.post = post
+            viewModel.onReplyCreated = { userId, postId in
+                enrollments.enroll(userId: userId, postId: postId)
+            }
             // Resolve this post's pin (corner + map) in case we arrived here
             // directly (deep link / share) without a list preloading it.
             await pinStore.ensureLoaded(for: [post])
@@ -275,6 +279,7 @@ struct PostDetailView: View {
             )
         )
         .environment(AppState())
+        .environment(EnrollmentStore())
     }
     .preferredColorScheme(.dark)
 }

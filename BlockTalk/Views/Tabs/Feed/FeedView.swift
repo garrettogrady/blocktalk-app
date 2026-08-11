@@ -513,5 +513,6 @@ struct FeedView: View {
     FeedView()
         .environment(AppState())
         .environment(LocationService())
+        .environment(EnrollmentStore())
         .preferredColorScheme(.dark)
 }

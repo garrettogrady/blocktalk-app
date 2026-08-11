@@ -1,15 +1,18 @@
 import SwiftUI
 
 struct SettingsNotificationsView: View {
-    // Persisted so a toggle survives navigation + relaunch (was @State → a no-op
-    // that reset on nav-away). Push delivery will read these once the backend
-    // notification stack exists; until then they at least persist the intent.
+    @Environment(AppState.self) private var appState
+
+    // Local cache (AppStorage) — also the offline fallback
     @AppStorage("notif_master") private var masterEnabled = true
     @AppStorage("notif_replies") private var repliesEnabled = true
     @AppStorage("notif_repliedTo") private var repliedToEnabled = true
     @AppStorage("notif_manuallyFollowed") private var manuallyFollowed = true
     @AppStorage("notif_dailyPrompt") private var dailyPromptEnabled = true
     @AppStorage("notif_moderation") private var moderationEnabled = true
+
+    @State private var loaded = false
+    private let service = NotificationPreferencesService()
 
     var body: some View {
         List {
@@ -127,12 +130,51 @@ struct SettingsNotificationsView: View {
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .task { await loadFromServer() }
+        .onChange(of: masterEnabled) { _, _ in debounceSave() }
+        .onChange(of: repliesEnabled) { _, _ in debounceSave() }
+        .onChange(of: repliedToEnabled) { _, _ in debounceSave() }
+        .onChange(of: manuallyFollowed) { _, _ in debounceSave() }
+        .onChange(of: dailyPromptEnabled) { _, _ in debounceSave() }
+    }
+
+    private func loadFromServer() async {
+        guard let userId = appState.currentUser?.id else { return }
+        if let prefs = try? await service.fetch(userId: userId) {
+            masterEnabled = prefs.masterEnabled
+            repliesEnabled = prefs.replies
+            repliedToEnabled = prefs.repliedTo
+            manuallyFollowed = prefs.manuallyFollowed
+            dailyPromptEnabled = prefs.weeklyPrompt
+        }
+        loaded = true
+    }
+
+    @State private var saveTask: Task<Void, Never>?
+
+    private func debounceSave() {
+        guard loaded, let userId = appState.currentUser?.id else { return }
+        saveTask?.cancel()
+        saveTask = Task {
+            try? await Task.sleep(for: .seconds(1))
+            if Task.isCancelled { return }
+            let prefs = NotificationPreferences(
+                userId: userId,
+                masterEnabled: masterEnabled,
+                replies: repliesEnabled,
+                repliedTo: repliedToEnabled,
+                manuallyFollowed: manuallyFollowed,
+                weeklyPrompt: dailyPromptEnabled
+            )
+            try? await service.upsert(prefs)
+        }
     }
 }
 
 #Preview {
     NavigationStack {
         SettingsNotificationsView()
+            .environment(AppState())
     }
     .preferredColorScheme(.dark)
 }

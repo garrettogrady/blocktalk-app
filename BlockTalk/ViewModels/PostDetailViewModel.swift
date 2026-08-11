@@ -8,6 +8,7 @@ final class PostDetailViewModel {
     var error: String?
     var replyText = ""
     var replyingTo: (id: UUID, username: String)?
+    var onReplyCreated: ((UUID, UUID) -> Void)?
 
     var replyHasHate: Bool {
         !replyText.isEmpty && LanguageCheck.containsHateSpeech(replyText)
@@ -72,6 +73,7 @@ final class PostDetailViewModel {
                     depth: depth
                 )
                 Analytics.replyCreated()
+                self.onReplyCreated?(userId, post.id)
             } catch {
                 print("Failed to persist reply: \(error)")
             }

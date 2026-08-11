@@ -148,5 +148,6 @@ struct PersonalBoard: View {
         PersonalBoard()
             .padding()
             .environment(AppState())
+            .environment(EnrollmentStore())
     }
 }
