@@ -55,10 +55,11 @@ BEGIN
         END IF;
 
         -- Build copy based on relationship to the post
+        -- Author sees the reply text; follower sees the post text (to identify which post)
         IF is_post_author THEN
             push_body := '@' || COALESCE(replier_name, 'someone')
                       || ' replied to your post: "'
-                      || LEFT(COALESCE(post_text, ''), 40) || '…"';
+                      || LEFT(COALESCE(NEW.text, ''), 40) || '…"';
         ELSE
             push_body := 'New activity on a post you follow: "'
                       || LEFT(COALESCE(post_text, ''), 40) || '…"';
