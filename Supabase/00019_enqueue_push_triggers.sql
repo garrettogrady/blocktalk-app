@@ -112,6 +112,19 @@ BEGIN
         );
     END LOOP;
 
+    -- Fire the Edge Function immediately so instant notifications don't wait
+    -- for the cron sweep. pg_net makes this async (non-blocking).
+    PERFORM net.http_post(
+        url   := current_setting('app.settings.supabase_url', true)
+                 || '/functions/v1/send-push',
+        headers := jsonb_build_object(
+            'Authorization', 'Bearer '
+                || current_setting('app.settings.service_role_key', true),
+            'Content-Type', 'application/json'
+        ),
+        body  := '{}'::jsonb
+    );
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
