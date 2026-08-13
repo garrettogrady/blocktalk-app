@@ -5,12 +5,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         print("[Push] AppDelegate didFinishLaunching")
         print("[Push] isRegisteredForRemoteNotifications = \(application.isRegisteredForRemoteNotifications)")
-        // Call immediately for fresh installs
-        application.registerForRemoteNotifications()
-        // Also retry after a delay — iOS sometimes ignores the immediate call
-        // on reinstalls where permission was previously granted
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            print("[Push] Retrying registerForRemoteNotifications (delayed)")
+        // Force a clean re-registration cycle to ensure the token callback fires
+        if application.isRegisteredForRemoteNotifications {
+            print("[Push] Already registered — unregistering to force fresh token")
+            application.unregisterForRemoteNotifications()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("[Push] Calling registerForRemoteNotifications()")
             UIApplication.shared.registerForRemoteNotifications()
         }
         return true
