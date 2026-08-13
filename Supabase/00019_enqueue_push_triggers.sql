@@ -114,15 +114,12 @@ BEGIN
 
     -- Fire the Edge Function immediately so instant notifications don't wait
     -- for the cron sweep. pg_net makes this async (non-blocking).
+    -- NOTE: Replace <SERVICE_ROLE_KEY> with your actual service_role key
+    -- from Supabase Dashboard → Settings → API.
     PERFORM net.http_post(
-        url   := current_setting('app.settings.supabase_url', true)
-                 || '/functions/v1/send-push',
-        headers := jsonb_build_object(
-            'Authorization', 'Bearer '
-                || current_setting('app.settings.service_role_key', true),
-            'Content-Type', 'application/json'
-        ),
-        body  := '{}'::jsonb
+        url     := 'https://sxwhldbjizzeesexsurh.supabase.co/functions/v1/send-push',
+        headers := '{"Authorization": "Bearer <SERVICE_ROLE_KEY>", "Content-Type": "application/json"}'::jsonb,
+        body    := '{}'::jsonb
     );
 
     RETURN NEW;
