@@ -12,6 +12,7 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     var showSoftAsk = false
     var currentUserId: UUID?
 
+    private(set) var hasToken: Bool = false
     private var deviceTokenHex: String?
     private let tokenService = DeviceTokenService()
 
@@ -55,6 +56,7 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     func didRegisterToken(_ deviceToken: Data) {
         let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
         deviceTokenHex = hex
+        hasToken = true
         print("[Push] didRegisterToken: \(hex.prefix(16))… currentUserId=\(currentUserId?.uuidString.prefix(8) ?? "nil")")
         if let userId = currentUserId {
             saveToken(userId: userId)

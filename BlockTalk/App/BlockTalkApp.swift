@@ -5,14 +5,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         print("[Push] AppDelegate didFinishLaunching")
         print("[Push] isRegisteredForRemoteNotifications = \(application.isRegisteredForRemoteNotifications)")
-        // Force a clean re-registration cycle to ensure the token callback fires
-        if application.isRegisteredForRemoteNotifications {
-            print("[Push] Already registered — unregistering to force fresh token")
-            application.unregisterForRemoteNotifications()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            print("[Push] Calling registerForRemoteNotifications()")
-            UIApplication.shared.registerForRemoteNotifications()
+        // Register immediately
+        application.registerForRemoteNotifications()
+        // Retry at staggered intervals — some devices need the app fully
+        // initialized before iOS will deliver the token callback
+        for delay in [1.0, 3.0, 6.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if pushManager.hasToken { return }
+                print("[Push] Retry registerForRemoteNotifications (after \(delay)s)")
+                UIApplication.shared.registerForRemoteNotifications()
+            }
         }
         return true
     }
@@ -105,6 +107,11 @@ struct BlockTalkApp: App {
                     pushManager.checkPermission()
                     Analytics.appOpened()
                     UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+                    // Retry token registration if we still don't have one
+                    if !pushManager.hasToken {
+                        print("[Push] No token yet on .active — retrying registration")
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .pushNotificationTapped)) { notification in
