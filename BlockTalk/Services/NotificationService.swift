@@ -19,6 +19,13 @@ struct NotificationService {
             .execute()
     }
 
+    func markRead(id: UUID) async throws {
+        try await supabase.from("notifications")
+            .update(["unread": false])
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
     func unreadCount(userId: UUID) async throws -> Int {
         let result: [BTNotification] = try await supabase.from("notifications")
             .select()

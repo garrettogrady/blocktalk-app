@@ -151,6 +151,10 @@ final class NotificationStore {
     func markAllRead() {
         for i in items.indices { items[i].unread = false }
     }
+
+    func markRead(_ id: UUID) {
+        if let i = items.firstIndex(where: { $0.id == id }) { items[i].unread = false }
+    }
 }
 
 /// Session-scoped offline queue. Posts made offline queue locally; when

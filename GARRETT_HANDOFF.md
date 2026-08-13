@@ -141,3 +141,47 @@ With those, the core app (log in, browse, post, street-comment, photo, reply, vo
 ☐ **Image/CSAM scanning (§13)** — do not let strangers upload photos until this exists. Legal + App Store requirement.
 ☐ **Server-side write-gate (§14)** — location re-check + rate limits + dedup. Cheap; stops flooding + spoofing once strangers can join.
 ☐ Push notifications (§8) — not required to test, but the main retention lever.
+
+---
+
+## 🆕 NEW — Analytics: close 3 PostHog gaps (added 2026-08-08)
+
+**This section was added after the doc above.** PostHog is already wired up nicely (`AnalyticsService.swift`: `identify` + `app_opened` + action events), so retention/DAU already work in PostHog. Three small gaps remain. **Why it matters:** the metrics that actually tell us if BlockTalk is working — **per-neighborhood retention** (does a neighborhood form a habit?) and the **viral funnel** (do shared links bring new users?) — aren't measurable yet without these. ~30 min total.
+
+### N1. Confirm the real PostHog API key is live
+`AnalyticsService.swift:6` still reads `apiKey: "phc_PLACEHOLDER_KEY"`. Swap in the real project key (ideally via xcconfig/Info.plist, not hardcoded). Verify in PostHog → **Activity / live events** that `app_opened` is arriving from a device. *(If PostHog looks empty, this is almost certainly why.)*
+
+### N2. Attach `neighborhood` to every event (super property)
+No event currently carries a neighborhood, so we can't break retention/DAU/density down **per-neighborhood** — which is our most important cut (the "atomic network"). Use a super property so it auto-attaches to all events:
+
+```swift
+// add to AnalyticsService
+static func setNeighborhood(_ shortCode: String?) {
+    if let shortCode { PostHogSDK.shared.register(["neighborhood": shortCode]) }
+    else { PostHogSDK.shared.unregister("neighborhood") }
+}
+```
+Call it wherever the viewing neighborhood changes — simplest is one place in `BlockTalkApp`:
+```swift
+.onChange(of: appState.viewingNeighborhood) { _, n in
+    Analytics.setNeighborhood(n?.shortCode)
+}
+```
+Use `shortCode` (low-cardinality, clean for breakdowns). **Purpose:** unlocks per-neighborhood retention + DAU in PostHog with zero per-event edits.
+
+### N3. Capture shared-link arrivals (the viral funnel)
+We capture the *sharer* (`share_tapped`) but not the *recipient opening a shared link* — the top of the k-factor funnel. Add:
+```swift
+// add to AnalyticsService
+static func sharedLinkOpened(postId: String, alreadyOnboarded: Bool) {
+    PostHogSDK.shared.capture("shared_link_opened", properties: [
+        "post_id": postId,
+        "already_onboarded": alreadyOnboarded
+    ])
+}
+```
+Fire it inside `handleDeepLink(_:)` in `BlockTalkApp.swift` (where it resolves the post id / sets `deepLinkedPost`), passing `alreadyOnboarded: appState.stage == .app`. **Purpose:** lets us build the funnel `shared_link_opened → signup_completed` (filtered to `already_onboarded = false`) = viral conversion / k-factor.
+
+**Definition of done:** in PostHog we can (a) build a **Retention** insight broken down by `neighborhood`, and (b) build that shared-link → signup **Funnel**.
+
+**Known limitation (not in scope):** N3 only fires for people who already have the app installed. Measuring a brand-new user (taps link → App Store → installs → signs up) needs deferred deep-linking via the `blocktalk.nyc` landing page — that's the separate §12 web work, later.

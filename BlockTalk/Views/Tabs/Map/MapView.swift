@@ -31,6 +31,10 @@ struct MapTabView: View {
     // Item-driven so the sheet only presents once the post is resolved — avoids
     // the blank-first-tap sheet that `.sheet(isPresented:)` + separate state hits.
     @State private var selectedPinDetail: PinDetailItem?
+    /// The pin the user tapped "View on map" for — rendered emphasized (ring +
+    /// callout) and on top, so it's identifiable inside a cluster. Cleared on the
+    /// next map interaction.
+    @State private var focusedPinId: UUID?
     @State private var pinLoadFailed = false
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
     // The geographic coordinate directly under the drop reticle. Range-checking
@@ -87,15 +91,19 @@ struct MapTabView: View {
 
                 // Pin annotations (bundled samples + anything created this session)
                 ForEach(viewModel.pins + localContent.pins) { pin in
-                    Annotation("", coordinate: pin.coordinate) {
-                        // Route 2: business-tagged pins are house-blue with their
-                        // category glyph; plain corners stay lime dots.
-                        PulsatingPinView(
-                            tint: pin.placeName != nil ? Color.btHouse : Color.btLime,
-                            symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil
-                        )
-                        .onTapGesture {
-                            openPinDetail(pin)
+                    // Hide the plain dot for the focused pin — the emphasized marker
+                    // below replaces it (so there's no double-render).
+                    if pin.id != focusedPinId {
+                        Annotation("", coordinate: pin.coordinate) {
+                            // Route 2: business-tagged pins are house-blue with their
+                            // category glyph; plain corners stay lime dots.
+                            PulsatingPinView(
+                                tint: pin.placeName != nil ? Color.btHouse : Color.btLime,
+                                symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil
+                            )
+                            .onTapGesture {
+                                openPinDetail(pin)
+                            }
                         }
                     }
                 }
@@ -104,6 +112,15 @@ struct MapTabView: View {
                 if let loc = locationService.currentLocation {
                     Annotation("", coordinate: loc) {
                         HouseBlueDot()
+                    }
+                }
+
+                // Focused pin ("View on map") — drawn last so it sits above the
+                // cluster: enlarged with a ring + a callout naming the place.
+                if let fid = focusedPinId,
+                   let pin = (viewModel.pins + localContent.pins).first(where: { $0.id == fid }) {
+                    Annotation("", coordinate: pin.coordinate) {
+                        focusedPinMarker(pin)
                     }
                 }
             }
@@ -129,8 +146,11 @@ struct MapTabView: View {
             // Resolve the reticle the instant drop mode starts, since the camera
             // handler above now only runs while dropping.
             .onChange(of: viewModel.isDropMode) { _, dropping in
-                if dropping, mapSize != .zero {
-                    reticleCoord = proxy.convert(reticlePoint, from: .local)
+                if dropping {
+                    focusedPinId = nil
+                    if mapSize != .zero {
+                        reticleCoord = proxy.convert(reticlePoint, from: .local)
+                    }
                 }
             }
             // Tap to select; tap the selected one again to open its feed; tap
@@ -439,9 +459,9 @@ struct MapTabView: View {
             center: pin.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.003))
         withAnimation(.easeInOut(duration: 0.45)) { cameraPosition = .region(region) }
-        // Fly to the pin and leave the user ON the map (its pulsing marker is right
-        // there to tap) — don't auto-open the detail sheet, which would defeat the
-        // whole point of "View on map".
+        // Fly to the pin and mark it — emphasized ring + callout — so it's obvious
+        // which one you came for, even inside a cluster. Cleared on the next map tap.
+        focusedPinId = pin.id
         appState.focusPin = nil
     }
 
@@ -758,7 +778,36 @@ struct MapTabView: View {
         .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
     }
 
+    /// Emphasized marker for the "View on map" target: an enlarged pin inside a
+    /// ring, with a callout naming the place, so it stands out inside a cluster.
+    private func focusedPinMarker(_ pin: Pin) -> some View {
+        let tint = pin.placeName != nil ? Color.btHouse : Color.btLime
+        return ZStack {
+            Circle().fill(tint.opacity(0.18)).frame(width: 46, height: 46)
+            Circle().stroke(tint, lineWidth: 2).frame(width: 46, height: 46)
+            PulsatingPinView(
+                tint: tint,
+                symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil
+            )
+        }
+        .overlay(alignment: .top) {
+            Text(pin.placeName ?? pin.cornerName ?? "Pinned here")
+                .font(BTFont.bodySemibold(size: 12))
+                .foregroundStyle(Color.btText)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.btSurface))
+                .overlay(Capsule().stroke(tint.opacity(0.7), lineWidth: 1))
+                .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
+                .offset(y: -36)
+        }
+        .onTapGesture { openPinDetail(pin) }
+    }
+
     private func openPinDetail(_ pin: Pin) {
+        focusedPinId = nil   // engaging with a pin dismisses the "view on map" callout
         // Session-created street comment first, else the bundled sample post.
         if let post = localContent.post(forPinId: pin.id) {
             selectedPinDetail = PinDetailItem(pin: pin, post: post)
@@ -784,6 +833,7 @@ struct MapTabView: View {
     /// closest neighborhood (forgives edge imprecision); a far tap (water,
     /// empty space) clears the selection.
     private func handleTap(at coord: CLLocationCoordinate2D) {
+        focusedPinId = nil   // any deliberate map tap dismisses the focus callout
         if let hit = polygons.first(where: { $0.contains(coord) }) {
             if hit.name == selectedNeighborhood {
                 openFeed(hit.name)          // second tap on the selected → open

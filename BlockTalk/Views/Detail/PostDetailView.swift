@@ -75,7 +75,9 @@ struct PostDetailView: View {
 
                     // Street comment → jump to the Map tab, centered on this pin,
                     // for the full interactive map (read cross-streets, pan/zoom).
-                    if let pin = detailPin {
+                    // Only for a LIVE post — a removed/under-review comment is a
+                    // tombstone notice, and its pin shouldn't be reachable from it.
+                    if post.status == .live, let pin = detailPin {
                         viewOnMapButton(pin)
                     }
 
