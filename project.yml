@@ -28,7 +28,7 @@ targets:
       properties:
         CFBundleName: BlockTalk
         CFBundleDisplayName: BlockTalk
-        CFBundleIdentifier: com.blocktalk.mattb.app
+        CFBundleIdentifier: com.blocktalk.nyc
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
@@ -63,14 +63,14 @@ targets:
         product: PostHog
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.blocktalk.mattb.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.blocktalk.nyc
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: BlockTalk/Info.plist
         CODE_SIGN_ENTITLEMENTS: BlockTalk/BlockTalk.entitlements
-        DEVELOPMENT_TEAM: YUQATHNGE2
+        DEVELOPMENT_TEAM: H2ZR82JW28
 
   BlockTalkTests:
     type: bundle.unit-test

@@ -652,7 +652,7 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					D2DCADAD61A6E7414430A9D1 = {
-						DevelopmentTeam = YUQATHNGE2;
+						DevelopmentTeam = H2ZR82JW28;
 					};
 				};
 			};
@@ -895,14 +895,14 @@
 				CODE_SIGN_ENTITLEMENTS = BlockTalk/BlockTalk.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YUQATHNGE2;
+				DEVELOPMENT_TEAM = H2ZR82JW28;
 				INFOPLIST_FILE = BlockTalk/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.blocktalk.mattb.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blocktalk.nyc;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -916,14 +916,14 @@
 				CODE_SIGN_ENTITLEMENTS = BlockTalk/BlockTalk.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YUQATHNGE2;
+				DEVELOPMENT_TEAM = H2ZR82JW28;
 				INFOPLIST_FILE = BlockTalk/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.blocktalk.mattb.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blocktalk.nyc;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = 1;
