@@ -46,6 +46,9 @@ final class AppState {
     /// In-progress compose text, stashed so it survives the compose→map→compose
     /// pin-placement round-trip (§13)
     var composeDraft = ""
+    /// The attached photo, stashed alongside the text so it ALSO survives the
+    /// pin-placement round-trip — otherwise a street comment posts without its photo.
+    var composeDraftImage: UIImage?
     /// Signal the Map to auto-enter drop mode (set when compose switches to pin mode)
     var pendingPinPlacement = false
     /// Set by "View on map" on a street-comment detail: the Map tab centers on this

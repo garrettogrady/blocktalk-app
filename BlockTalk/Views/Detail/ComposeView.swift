@@ -51,6 +51,7 @@ struct ComposeView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: BTSpacing.md) {
                         // Scope row
@@ -71,8 +72,10 @@ struct ComposeView: View {
                                 Image(uiImage: image)
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(maxHeight: 280)
-                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    // Mirror the feed card: full width, height capped so
+                                    // it doesn't dominate; left-aligned when capped.
+                                    .frame(maxHeight: 380)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .cornerRadius(BTRadius.md)
 
                                 Button {
@@ -106,6 +109,7 @@ struct ComposeView: View {
                                         .allowsHitTesting(false)
                                 }
                             }
+                            .id("composeInput")
 
                         // Hate-speech warning
                         if viewModel.hateSpeechDetected {
@@ -129,6 +133,17 @@ struct ComposeView: View {
                     .padding(.horizontal, BTSpacing.lg)
                     .padding(.top, BTSpacing.md)
                 }
+                .onChange(of: viewModel.selectedImage != nil) { _, hasImage in
+                    // A tall photo preview pushes the input off-screen — pull the text
+                    // field back into view (and focus it) so the user sees what they're
+                    // typing without having to scroll by hand.
+                    guard hasImage else { return }
+                    textFocused = true
+                    DispatchQueue.main.async {
+                        withAnimation { proxy.scrollTo("composeInput", anchor: .top) }
+                    }
+                }
+                }
 
                 Divider().background(Color.btLine)
 
@@ -140,6 +155,7 @@ struct ComposeView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         appState.composeDraft = ""
+                        appState.composeDraftImage = nil
                         dismiss()
                     }
                     .foregroundStyle(Color.btText2)
@@ -200,6 +216,7 @@ struct ComposeView: View {
             .onAppear {
                 // Rehydrate a stashed draft after the compose→map→compose round-trip
                 if viewModel.text.isEmpty { viewModel.text = appState.composeDraft }
+                if viewModel.selectedImage == nil { viewModel.selectedImage = appState.composeDraftImage }
                 textFocused = true
                 // Search-first pin from the Map: open already tagged to the place.
                 if taggedPlace == nil, let initialPlace { taggedPlace = initialPlace }
@@ -426,6 +443,7 @@ struct ComposeView: View {
             )
             offline.enqueue(queued)
             appState.composeDraft = ""
+            appState.composeDraftImage = nil
             appState.selectedTab = 0
             dismiss()
             return
@@ -491,6 +509,7 @@ struct ComposeView: View {
     /// NYC-wide prompt answers skip routing.
     private func routeAfterPost() {
         appState.composeDraft = ""
+        appState.composeDraftImage = nil
         if pushManager.permissionState == .undetermined {
             showPushAsk = true
             return
@@ -508,7 +527,8 @@ struct ComposeView: View {
     }
 
     private func switchToPinMode() {
-        appState.composeDraft = viewModel.text   // stash the draft
+        appState.composeDraft = viewModel.text                // stash the draft text
+        appState.composeDraftImage = viewModel.selectedImage  // …and the attached photo
         appState.pendingPinPlacement = true       // Map will auto-enter drop mode
         appState.selectedTab = 1
         dismiss()

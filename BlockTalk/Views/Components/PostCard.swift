@@ -225,8 +225,11 @@ struct PostCard: View {
                         image
                             .resizable()
                             .scaledToFit()
-                            .frame(maxHeight: 300)
-                            .frame(maxWidth: .infinity, alignment: .center)
+                            // Fill the card width, but cap the height so a tall photo
+                            // doesn't take over the screen — no crop, no distortion.
+                            // Left-aligned so a capped (narrower) photo hugs the edge.
+                            .frame(maxHeight: 380)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             // Business-tagged → the top-left name label; a plain
                             // corner comment → the lime corner chip bottom-left.
                             .overlay(alignment: .topLeading) {

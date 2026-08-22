@@ -6,6 +6,7 @@ struct SplashView: View {
     @Environment(AppState.self) private var appState
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @State private var isSigningIn = false
+    @State private var legalDoc: LegalDocRef?
 
     // Landing composition — flip these two to swap the hero. Easy revert:
     // set showHeroCard = true / showStreetPins = false to restore the
@@ -155,18 +156,45 @@ struct SplashView: View {
                 Text(legalText)
                     .font(BTFont.body(size: 10))
                     .multilineTextAlignment(.center)
+                    .tint(Color.btText)
+                    .environment(\.openURL, OpenURLAction { url in
+                        switch url.host {
+                        case "terms": legalDoc = .terms; return .handled
+                        case "guidelines": legalDoc = .guidelines; return .handled
+                        default: return .systemAction
+                        }
+                    })
                     .padding(.horizontal, BTSpacing.xxxl)
                     .padding(.bottom, 46)
+                    .sheet(item: $legalDoc) { doc in
+                        NavigationStack {
+                            LegalDocView(title: doc.title, markdown: doc.markdown)
+                                .toolbar {
+                                    ToolbarItem(placement: .cancellationAction) {
+                                        Button("Done") { legalDoc = nil }
+                                            .foregroundStyle(Color.btText2)
+                                    }
+                                }
+                        }
+                        .preferredColorScheme(.dark)
+                    }
             }
         }
     }
 
-    // Verbatim RN legal line; "terms" and "community rules" read as links.
+    // Verbatim RN legal line; "terms" and "community rules" are tappable links to
+    // the bundled Terms of Service / Community Guidelines.
     private var legalText: AttributedString {
         var s = AttributedString("by continuing you agree to our terms & community rules.")
         s.foregroundColor = .btText2
-        if let r = s.range(of: "terms") { s[r].foregroundColor = .btText }
-        if let r = s.range(of: "community rules") { s[r].foregroundColor = .btText }
+        if let r = s.range(of: "terms") {
+            s[r].foregroundColor = .btText
+            s[r].link = URL(string: "blocktalk://terms")
+        }
+        if let r = s.range(of: "community rules") {
+            s[r].foregroundColor = .btText
+            s[r].link = URL(string: "blocktalk://guidelines")
+        }
         return s
     }
 
