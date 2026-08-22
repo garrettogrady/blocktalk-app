@@ -3,6 +3,8 @@ import StatCard from "@/components/stat-card";
 import TrendCard from "@/components/trend-card";
 import NeedsAction from "@/components/needs-action";
 import RecentPostsTable from "@/components/recent-posts-table";
+import PostSearch from "@/components/post-search";
+import { searchPosts } from "@/app/moderation/search/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -240,12 +242,21 @@ async function getRecentPosts() {
   }));
 }
 
+async function getNeighborhoods() {
+  const { data } = await supabaseAdmin
+    .from("neighborhoods")
+    .select("id, name")
+    .order("name");
+  return data ?? [];
+}
+
 export default async function DashboardPage() {
-  const [actionData, trends, cumulative, recentPosts] = await Promise.all([
+  const [actionData, trends, cumulative, recentPosts, neighborhoods] = await Promise.all([
     getNeedsActionData(),
     getTrendMetrics(),
     getCumulativeStats(),
     getRecentPosts(),
+    getNeighborhoods(),
   ]);
 
   return (
@@ -264,7 +275,13 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Section 2: Trend Metrics */}
+      {/* Section 2: Post Search */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-3">Post Search</h3>
+        <PostSearch neighborhoods={neighborhoods} searchAction={searchPosts} />
+      </div>
+
+      {/* Section 3: Trend Metrics */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-3">Metrics (7-day)</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -297,13 +314,13 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Section 3: Recent Posts */}
+      {/* Section 4: Recent Posts */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-3">Recent Posts</h3>
         <RecentPostsTable posts={recentPosts} />
       </div>
 
-      {/* Section 4: Cumulative Stats Strip */}
+      {/* Section 5: Cumulative Stats Strip */}
       <div className="flex flex-wrap gap-4 border-t border-gray-200 pt-4">
         <StatCard label="Total Users" value={cumulative.totalUsers} />
         <StatCard label="Total Posts" value={cumulative.totalPosts} />
