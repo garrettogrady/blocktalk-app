@@ -6,6 +6,9 @@ struct SettingsProfileView: View {
     @State private var showDeleteConfirm = false
     @State private var showSetUsername = false
     @State private var showAliasLocked = false
+    @State private var showNeighborhoodPicker = false
+    @State private var showNeighborhoodLocked = false
+    @State private var homeChangedAt: Date?
 
     private let aliasLockDays: Double = 30
 
@@ -19,6 +22,19 @@ struct SettingsProfileView: View {
     }
     private var aliasUnlockLabel: String {
         aliasUnlockDate.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? ""
+    }
+
+    // Home neighborhood: soft 90-day cooldown tracked locally. A server-enforced
+    // version would mirror update_username (a changed_at column + RPC).
+    private let homeLockDays: Double = 90
+    private var homeChangedAtKey: String { "homeNeighborhoodChangedAt_\(appState.currentUser?.id.uuidString ?? "")" }
+    private var homeUnlockDate: Date? { homeChangedAt.map { $0.addingTimeInterval(homeLockDays * 86_400) } }
+    private var homeLocked: Bool {
+        guard let u = homeUnlockDate else { return false }
+        return Date() < u
+    }
+    private var homeUnlockLabel: String {
+        homeUnlockDate.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? ""
     }
 
     var body: some View {
@@ -69,18 +85,35 @@ struct SettingsProfileView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Home neighborhood — read-only for now. Changing it isn't supported
-                // yet, so this is a plain info row (no tappable/countdown affordance
-                // that would imply an action or an unlock that never happens).
-                HStack {
-                    Text("Neighborhood")
-                        .font(BTFont.bodyMedium(size: 15))
-                        .foregroundStyle(Color.btText)
-                    Spacer()
-                    Text(appState.homeNeighborhood?.name ?? "—")
-                        .font(BTFont.body(size: 15))
-                        .foregroundStyle(Color.btText3)
+                // Home neighborhood — changeable once every 90 days (first change
+                // instant). Posting is GPS-gated regardless, so this only affects the
+                // 🏠 badge + default feed.
+                Button {
+                    if homeLocked { showNeighborhoodLocked = true } else { showNeighborhoodPicker = true }
+                } label: {
+                    HStack {
+                        Text("Neighborhood")
+                            .font(BTFont.bodyMedium(size: 15))
+                            .foregroundStyle(Color.btText)
+                        Spacer()
+                        Text(appState.homeNeighborhood?.name ?? "—")
+                            .font(BTFont.bodyMedium(size: 14))
+                            .foregroundStyle(Color.btText2)
+                            .lineLimit(1)
+                        if homeLocked {
+                            Text("UNLOCKS \(homeUnlockLabel)")
+                                .font(BTFont.mono(size: 9))
+                                .foregroundStyle(Color.btWarn)
+                                .padding(.horizontal, BTSpacing.sm)
+                                .padding(.vertical, 2)
+                                .background(Color.btWarn.opacity(0.15))
+                                .cornerRadius(BTRadius.sm)
+                        } else {
+                            Text("CHANGE →").font(BTFont.bodySemibold(size: 12)).foregroundStyle(Color.btLime)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
             } header: {
                 Text("IDENTITY")
                     .font(BTFont.mono(size: 11))
@@ -143,6 +176,21 @@ struct SettingsProfileView: View {
         .sheet(isPresented: $showSetUsername) {
             SetUsernameSheet()
         }
+        .alert("Neighborhood locked", isPresented: $showNeighborhoodLocked) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("You can change your home neighborhood again on \(homeUnlockLabel). Changes are limited to once every 90 days.")
+        }
+        .sheet(isPresented: $showNeighborhoodPicker) {
+            NeighborhoodPickerView(currentValue: appState.homeNeighborhood, title: "Home Neighborhood") { picked in
+                showNeighborhoodPicker = false
+                Task { await changeHomeNeighborhood(picked) }
+            }
+        }
+        .onAppear {
+            let t = UserDefaults.standard.double(forKey: homeChangedAtKey)
+            if t > 0 { homeChangedAt = Date(timeIntervalSince1970: t) }
+        }
     }
 
     private func chip(_ text: String, tone: Color = .btText3) -> some View {
@@ -154,6 +202,33 @@ struct SettingsProfileView: View {
             .padding(.vertical, 2)
             .background(tone.opacity(0.15))
             .clipShape(Capsule())
+    }
+
+    /// Resolve the picked neighborhood to its real Supabase id, persist it as the
+    /// user's home, reflect it in app state, and stamp the local 90-day cooldown.
+    private func changeHomeNeighborhood(_ picked: Neighborhood) async {
+        guard let userId = appState.currentUser?.id else { return }
+        do {
+            // The picker uses the bundled directory (synthetic UUIDs); resolve the
+            // real Supabase row before persisting — never store a synthetic id.
+            guard let real = try await NeighborhoodService().fetchByName(picked.name) else {
+                print("Couldn't resolve neighborhood id for \(picked.name)")
+                return
+            }
+            try await supabase.from("users")
+                .update(["home_neighborhood_id": real.id.uuidString])
+                .eq("id", value: userId.uuidString)
+                .execute()
+            await MainActor.run {
+                appState.homeNeighborhood = real
+                appState.currentUser?.homeNeighborhoodId = real.id
+                let now = Date()
+                UserDefaults.standard.set(now.timeIntervalSince1970, forKey: homeChangedAtKey)
+                homeChangedAt = now
+            }
+        } catch {
+            print("Failed to change home neighborhood: \(error)")
+        }
     }
 
     /// Real account deletion (Apple requires this for any app with sign-in).

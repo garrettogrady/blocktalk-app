@@ -92,7 +92,8 @@ struct MapTabView: View {
                         // category glyph; plain corners stay lime dots.
                         PulsatingPinView(
                             tint: pin.placeName != nil ? Color.btHouse : Color.btLime,
-                            symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil
+                            symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil,
+                            intensity: pinIntensity(for: pin)
                         )
                         .onTapGesture {
                             openPinDetail(pin)
@@ -758,6 +759,16 @@ struct MapTabView: View {
         .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
     }
 
+    /// 0…1 pulse intensity for a pin — session posts use their local counts,
+    /// fetched pins use the map's activity fetch.
+    private func pinIntensity(for pin: Pin) -> Double {
+        if let post = localContent.post(forPinId: pin.id) {
+            let a = Double(post.replyCount * 2 + post.upvoteCount + post.downvoteCount)
+            return a > 0 ? min((a / 20).squareRoot(), 1) : 0
+        }
+        return viewModel.intensity(forPinId: pin.id)
+    }
+
     private func openPinDetail(_ pin: Pin) {
         // Session-created street comment first, else the bundled sample post.
         if let post = localContent.post(forPinId: pin.id) {
@@ -898,7 +909,16 @@ struct PulsatingPinView: View {
     var tint: Color = .btLime
     /// SF Symbol shown inside the core when the pin is a tagged business.
     var symbol: String? = nil
+    /// 0…1 activity level (replies×2 + votes, √-scaled, capped). 0 = no pulse,
+    /// just the pin; higher = a larger, more visible outward ping.
+    var intensity: Double = 0
     @State private var isPulsing = false
+
+    private var level: Double { min(max(intensity, 0), 1) }
+    private var coreSize: CGFloat { symbol != nil ? 18 : 10 }
+    // Bounded so even a viral post never balloons.
+    private var ringMaxScale: CGFloat { 1.0 + CGFloat(level) * 1.6 }   // up to ~2.6×
+    private var ringOpacity: Double { 0.18 + level * 0.42 }
 
     var body: some View {
         ZStack {
@@ -908,25 +928,21 @@ struct PulsatingPinView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
 
-            // Outer pulse ring
-            Circle()
-                .fill(tint.opacity(0.15))
-                .frame(width: 32, height: 32)
-                .scaleEffect(isPulsing ? 1.6 : 1.0)
-                .opacity(isPulsing ? 0 : 0.6)
-                .allowsHitTesting(false)
+            // Single clean outward ping — only when the pin has activity.
+            if level > 0.001 {
+                Circle()
+                    .stroke(tint, lineWidth: 2)
+                    .frame(width: coreSize + 6, height: coreSize + 6)
+                    .scaleEffect(isPulsing ? ringMaxScale : 0.85)
+                    .opacity(isPulsing ? 0 : ringOpacity)
+                    .allowsHitTesting(false)
+            }
 
-            // Inner glow
-            Circle()
-                .fill(tint.opacity(0.3))
-                .frame(width: 24, height: 24)
-                .allowsHitTesting(false)
-
-            // Core dot — a plain dot for corners, or a glyph-bearing marker for
+            // Core — a plain dot for corners, or a glyph-bearing marker for
             // tagged businesses so the map reads by type at a glance.
             Circle()
                 .fill(tint)
-                .frame(width: symbol != nil ? 18 : 10, height: symbol != nil ? 18 : 10)
+                .frame(width: coreSize, height: coreSize)
                 .overlay {
                     if let symbol {
                         Image(systemName: symbol)
@@ -936,13 +952,14 @@ struct PulsatingPinView: View {
                 }
                 .allowsHitTesting(false)
         }
-        .onAppear {
-            withAnimation(
-                .easeInOut(duration: 1.8)
-                .repeatForever(autoreverses: false)
-            ) {
-                isPulsing = true
-            }
+        .onAppear { startPulse() }
+        .onChange(of: intensity) { _, _ in startPulse() }
+    }
+
+    private func startPulse() {
+        guard level > 0.001, !isPulsing else { return }
+        withAnimation(.easeOut(duration: 2.2).repeatForever(autoreverses: false)) {
+            isPulsing = true
         }
     }
 }

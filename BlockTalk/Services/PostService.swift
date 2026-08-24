@@ -106,6 +106,35 @@ struct PostService {
         return posts.first
     }
 
+    /// Activity per pin for the map's live pulse. Weighs a reply 2× a vote and
+    /// sums across the pin's live posts. Returns pinId → raw score.
+    func fetchPinActivity(pinIds: [UUID]) async throws -> [UUID: Int] {
+        guard !pinIds.isEmpty else { return [:] }
+        struct Row: Decodable {
+            let pinId: UUID
+            let replyCount: Int
+            let upvoteCount: Int
+            let downvoteCount: Int
+            enum CodingKeys: String, CodingKey {
+                case pinId = "pin_id"
+                case replyCount = "reply_count"
+                case upvoteCount = "upvote_count"
+                case downvoteCount = "downvote_count"
+            }
+        }
+        let rows: [Row] = try await supabase.from("posts")
+            .select("pin_id, reply_count, upvote_count, downvote_count")
+            .in("pin_id", values: pinIds.map(\.uuidString))
+            .eq("status", value: "live")
+            .execute()
+            .value
+        var out: [UUID: Int] = [:]
+        for r in rows {
+            out[r.pinId, default: 0] += r.replyCount * 2 + r.upvoteCount + r.downvoteCount
+        }
+        return out
+    }
+
     func createPost(_ post: NewPost) async throws -> Post {
         return try await supabase.from("posts")
             .insert(post)

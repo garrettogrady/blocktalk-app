@@ -48,7 +48,11 @@ struct BlockTalkApp: App {
             Group {
                 switch appState.stage {
                 case .splash:
-                    SplashView()
+                    if appState.isRestoringSession {
+                        LoadingSplashView()
+                    } else {
+                        SplashView()
+                    }
                 case .how:
                     HowItWorksView()
                 case .tone:
@@ -162,6 +166,9 @@ struct BlockTalkApp: App {
     /// Restore an existing Supabase session on launch. If a session exists,
     /// fetch the user profile and advance to .app. Otherwise stay on .splash.
     private func restoreSession() async {
+        // Whatever path we take (session found, not found, or error), we're done
+        // bootstrapping when this returns — reveal the real landing / app.
+        defer { appState.isRestoringSession = false }
         // Load the neighborhood cache at startup
         await neighborhoodCache.loadAll()
 

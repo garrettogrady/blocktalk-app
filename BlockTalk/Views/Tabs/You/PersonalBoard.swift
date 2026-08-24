@@ -41,6 +41,7 @@ struct PersonalBoard: View {
             .padding(BTSpacing.xs)
             .background(Color.btSurface)
             .cornerRadius(BTRadius.md)
+            .padding(.horizontal, BTSpacing.lg)
 
             let posts = selectedTab == .created ? createdPosts : interactedPosts
 
@@ -139,6 +140,7 @@ struct PersonalBoard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, BTSpacing.xxxl)
+        .padding(.horizontal, BTSpacing.lg)
     }
 }
 

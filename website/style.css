@@ -52,9 +52,59 @@ img{max-width:100%}
 /* hero */
 .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--rule);
   padding:clamp(64px,11vw,120px) 0 clamp(56px,9vw,96px)}
-.hero .dots{position:absolute;inset:0;opacity:.5;pointer-events:none;
-  background-image:radial-gradient(color-mix(in srgb,var(--blue) 30%,transparent) 1px,transparent 1.4px);
-  background-size:26px 26px;mask-image:radial-gradient(120% 80% at 78% 0%,#000 20%,transparent 70%)}
+/* stylized neighborhood map behind the hero — self-contained SVG, no library */
+.hero .map-bg{position:absolute;inset:0;pointer-events:none;
+  -webkit-mask-image:radial-gradient(135% 95% at 74% 4%,#000 24%,transparent 72%);
+  mask-image:radial-gradient(135% 95% at 74% 4%,#000 24%,transparent 72%)}
+.hero .map-bg svg{width:100%;height:100%;display:block}
+.hero .streets line{stroke:color-mix(in srgb,var(--blue) 24%,transparent);stroke-width:1.2}
+.hero .streets .bway{stroke:color-mix(in srgb,var(--blue) 34%,transparent);stroke-width:1.6}
+.hero .pin .dot{fill:var(--lime)}
+.hero .pin .ring{fill:none;stroke:var(--lime);stroke-width:2;opacity:.7;
+  transform-box:fill-box;transform-origin:center;animation:pinpulse 3.2s ease-out infinite}
+.hero .p-blue .dot{fill:var(--blue)}
+.hero .p-blue .ring{stroke:var(--blue)}
+@keyframes pinpulse{0%{transform:scale(.55);opacity:.75}70%,100%{transform:scale(2.6);opacity:0}}
+@media(prefers-reduced-motion:reduce){.hero .pin .ring{animation:none;opacity:.35}}
+
+/* hero: two columns — copy + phone mockup of the app map */
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(28px,5vw,60px);align-items:center}
+@media(max-width:820px){.hero-grid{grid-template-columns:1fr}.hero-phone{margin-top:6px}}
+.hero-copy{position:relative;z-index:2}
+.hero-phone{display:flex;justify-content:center}
+.phone{position:relative;width:min(322px,80vw);background:#0b0b0c;border-radius:48px;padding:11px;
+  box-shadow:0 34px 80px rgba(0,0,0,.55), inset 0 0 0 2px #2b2c2f, 0 0 0 1px rgba(0,0,0,.6)}
+.phone-screen{position:relative;border-radius:38px;overflow:hidden;aspect-ratio:1206/2622;background:#0b1220}
+.phone-screen>img{width:100%;height:100%;object-fit:cover;display:block}
+.phone-island{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  width:30%;max-width:100px;height:22px;background:#000;border-radius:14px;z-index:5}
+
+/* app-style pins laid over the real map screenshot */
+.pin-overlay{position:absolute;inset:0;z-index:4;pointer-events:none}
+.opin{position:absolute;transform:translate(-50%,-50%)}
+/* pin colors matched to the app exactly: lime #D8FF3D corners, house-blue #7CD9FF businesses */
+.opin.lime{width:12px;height:12px;border-radius:50%;background:#D8FF3D;
+  box-shadow:0 0 0 4px color-mix(in srgb,#D8FF3D 24%,transparent),0 0 14px 4px color-mix(in srgb,#D8FF3D 50%,transparent);
+  animation:opulse 3s ease-in-out infinite}
+.opin.biz{width:26px;height:26px;border-radius:50%;background:#7CD9FF;display:grid;place-items:center;
+  box-shadow:0 0 0 3px color-mix(in srgb,#7CD9FF 42%,transparent),0 2px 7px rgba(0,0,0,.45)}
+.opin.biz svg{width:14px;height:14px;fill:none;stroke:#0a2733;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes opulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.14)}}
+@media(prefers-reduced-motion:reduce){.opin.lime{animation:none}}
+
+/* category strip — what you can tag (business = house-blue, corner = lime) */
+.cat-band{padding:38px 0;border-bottom:1px solid var(--rule);background:var(--bg2)}
+.cat-band .kick{display:block;margin-bottom:18px}
+.cats{display:flex;flex-wrap:nowrap;gap:9px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);
+  border:1px solid var(--rule);border-radius:100px;padding:5px 14px 5px 6px;background:var(--card)}
+/* app-style pins: glowing lime dot = corner, house-blue circle + icon = business */
+.mpin{flex:none;width:26px;height:26px;display:grid;place-items:center}
+.mpin.biz{border-radius:50%;background:#7CD9FF;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.mpin.biz svg{width:15px;height:15px;fill:none;stroke:#0a2733;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mpin.corner::before{content:"";width:14px;height:14px;border-radius:50%;background:#D8FF3D;
+  box-shadow:0 0 0 3px color-mix(in srgb,#D8FF3D 22%,transparent),0 0 10px 2px color-mix(in srgb,#D8FF3D 45%,transparent)}
 .hero h1{position:relative;font-size:clamp(38px,8vw,74px);line-height:1.02;letter-spacing:-.03em;
   font-weight:750;margin:18px 0 20px;max-width:16ch;text-wrap:balance}
 .hero .sub{position:relative;font-size:clamp(18px,2.4vw,22px);color:var(--muted);max-width:46ch;margin:0 0 34px}
@@ -78,10 +128,8 @@ img{max-width:100%}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:26px 24px}
-.card .ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:20px;
-  background:color-mix(in srgb,var(--lime) 14%,transparent);margin-bottom:16px}
-.card.blue .ic{background:color-mix(in srgb,var(--blue) 16%,transparent)}
-.card.pink .ic{background:color-mix(in srgb,var(--pink) 16%,transparent)}
+.card .ic{width:42px;height:42px;border:1px solid var(--rule);border-radius:12px;display:grid;place-items:center;margin-bottom:18px}
+.card .ic svg{width:22px;height:22px;fill:none;stroke:var(--lime);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .card h3{font-size:19px;font-weight:680;margin:0 0 8px;letter-spacing:-.01em}
 .card p{margin:0;color:var(--muted);font-size:15.5px}
 

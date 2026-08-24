@@ -2,6 +2,31 @@ import AuthenticationServices
 import MapKit
 import SwiftUI
 
+/// Lightweight launch/loading screen shown while the session restores. No live
+/// map and no sign-in — just the brand on the app's dark background — so a cold
+/// start paints instantly instead of a black MapKit frame.
+struct LoadingSplashView: View {
+    var body: some View {
+        ZStack {
+            Color.btBg.ignoresSafeArea()
+            VStack(spacing: BTSpacing.lg) {
+                HStack(spacing: 0) {
+                    Text("block").foregroundStyle(Color.btText)
+                    Text(".").foregroundStyle(Color.btLime)
+                    Text("talk").foregroundStyle(Color.btText)
+                }
+                .font(BTFont.display(size: 64))
+                .tracking(-2.5)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
+                ProgressView()
+                    .tint(Color.btText3)
+            }
+        }
+    }
+}
+
 struct SplashView: View {
     @Environment(AppState.self) private var appState
     @Environment(NeighborhoodCache.self) private var neighborhoodCache

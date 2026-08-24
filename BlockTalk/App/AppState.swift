@@ -17,6 +17,10 @@ enum AppStage {
 @Observable
 final class AppState {
     var stage: AppStage = .splash
+    /// True while the app restores the session at launch. During this we show a
+    /// lightweight loading screen (logo on dark bg) instead of the full map+sign-in
+    /// landing — so a cold start paints instantly instead of a black MapKit frame.
+    var isRestoringSession = true
     var currentUser: BlockTalkUser?
     var session: Session?
     var isAuthenticated: Bool { session != nil }

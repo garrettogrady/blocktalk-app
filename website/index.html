@@ -23,8 +23,8 @@
 
   <!-- HERO -->
   <header class="hero">
-    <div class="dots"></div>
-    <div class="container">
+    <div class="container hero-grid">
+      <div class="hero-copy">
       <div class="eyebrow">NYC · anonymous · hyperlocal</div>
       <h1>Talk about where you actually are.</h1>
       <p class="sub">BlockTalk is the anonymous feed for your block. Read any neighborhood from anywhere — but you can only <em>post</em> where you're physically standing. Real presence, real talk.</p>
@@ -33,16 +33,35 @@
         <a class="btn btn-ghost" href="#how">See how it works</a>
         <span class="cta-note">TestFlight, NYC first</span>
       </div>
-      <div class="taglist">
-        <span class="tag"><span class="pin">◆</span> East Village</span>
-        <span class="tag"><span class="pin">◆</span> Lower East Side</span>
-        <span class="tag biz"><span class="pin">◆</span> Williamsburg</span>
-        <span class="tag"><span class="pin">◆</span> Astoria</span>
-        <span class="tag"><span class="pin">◆</span> Bushwick</span>
-        <span class="tag biz"><span class="pin">◆</span> Bed-Stuy</span>
+      </div>
+
+      <div class="hero-phone">
+        <div class="phone">
+          <div class="phone-screen">
+            <img src="hero.jpg" alt="BlockTalk map of Lower Manhattan">
+            <div class="phone-island"></div>
+          </div>
+        </div>
       </div>
     </div>
   </header>
+
+  <!-- TAG THE SPOT -->
+  <section class="cat-band">
+    <div class="container">
+      <span class="kick">Tag the exact spot</span>
+      <div class="cats">
+        <span class="cat"><span class="mpin corner"></span>Any corner</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M5 8.5h10v3.5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8.5z"/><path d="M15 9.5h1.7a1.9 1.9 0 0 1 0 3.8H15"/><path d="M6.5 18.5h9"/></svg></span>Cafés</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M8 4h8l-.9 5.2a3.1 3.1 0 0 1-6.2 0L8 4z"/><path d="M12 12.5V19M9 19h6"/></svg></span>Bars</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M8 4v4.5a1.8 1.8 0 0 0 1.8 1.8H10V20"/><path d="M8 4v3.6M10 4v3.6"/><path d="M15.5 4c-1.2 1.4-1.2 4.6 0 6V20"/></svg></span>Restaurants</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M6 9v6M9 7.5v9M15 7.5v9M18 9v6"/></svg></span>Gyms</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M5 20v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6"/><path d="M3.5 20h17"/><path d="M12 12V8"/><circle cx="12" cy="6.6" r="1"/></svg></span>Bakeries</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M4 9l8-4.5L20 9"/><path d="M4 9h16"/><path d="M6 9v8M10 9v8M14 9v8M18 9v8"/><path d="M3.5 20h17"/></svg></span>Museums</span>
+        <span class="cat"><span class="mpin biz"><svg viewBox="0 0 24 24"><path d="M3.5 5h2l1.8 9h9.4l1.6-6.5H7"/><circle cx="9.5" cy="18" r="1.3"/><circle cx="16.5" cy="18" r="1.3"/></svg></span>Markets</span>
+      </div>
+    </div>
+  </section>
 
   <!-- HOW IT WORKS -->
   <section class="section" id="how">
@@ -52,17 +71,17 @@
       <p class="lede">Anyone can post anything from anywhere. BlockTalk can't — and that's the point. What you read is coming from people who are actually there.</p>
       <div class="grid">
         <div class="card">
-          <div class="ic">📍</div>
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 22c4-4.4 7-7.8 7-11.5a7 7 0 1 0-14 0C5 14.2 8 17.6 12 22z"/><circle cx="12" cy="10.5" r="2.6"/></svg></div>
           <h3>Post where you are</h3>
           <p>You can only post in the neighborhood you're physically in. That constraint is what makes the feed real instead of performative.</p>
         </div>
-        <div class="card blue">
-          <div class="ic">👀</div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
           <h3>Read anywhere</h3>
           <p>Browse any block in the city from your couch. Reading and voting work from anywhere — posting is the only thing that's presence-locked.</p>
         </div>
-        <div class="card pink">
-          <div class="ic">🗺️</div>
+        <div class="card">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M9 4 3.5 6v13.5L9 17.5l6 2 5.5-2V4l-5.5 2-6-2z"/><path d="M9 4v13.5M15 6v13.5"/></svg></div>
           <h3>Drop it on the map</h3>
           <p>Tag the exact corner or business where something happened. Your comment lives on the spot, for the next person who walks by.</p>
         </div>

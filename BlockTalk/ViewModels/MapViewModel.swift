@@ -4,6 +4,8 @@ import MapKit
 @Observable
 final class MapViewModel {
     var pins: [Pin] = []
+    /// pinId → raw activity score (replies×2 + votes) driving the live pulse.
+    var pinActivity: [UUID: Int] = [:]
     var neighborhoods: [Neighborhood] = []
     var isLoading = false
     var error: String?
@@ -19,11 +21,13 @@ final class MapViewModel {
     )
 
     private let pinService = PinService()
+    private let postService = PostService()
     private let neighborhoodService = NeighborhoodService()
 
     func loadPins(neighborhoodId: UUID) async {
         do {
             pins = try await pinService.fetchPinsForNeighborhood(neighborhoodId)
+            await loadPinActivity()
         } catch {
             self.error = error.localizedDescription
         }
@@ -32,10 +36,28 @@ final class MapViewModel {
     func loadAllPins() async {
         do {
             pins = try await pinService.fetchAllPins()
+            await loadPinActivity()
         } catch {
             self.error = error.localizedDescription
             print("Failed to load pins: \(error)")
         }
+    }
+
+    /// Pull reply/vote activity for the current pins so each pulses to its heat.
+    func loadPinActivity() async {
+        guard !pins.isEmpty else { pinActivity = [:]; return }
+        do {
+            pinActivity = try await postService.fetchPinActivity(pinIds: pins.map(\.id))
+        } catch {
+            print("Failed to load pin activity: \(error)")
+        }
+    }
+
+    /// Raw activity → 0…1 pulse intensity: √(A / 20), capped. 0 activity = no pulse.
+    func intensity(forPinId id: UUID) -> Double {
+        let a = Double(pinActivity[id] ?? 0)
+        guard a > 0 else { return 0 }
+        return min((a / 20).squareRoot(), 1)
     }
 
     func loadNeighborhoods() async {

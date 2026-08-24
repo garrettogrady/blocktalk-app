@@ -35,9 +35,9 @@ struct YouView: View {
                     notificationsCard
                         .padding(.horizontal, BTSpacing.lg)
 
-                    // Personal board
+                    // Personal board — posts run full-width like the Feed (the board
+                    // pads its own header/empty state); don't wrap it in horizontal padding.
                     PersonalBoard()
-                        .padding(.horizontal, BTSpacing.lg)
 
                     // Sign out (bottom — destructive, away from the primary actions)
                     signOutRow
