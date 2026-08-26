@@ -16,6 +16,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private var resolvedAccuracy: CLLocationAccuracy = .greatestFiniteMagnitude
     /// The location that produced the current resolved neighborhood.
     private var resolvedLocation: CLLocation?
+    /// Bundled neighborhood polygons, loaded once for cheap per-fix boundary checks.
+    private let allPolygons = NeighborhoodPolygonLoader.load()
 
     var permissionState: PermissionState = .unknown
     var currentLocation: CLLocationCoordinate2D?
@@ -66,15 +68,23 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         let accuracy = location.horizontalAccuracy
         guard accuracy >= 0 else { return } // negative = invalid
 
-        let firstTime = currentNeighborhood == nil
-        // Re-resolve if this fix is meaningfully more accurate (2× better),
-        // OR the user has moved 200+ meters (crossed into another neighborhood).
-        let dominated = !firstTime && accuracy < resolvedAccuracy * 0.5
-        let moved = resolvedLocation.map { location.distance(from: $0) > 200 } ?? false
-
-        guard firstTime || dominated || moved else { return }
-
         let coordinate = location.coordinate
+
+        // Cheap local point-in-polygon on every fix — which neighborhood the
+        // coordinate is actually inside right now.
+        let localMatch = allPolygons.first(where: { $0.contains(coordinate) })
+
+        let firstTime = currentNeighborhood == nil
+        // Re-resolve when we don't have one yet, when the coordinate is now inside a
+        // DIFFERENT neighborhood than we last resolved (you crossed a boundary — even
+        // a few meters between adjacent NYC neighborhoods, e.g. LES → Nolita), or when
+        // a materially better fix arrives. Over water / in a gap (no polygon match),
+        // keep the current neighborhood rather than clearing it.
+        let crossedBoundary = localMatch != nil && localMatch?.name != currentNeighborhood?.name
+        let dominated = !firstTime && accuracy < resolvedAccuracy * 0.5
+
+        guard firstTime || crossedBoundary || dominated else { return }
+
         resolvedAccuracy = accuracy
         resolvedLocation = location
 
