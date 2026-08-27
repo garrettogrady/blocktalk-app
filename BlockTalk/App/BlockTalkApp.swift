@@ -96,6 +96,13 @@ struct BlockTalkApp: App {
                 UNUserNotificationCenter.current().delegate = pushManager
                 pushManager.checkPermission()
                 Analytics.setup()
+                // Safety net: the loading screen must NEVER hang the app. If restore is
+                // still running after 2s (e.g. a slow network on a fresh install), reveal
+                // the landing anyway so the user is never stuck on a blank screen.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(2))
+                    appState.isRestoringSession = false
+                }
                 await restoreSession()
             }
             .onChange(of: appState.stage) { _, stage in
@@ -166,8 +173,8 @@ struct BlockTalkApp: App {
     /// Restore an existing Supabase session on launch. If a session exists,
     /// fetch the user profile and advance to .app. Otherwise stay on .splash.
     private func restoreSession() async {
-        // Whatever path we take (session found, not found, or error), we're done
-        // bootstrapping when this returns — reveal the real landing / app.
+        // Reveal the real landing / app when restore finishes (the 2s safety timeout
+        // in the launch task also flips this, so we can never hang on the loading screen).
         defer { appState.isRestoringSession = false }
         // Load the neighborhood cache at startup
         await neighborhoodCache.loadAll()

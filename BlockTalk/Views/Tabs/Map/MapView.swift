@@ -45,6 +45,8 @@ struct MapTabView: View {
         )
     )
     @State private var showPreFrame = false
+    /// Whether we've already recentered the map on the user's location this session.
+    @State private var didCenterOnUser = false
 
     // Known LES corners for the 200m drop-mode snap
     private let knownCorners: [(name: String, coord: CLLocationCoordinate2D)] = [
@@ -93,8 +95,11 @@ struct MapTabView: View {
                         PulsatingPinView(
                             tint: pin.placeName != nil ? Color.btHouse : Color.btLime,
                             symbol: pin.placeName != nil ? (pin.placeSymbol ?? "mappin.circle.fill") : nil,
-                            intensity: pinIntensity(for: pin)
+                            // While dropping, freeze their pulse and dim them so the pin
+                            // you're placing is the only thing that stands out.
+                            intensity: viewModel.isDropMode ? 0 : pinIntensity(for: pin)
                         )
+                        .opacity(viewModel.isDropMode ? 0.3 : 1)
                         .onTapGesture {
                             openPinDetail(pin)
                         }
@@ -105,6 +110,14 @@ struct MapTabView: View {
                 if let loc = locationService.currentLocation {
                     Annotation("", coordinate: loc) {
                         HouseBlueDot()
+                    }
+                }
+
+                // Drop mode with a tagged business — a fixed pin locked on the place
+                // (no movable reticle). The pin lands exactly here, not where you pan.
+                if viewModel.isDropMode, let tagged = dropTaggedPlace {
+                    Annotation("", coordinate: tagged.coordinate) {
+                        PulsatingPinView(tint: .btHouse, symbol: tagged.symbol)
                     }
                 }
             }
@@ -149,7 +162,9 @@ struct MapTabView: View {
                     Color.clear
                         .onAppear { mapSize = geo.size }
                         .onChange(of: geo.size) { _, newValue in mapSize = newValue }
-                    if viewModel.isDropMode {
+                    // Only for a free crosshair pin — a tagged business is locked to
+                    // its own location (shown as a fixed pin), not the movable reticle.
+                    if viewModel.isDropMode && dropTaggedPlace == nil {
                         PinDropOverlay().position(reticlePoint)
                     }
                 }
@@ -406,6 +421,11 @@ struct MapTabView: View {
         .onChange(of: appState.focusPin?.id) { _, _ in
             if let pin = appState.focusPin { goToPin(pin) }
         }
+        // When location first becomes available (user just turned it on / first fix),
+        // recenter the map on where they actually are — once.
+        .onChange(of: locationService.currentLocation?.latitude) { _, _ in
+            centerOnUserIfNeeded()
+        }
         // In-drop search bar: debounce typing; load nearby the moment it's focused.
         .task(id: dropSearchQuery) {
             guard viewModel.isDropMode else { return }
@@ -427,12 +447,31 @@ struct MapTabView: View {
             // so honor the pending request as soon as the polygons are ready.
             if appState.pendingPinPlacement { enterDropFromCompose() }
             if let pin = appState.focusPin { goToPin(pin) }
+            centerOnUserIfNeeded()
             await viewModel.loadNeighborhoods()
             await viewModel.loadAllPins()
         }
     }
 
     /// "View on map" hand-off: fly to the pin at street zoom and open its detail.
+    /// On the first location fix (or when the user turns location on), recenter the
+    /// map on where they actually are — once — instead of the default LES landing.
+    /// Skips while dropping a pin, with a neighborhood selected, during a "view on
+    /// map" jump, or after the first center, so it never fights the user.
+    private func centerOnUserIfNeeded() {
+        guard !didCenterOnUser,
+              locationService.permissionState == .granted,
+              !viewModel.isDropMode,
+              selectedNeighborhood == nil,
+              appState.focusPin == nil,
+              let here = locationService.currentLocation else { return }
+        didCenterOnUser = true
+        let region = MKCoordinateRegion(
+            center: here,
+            span: MKCoordinateSpan(latitudeDelta: 0.022, longitudeDelta: 0.018))
+        withAnimation(.easeInOut(duration: 0.5)) { cameraPosition = .region(region) }
+    }
+
     private func goToPin(_ pin: Pin) {
         selectedNeighborhood = nil
         viewModel.cancelDrop()
@@ -465,10 +504,12 @@ struct MapTabView: View {
         viewModel.enterDropMode()
     }
 
-    /// Where the "near you" business search is centered: live GPS, else the
-    /// active neighborhood's polygon centroid (so it still works in the sim).
+    /// Where the in-drop business search is centered: the reticle (where the pin is
+    /// hovering) so a business at that exact corner surfaces even if you don't know its
+    /// name; then live GPS; then the active neighborhood's centroid (for the sim).
     private var placeSearchCenter: CLLocationCoordinate2D? {
-        locationService.currentLocation
+        reticleCoord
+            ?? locationService.currentLocation
             ?? polygons.first { $0.name == activeNeighborhoodName }?.center
     }
 

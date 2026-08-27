@@ -16,8 +16,6 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private var resolvedAccuracy: CLLocationAccuracy = .greatestFiniteMagnitude
     /// The location that produced the current resolved neighborhood.
     private var resolvedLocation: CLLocation?
-    /// Bundled neighborhood polygons, loaded once for cheap per-fix boundary checks.
-    private let allPolygons = NeighborhoodPolygonLoader.load()
 
     var permissionState: PermissionState = .unknown
     var currentLocation: CLLocationCoordinate2D?
@@ -72,7 +70,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
         // Cheap local point-in-polygon on every fix — which neighborhood the
         // coordinate is actually inside right now.
-        let localMatch = allPolygons.first(where: { $0.contains(coordinate) })
+        let localMatch = NeighborhoodPolygonLoader.load().first(where: { $0.contains(coordinate) })
 
         let firstTime = currentNeighborhood == nil
         // Re-resolve when we don't have one yet, when the coordinate is now inside a

@@ -47,8 +47,18 @@ struct NeighborhoodPolygon: Identifiable {
 }
 
 enum NeighborhoodPolygonLoader {
-    /// Load all neighborhood polygons from the bundled JSON
+    private static var cache: [NeighborhoodPolygon]?
+
+    /// Load all neighborhood polygons from the bundled JSON — parsed once, then cached
+    /// (so it never re-parses, and never runs on the app-launch critical path).
     static func load() -> [NeighborhoodPolygon] {
+        if let cache { return cache }
+        let result = parse()
+        cache = result
+        return result
+    }
+
+    private static func parse() -> [NeighborhoodPolygon] {
         guard let url = Bundle.main.url(forResource: "neighborhood-polygons", withExtension: "json"),
               let data = try? Data(contentsOf: url) else {
             print("Failed to load neighborhood-polygons.json")
