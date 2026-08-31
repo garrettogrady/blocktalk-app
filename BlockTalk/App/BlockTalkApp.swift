@@ -204,7 +204,7 @@ struct BlockTalkApp: App {
                 if let home = neighborhoodCache.neighborhood(id: homeId) {
                     appState.homeNeighborhood = home
                     appState.viewingNeighborhood = home
-                    appState.physicalNeighborhood = home
+                    // Do NOT seed physicalNeighborhood from home — GPS-only (see above).
                     appState.hasResolvedInitialNeighborhood = true
                 } else {
                     // ID not in cache (stale/synthetic UUID) — fetch directly
@@ -217,7 +217,11 @@ struct BlockTalkApp: App {
                     if let home = fetched.first {
                         appState.homeNeighborhood = home
                         appState.viewingNeighborhood = home
-                        appState.physicalNeighborhood = home
+                        // NOTE: do NOT set physicalNeighborhood here. "Physical" means
+                        // where you actually are right now, and is set ONLY from a real
+                        // GPS fix (see .onChange on locationService.currentNeighborhood).
+                        // Seeding it from home let a user post to their home neighborhood
+                        // while physically elsewhere (e.g. abroad).
                         appState.hasResolvedInitialNeighborhood = true
                     }
                     // If still nil, FeedView.resolveInitialNeighborhood will handle it

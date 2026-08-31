@@ -389,10 +389,21 @@ struct ComposeView: View {
     }
 
     private var resolvedPostingNeighborhoodId: UUID? {
-        postingNeighborhood?.id
-            ?? locationService.currentNeighborhood?.id
-            ?? appState.currentUser?.homeNeighborhoodId
-            ?? appState.viewingNeighborhood?.id
+        // Posting is STRICTLY tied to where you physically are right now: an explicit
+        // posting neighborhood (a map pin drop, already GPS-gated) or the live
+        // GPS-resolved neighborhood. NEVER fall back to home or the neighborhood you're
+        // browsing — that let a user in Europe post to their Brooklyn "home". If neither
+        // is available, posting is blocked (see submitPost), not silently redirected.
+        if let id = postingNeighborhood?.id ?? locationService.currentNeighborhood?.id {
+            return id
+        }
+        #if DEBUG
+        // The simulator has no GPS, so allow home/browsing ONLY in debug builds so posting
+        // stays testable. Release/TestFlight builds require a real physical fix.
+        return appState.currentUser?.homeNeighborhoodId ?? appState.viewingNeighborhood?.id
+        #else
+        return nil
+        #endif
     }
 
     private var resolvedNeighborhoodName: String {
@@ -413,6 +424,9 @@ struct ComposeView: View {
         }
         guard let neighborhoodId = resolvedPostingNeighborhoodId else {
             print("[Compose] BLOCKED: no neighborhood resolved (physical=\(appState.physicalNeighborhood?.name ?? "nil"), viewing=\(appState.viewingNeighborhood?.name ?? "nil"), home=\(appState.currentUser?.homeNeighborhoodId?.uuidString.prefix(8) ?? "nil"))")
+            submitError = locationService.permissionState == .granted
+                ? "You're outside a BlockTalk neighborhood. You can only post from inside a covered NYC neighborhood."
+                : "Turn on location to post. BlockTalk posts are tied to where you actually are."
             return
         }
 

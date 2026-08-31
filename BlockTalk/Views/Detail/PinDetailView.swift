@@ -14,7 +14,9 @@ struct PinDetailView: View {
         ReplyAuthor(
             username: appState.currentUser?.username ?? "BlockTalker",
             userNumber: appState.currentUser?.userNumber ?? 0,
-            homeShortCode: appState.physicalNeighborhood?.shortCode ?? "LES"
+            // Identity badge = the neighborhood you're FROM (home), matching post badges.
+            homeShortCode: appState.homeNeighborhood?.shortCode
+                ?? appState.physicalNeighborhood?.shortCode ?? "NYC"
         )
     }
     @State private var showPreFrame = false

@@ -210,7 +210,8 @@ struct FeedView: View {
                 PostDetailView(post: post)
             }
             .fullScreenCover(isPresented: $showCompose) {
-                ComposeView(postingNeighborhood: appState.viewingNeighborhood)
+                // Post to where you physically are, NOT the neighborhood you're browsing.
+                ComposeView(postingNeighborhood: appState.physicalNeighborhood)
             }
             .task {
                 if !appState.hasResolvedInitialNeighborhood {
@@ -484,9 +485,8 @@ struct FeedView: View {
 
                 if let home = neighborhoods.first {
                     appState.viewingNeighborhood = home
-                    if appState.physicalNeighborhood == nil {
-                        appState.physicalNeighborhood = home
-                    }
+                    // Home drives what you BROWSE, not where you can post. physicalNeighborhood
+                    // is GPS-only so posting stays tied to real-time physical location.
                 }
             } catch {
                 print("Failed to fetch home neighborhood: \(error)")

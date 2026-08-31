@@ -13,7 +13,10 @@ struct PostDetailView: View {
         ReplyAuthor(
             username: appState.currentUser?.username ?? "BlockTalker",
             userNumber: appState.currentUser?.userNumber ?? 0,
-            homeShortCode: appState.physicalNeighborhood?.shortCode ?? "LES"
+            // Your identity badge = the neighborhood you're FROM (home), matching how
+            // post author badges render — not where you happen to be standing right now.
+            homeShortCode: appState.homeNeighborhood?.shortCode
+                ?? appState.physicalNeighborhood?.shortCode ?? "NYC"
         )
     }
     @FocusState private var replyFocused: Bool
