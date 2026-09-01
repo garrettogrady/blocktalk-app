@@ -484,7 +484,7 @@ struct FeedView: View {
 
                 if let home = neighborhoods.first {
                     appState.viewingNeighborhood = home
-                    if appState.physicalNeighborhood == nil && !FeatureFlags.requireGPSForPosting {
+                    if appState.physicalNeighborhood == nil {
                         appState.physicalNeighborhood = home
                     }
                 }
