@@ -344,7 +344,9 @@ struct SplashView: View {
                             if let homeId = user.homeNeighborhoodId,
                                let home = neighborhoodCache.neighborhood(id: homeId) {
                                 appState.viewingNeighborhood = home
-                                appState.physicalNeighborhood = home
+                                // Home drives what you BROWSE, not where you can post.
+                                // physicalNeighborhood is GPS-only (set from a real fix)
+                                // so posting stays tied to real-time physical location.
                                 appState.hasResolvedInitialNeighborhood = true
                             }
                             appState.advanceTo(.app)

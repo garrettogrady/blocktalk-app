@@ -442,9 +442,8 @@ struct UsernameCreationView: View {
 
                 appState.currentUser = user
                 appState.viewingNeighborhood = resolvedHood
-                if appState.physicalNeighborhood == nil {
-                    appState.physicalNeighborhood = resolvedHood
-                }
+                // Do NOT seed physicalNeighborhood from the picked home — it's GPS-only,
+                // so a new user can only post once GPS confirms where they physically are.
                 appState.hasResolvedInitialNeighborhood = true
                 appState.selectedTab = 0
                 Analytics.identify(userId: user.id, isSeed: false)
