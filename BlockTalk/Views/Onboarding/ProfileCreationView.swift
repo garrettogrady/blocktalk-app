@@ -442,7 +442,7 @@ struct UsernameCreationView: View {
 
                 appState.currentUser = user
                 appState.viewingNeighborhood = resolvedHood
-                if appState.physicalNeighborhood == nil {
+                if appState.physicalNeighborhood == nil && !FeatureFlags.requireGPSForPosting {
                     appState.physicalNeighborhood = resolvedHood
                 }
                 appState.hasResolvedInitialNeighborhood = true

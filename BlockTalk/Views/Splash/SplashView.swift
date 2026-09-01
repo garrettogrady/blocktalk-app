@@ -344,7 +344,9 @@ struct SplashView: View {
                             if let homeId = user.homeNeighborhoodId,
                                let home = neighborhoodCache.neighborhood(id: homeId) {
                                 appState.viewingNeighborhood = home
-                                appState.physicalNeighborhood = home
+                                if !FeatureFlags.requireGPSForPosting {
+                                    appState.physicalNeighborhood = home
+                                }
                                 appState.hasResolvedInitialNeighborhood = true
                             }
                             appState.advanceTo(.app)

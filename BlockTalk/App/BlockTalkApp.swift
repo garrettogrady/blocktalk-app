@@ -204,7 +204,9 @@ struct BlockTalkApp: App {
                 if let home = neighborhoodCache.neighborhood(id: homeId) {
                     appState.homeNeighborhood = home
                     appState.viewingNeighborhood = home
-                    appState.physicalNeighborhood = home
+                    if !FeatureFlags.requireGPSForPosting {
+                        appState.physicalNeighborhood = home
+                    }
                     appState.hasResolvedInitialNeighborhood = true
                 } else {
                     // ID not in cache (stale/synthetic UUID) — fetch directly
@@ -217,7 +219,9 @@ struct BlockTalkApp: App {
                     if let home = fetched.first {
                         appState.homeNeighborhood = home
                         appState.viewingNeighborhood = home
-                        appState.physicalNeighborhood = home
+                        if !FeatureFlags.requireGPSForPosting {
+                            appState.physicalNeighborhood = home
+                        }
                         appState.hasResolvedInitialNeighborhood = true
                     }
                     // If still nil, FeedView.resolveInitialNeighborhood will handle it
