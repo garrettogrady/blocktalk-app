@@ -41,6 +41,10 @@ struct BlockTalkApp: App {
     @State private var notifications = NotificationStore()
     @State private var neighborhoodCache = NeighborhoodCache()
     @State private var enrollments = EnrollmentStore()
+    /// Drives the cosmetic launch logo overlay ONLY. Never touched by session restore
+    /// or any network call — dismissed by a local, hard-capped timer (see body .task),
+    /// so it can never trap the app. Starts true so the logo shows the instant we render.
+    @State private var showLaunchLogo = true
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -48,11 +52,7 @@ struct BlockTalkApp: App {
             Group {
                 switch appState.stage {
                 case .splash:
-                    if appState.isRestoringSession {
-                        LoadingSplashView()
-                    } else {
-                        SplashView()
-                    }
+                    SplashView()
                 case .how:
                     HowItWorksView()
                 case .tone:
@@ -75,6 +75,28 @@ struct BlockTalkApp: App {
             .environment(neighborhoodCache)
             .environment(enrollments)
             .preferredColorScheme(.dark)
+            // Cosmetic launch cover: the block.talk logo on dark, sitting ON TOP of the
+            // real landing (which renders underneath the whole time — the known-good
+            // setup). This is an overlay, NOT a gate, so it can never stop the app from
+            // rendering. If anything ever went wrong, the worst case is the logo lingers
+            // a beat — never a black screen.
+            .overlay {
+                if showLaunchLogo {
+                    LoadingSplashView()
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.35), value: showLaunchLogo)
+            .task {
+                // Dismiss the logo with a LOCAL timer that depends on nothing external —
+                // no network, no session restore. Fade out as soon as the app has settled
+                // into its real stage, or after a hard 2.5s cap, whichever is first.
+                for _ in 0..<25 {
+                    if appState.stage == .app { break }
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                showLaunchLogo = false
+            }
             .fullScreenCover(item: Binding(
                 get: { appState.deepLinkedPost },
                 set: { appState.deepLinkedPost = $0 }
@@ -96,13 +118,6 @@ struct BlockTalkApp: App {
                 UNUserNotificationCenter.current().delegate = pushManager
                 pushManager.checkPermission()
                 Analytics.setup()
-                // Safety net: the loading screen must NEVER hang the app. If restore is
-                // still running after 2s (e.g. a slow network on a fresh install), reveal
-                // the landing anyway so the user is never stuck on a blank screen.
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(2))
-                    appState.isRestoringSession = false
-                }
                 await restoreSession()
             }
             .onChange(of: appState.stage) { _, stage in
@@ -173,9 +188,6 @@ struct BlockTalkApp: App {
     /// Restore an existing Supabase session on launch. If a session exists,
     /// fetch the user profile and advance to .app. Otherwise stay on .splash.
     private func restoreSession() async {
-        // Reveal the real landing / app when restore finishes (the 2s safety timeout
-        // in the launch task also flips this, so we can never hang on the loading screen).
-        defer { appState.isRestoringSession = false }
         // Load the neighborhood cache at startup
         await neighborhoodCache.loadAll()
 
