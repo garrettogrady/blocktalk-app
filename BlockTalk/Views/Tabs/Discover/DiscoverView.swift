@@ -54,6 +54,22 @@ struct DiscoverView: View {
                             .padding(.top, BTSpacing.xxxl)
                     } else if viewModel.error != nil && viewModel.trendingPosts.isEmpty {
                         LoadErrorView { Task { await viewModel.load() } }
+                    } else if viewModel.trendingPosts.isEmpty && viewModel.boroughCards.isEmpty && viewModel.neighborhoods.isEmpty {
+                        // Nothing anywhere yet — a proper empty state beats three bare
+                        // section headers with nothing under them.
+                        VStack(spacing: BTSpacing.md) {
+                            Image(systemName: "map")
+                                .font(.system(size: 32))
+                                .foregroundStyle(Color.btText3)
+                            Text("Nothing to discover yet")
+                                .font(BTFont.body(size: 15))
+                                .foregroundStyle(Color.btText3)
+                            Text("Be the first to post in your neighborhood.")
+                                .font(BTFont.body(size: 13))
+                                .foregroundStyle(Color.btText3)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, BTSpacing.xxxl)
                     } else {
                     // Top by Borough — above the feed so it's always reachable
                     // (the paginated feed below grows downward and would otherwise
@@ -161,6 +177,10 @@ struct DiscoverView: View {
                 }
             }
             .background(Color.btBg)
+            .refreshable {
+                await viewModel.load()
+                await pinStore.ensureLoaded(for: viewModel.trendingPosts)
+            }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSearch) {
                 SearchView(scope: .global)
@@ -228,10 +248,13 @@ struct DiscoverView: View {
         if let cached = neighborhoodCache.neighborhood(named: n.name) {
             appState.viewingNeighborhood = cached
         } else {
+            // Use the REAL Supabase id carried on the card (this neighborhood was
+            // chosen precisely because it has posts) — never fabricate an id, which
+            // would query a non-existent neighborhood and show an empty feed.
             let entry = NeighborhoodDirectory.all.first { $0.name.caseInsensitiveCompare(n.name) == .orderedSame }
             let shortCode = entry?.shortCode ?? String(n.name.prefix(4)).uppercased()
             appState.viewingNeighborhood = Neighborhood(
-                id: UUID(), name: n.name, shortCode: shortCode,
+                id: n.realId, name: n.name, shortCode: shortCode,
                 borough: entry?.borough ?? n.borough.capitalized
             )
         }

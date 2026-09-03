@@ -105,31 +105,38 @@ struct YouView: View {
                     Spacer()
                 }
 
-                ForEach(notifications.items.prefix(2)) { notif in
-                    HStack(alignment: .top, spacing: BTSpacing.sm) {
-                        Circle()
-                            .fill(notif.unread ? Color.btLime : Color.clear)
-                            .frame(width: 6, height: 6)
-                            .padding(.top, 5)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(notif.title)
-                                .font(BTFont.bodySemibold(size: 13))
-                                .foregroundStyle(Color.btText)
-                                .lineLimit(1)
-                            if let p = notif.preview {
-                                Text(p)
-                                    .font(BTFont.body(size: 12))
-                                    .foregroundStyle(Color.btText2)
+                if notifications.items.isEmpty {
+                    Text("No notifications yet — you'll hear when someone replies or votes.")
+                        .font(BTFont.body(size: 13))
+                        .foregroundStyle(Color.btText3)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    ForEach(notifications.items.prefix(2)) { notif in
+                        HStack(alignment: .top, spacing: BTSpacing.sm) {
+                            Circle()
+                                .fill(notif.unread ? Color.btLime : Color.clear)
+                                .frame(width: 6, height: 6)
+                                .padding(.top, 5)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(notif.title)
+                                    .font(BTFont.bodySemibold(size: 13))
+                                    .foregroundStyle(Color.btText)
                                     .lineLimit(1)
+                                if let p = notif.preview {
+                                    Text(p)
+                                        .font(BTFont.body(size: 12))
+                                        .foregroundStyle(Color.btText2)
+                                        .lineLimit(1)
+                                }
                             }
+                            Spacer()
                         }
-                        Spacer()
                     }
-                }
 
-                Text("VIEW ALL (\(notifications.items.count)) →")
-                    .font(BTFont.bodySemibold(size: 12))
-                    .foregroundStyle(Color.btLime)
+                    Text("VIEW ALL (\(notifications.items.count)) →")
+                        .font(BTFont.bodySemibold(size: 12))
+                        .foregroundStyle(Color.btLime)
+                }
             }
             .padding(BTSpacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -9,6 +9,9 @@ struct SettingsProfileView: View {
     @State private var showNeighborhoodPicker = false
     @State private var showNeighborhoodLocked = false
     @State private var homeChangedAt: Date?
+    /// Surfaced when account deletion or the neighborhood change fails, so the user
+    /// gets real feedback instead of a silent no-op that looks like success.
+    @State private var actionError: String?
 
     private let aliasLockDays: Double = 30
 
@@ -187,6 +190,14 @@ struct SettingsProfileView: View {
                 Task { await changeHomeNeighborhood(picked) }
             }
         }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { actionError != nil },
+            set: { if !$0 { actionError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(actionError ?? "")
+        }
         .onAppear {
             let t = UserDefaults.standard.double(forKey: homeChangedAtKey)
             if t > 0 { homeChangedAt = Date(timeIntervalSince1970: t) }
@@ -213,6 +224,9 @@ struct SettingsProfileView: View {
             // real Supabase row before persisting — never store a synthetic id.
             guard let real = try await NeighborhoodService().fetchByName(picked.name) else {
                 print("Couldn't resolve neighborhood id for \(picked.name)")
+                await MainActor.run {
+                    actionError = "\(picked.name) isn't available yet. Try a different neighborhood."
+                }
                 return
             }
             try await supabase.from("users")
@@ -228,6 +242,9 @@ struct SettingsProfileView: View {
             }
         } catch {
             print("Failed to change home neighborhood: \(error)")
+            await MainActor.run {
+                actionError = "Couldn't update your neighborhood. Check your connection and try again."
+            }
         }
     }
 
@@ -245,7 +262,10 @@ struct SettingsProfileView: View {
                                            params: ["p_user_id": userId.uuidString]).execute()
                 } catch {
                     print("Account delete failed: \(error)")
-                    isDeleting = false
+                    await MainActor.run {
+                        isDeleting = false
+                        actionError = "Couldn't delete your account. Check your connection and try again."
+                    }
                     return
                 }
             }

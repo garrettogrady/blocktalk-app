@@ -1,7 +1,9 @@
 import Foundation
 
 struct Reply: Codable, Identifiable, Sendable {
-    let id: UUID
+    // var (not let) so an optimistic reply's client id can be reconciled to the real
+    // DB id once the insert returns (see PostDetailViewModel.reconcileId).
+    var id: UUID
     let postId: UUID
     var parentReplyId: UUID?
     let userId: UUID

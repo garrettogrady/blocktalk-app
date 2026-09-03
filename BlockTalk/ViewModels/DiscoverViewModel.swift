@@ -8,6 +8,9 @@ struct BoroughCardData: Identifiable {
 
 struct DiscoverNeighborhood: Identifiable {
     let id = UUID()
+    /// The REAL Supabase neighborhood id — used to open the correct feed. Never
+    /// fabricate this; a synthetic id lands the user on an empty feed.
+    let realId: UUID
     let name: String
     let borough: String
 }
@@ -109,7 +112,7 @@ final class DiscoverViewModel {
             // Truly random each visit — shuffle the pool of neighborhoods that
             // actually have posts, then take a handful. Never an empty feed.
             neighborhoods = pool.shuffled().prefix(5).map {
-                DiscoverNeighborhood(name: $0.name, borough: $0.borough)
+                DiscoverNeighborhood(realId: $0.id, name: $0.name, borough: $0.borough)
             }
         } catch {
             print("Discover: failed to load random neighborhoods — \(error)")

@@ -17,10 +17,6 @@ enum AppStage {
 @Observable
 final class AppState {
     var stage: AppStage = .splash
-    /// True while the app restores the session at launch. During this we show a
-    /// lightweight loading screen (logo on dark bg) instead of the full map+sign-in
-    /// landing — so a cold start paints instantly instead of a black MapKit frame.
-    var isRestoringSession = true
     var currentUser: BlockTalkUser?
     var session: Session?
     var isAuthenticated: Bool { session != nil }
@@ -86,7 +82,12 @@ final class AppState {
         session = nil
         viewingNeighborhood = nil
         physicalNeighborhood = nil
+        homeNeighborhood = nil
+        onboardingNeighborhood = nil
         hasResolvedInitialNeighborhood = false
+        deepLinkedPost = nil
+        composeDraft = ""
+        composeDraftImage = nil
         selectedTab = 0
         stage = .splash
     }
@@ -157,6 +158,12 @@ final class NotificationStore {
 
     func markAllRead() {
         for i in items.indices { items[i].unread = false }
+    }
+
+    /// Mark a single notification read locally (instant UI); persist separately.
+    func markRead(id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        items[i].unread = false
     }
 }
 

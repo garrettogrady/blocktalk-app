@@ -13,6 +13,9 @@ struct PersonalBoard: View {
     @State private var interactedPosts: [Post] = []
     @State private var createdCount = 0
     @State private var interactedCount = 0
+    /// Distinguishes a failed load from a genuinely empty board — otherwise a network
+    /// error shows "No posts yet" to a user who actually has posts.
+    @State private var loadFailed = false
 
     var body: some View {
         VStack(spacing: BTSpacing.lg) {
@@ -45,7 +48,9 @@ struct PersonalBoard: View {
 
             let posts = selectedTab == .created ? createdPosts : interactedPosts
 
-            if posts.isEmpty {
+            if posts.isEmpty && loadFailed {
+                errorState
+            } else if posts.isEmpty {
                 emptyState
             } else {
                 LazyVStack(spacing: 0) {
@@ -73,6 +78,7 @@ struct PersonalBoard: View {
 
     private func loadPosts() async {
         guard let userId = appState.currentUser?.id else { return }
+        loadFailed = false
         do {
             // User's own posts
             let created: [Post] = try await supabase.from("posts")
@@ -122,7 +128,27 @@ struct PersonalBoard: View {
             }
         } catch {
             print("PersonalBoard: failed to load — \(error)")
+            loadFailed = true
         }
+    }
+
+    private var errorState: some View {
+        VStack(spacing: BTSpacing.md) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 28))
+                .foregroundStyle(Color.btText3)
+            Text("Couldn't load your posts.")
+                .font(BTFont.body(size: 14))
+                .foregroundStyle(Color.btText3)
+            Button("Try again") {
+                Task { await loadPosts() }
+            }
+            .font(BTFont.bodySemibold(size: 14))
+            .foregroundStyle(Color.btLime)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, BTSpacing.xxxl)
+        .padding(.horizontal, BTSpacing.lg)
     }
 
     private var emptyState: some View {

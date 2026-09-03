@@ -38,6 +38,11 @@ struct MapTabView: View {
     // exactly what's checked and where the pin lands.
     @State private var mapSize: CGSize = .zero
     @State private var reticleCoord: CLLocationCoordinate2D?
+    /// The polygon the user is physically standing in, captured when drop mode starts.
+    /// The pin must land inside THIS polygon — a true geometric fence that doesn't
+    /// depend on neighborhood-name matching (which diverges for Flatiron / Yorkville /
+    /// South Bronx and would otherwise silently disable the fence).
+    @State private var fencePolygon: NeighborhoodPolygon?
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911),
@@ -204,10 +209,20 @@ struct MapTabView: View {
                         // a logical "location off" note instead of a false home.
                         HStack(spacing: BTSpacing.xs) {
                             if locationService.permissionState == .granted {
-                                Circle().fill(Color.btLime).frame(width: 6, height: 6)
-                                Text("You're in \(hereShortCode)")
-                                    .font(BTFont.bodySemibold(size: 12))
-                                    .foregroundStyle(Color.btText)
+                                if appState.physicalNeighborhood != nil || locationService.currentNeighborhood != nil {
+                                    Circle().fill(Color.btLime).frame(width: 6, height: 6)
+                                    Text("You're in \(hereShortCode)")
+                                        .font(BTFont.bodySemibold(size: 12))
+                                        .foregroundStyle(Color.btText)
+                                } else {
+                                    // Granted but not resolved yet — don't assert a
+                                    // false "You're in NYC" while the FAB below says
+                                    // "Finding your neighborhood…".
+                                    ProgressView().tint(Color.btText2).scaleEffect(0.7)
+                                    Text("Locating…")
+                                        .font(BTFont.bodySemibold(size: 12))
+                                        .foregroundStyle(Color.btText2)
+                                }
                             } else {
                                 Image(systemName: "location.slash.fill")
                                     .font(.system(size: 10))
@@ -497,8 +512,14 @@ struct MapTabView: View {
         resetDropSearch()
         selectedNeighborhood = nil
         if let here = locationService.currentLocation {
+            // Capture the polygon the user is physically inside — the pin must land
+            // in this same polygon. Computed once here (not per camera frame) to keep
+            // the drag smooth. Nil if GPS is unresolved or the fix isn't inside any
+            // bundled polygon → inRange falls back to name matching.
+            fencePolygon = polygons.first { $0.contains(here) }
             centerReticle(on: here)
         } else {
+            fencePolygon = nil
             focus(on: activeNeighborhoodName)
         }
         viewModel.enterDropMode()
@@ -678,6 +699,15 @@ struct MapTabView: View {
     /// A coordinate is postable iff it sits inside the highlighted (current)
     /// neighborhood polygon. Nothing highlighted → don't block.
     private func inRange(_ c: CLLocationCoordinate2D) -> Bool {
+        // Primary fence: the pin must sit inside the SAME polygon the user is
+        // physically standing in (captured on drop start). This is purely geometric
+        // and never depends on neighborhood-name matching, so it can't silently
+        // fail open when Supabase names and bundled NTA names diverge.
+        if let fence = fencePolygon {
+            return fence.contains(c)
+        }
+        // Fallback (no GPS fix, or the user's location wasn't inside any bundled
+        // polygon): match by name. Only truly unfenced when nothing matches.
         let highlighted = polygons.filter { isCurrentNeighborhood($0.name) }
         guard !highlighted.isEmpty else { return true }
         return highlighted.contains { $0.contains(c) }
@@ -994,7 +1024,13 @@ struct PulsatingPinView: View {
                 .allowsHitTesting(false)
         }
         .onAppear { startPulse() }
-        .onChange(of: intensity) { _, _ in startPulse() }
+        .onChange(of: intensity) { _, _ in
+            // Drop mode forces intensity to 0. Reset isPulsing so the pulse can
+            // re-arm when the user leaves drop mode — otherwise startPulse's
+            // `!isPulsing` guard leaves every pin frozen for the rest of the session.
+            if level <= 0.001 { isPulsing = false }
+            startPulse()
+        }
     }
 
     private func startPulse() {

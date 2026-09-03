@@ -151,7 +151,10 @@ struct FeedView: View {
                         } else if viewModel.error != nil {
                             // A failed load must NOT read as an empty neighborhood.
                             LoadErrorView { Task { await viewModel.loadPosts() } }
-                        } else if viewModel.posts.isEmpty {
+                        } else if viewModel.posts.isEmpty && myPosts.isEmpty {
+                            // Only truly empty when there are no DB posts AND no
+                            // session posts — otherwise "No posts yet" contradicts the
+                            // post the user just made, rendered right above.
                             VStack(spacing: BTSpacing.md) {
                                 Image(systemName: "bubble.left.and.bubble.right")
                                     .font(.system(size: 32))

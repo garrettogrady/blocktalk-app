@@ -35,23 +35,23 @@ struct PostService {
     /// "Random Neighborhoods" section samples from (so we never send someone into
     /// an empty feed). Deduped client-side from a capped recent-posts fetch; at
     /// scale this should become an RPC (`SELECT DISTINCT … ORDER BY random()`).
-    func neighborhoodsWithPosts(sampleCap: Int = 400) async throws -> [(name: String, borough: String)] {
+    func neighborhoodsWithPosts(sampleCap: Int = 400) async throws -> [(id: UUID, name: String, borough: String)] {
         struct Row: Decodable {
             let neighborhood: Nb?
-            struct Nb: Decodable { let name: String; let borough: String }
+            struct Nb: Decodable { let id: UUID; let name: String; let borough: String }
         }
         let rows: [Row] = try await supabase.from("posts")
-            .select("neighborhood:neighborhoods!inner(name, borough)")
+            .select("neighborhood:neighborhoods!inner(id, name, borough)")
             .eq("status", value: "live")
             .order("created_at", ascending: false)
             .limit(sampleCap)
             .execute()
             .value
         var seen = Set<String>()
-        var out: [(name: String, borough: String)] = []
+        var out: [(id: UUID, name: String, borough: String)] = []
         for r in rows {
             guard let nb = r.neighborhood, seen.insert(nb.name).inserted else { continue }
-            out.append((name: nb.name, borough: nb.borough))
+            out.append((id: nb.id, name: nb.name, borough: nb.borough))
         }
         return out
     }

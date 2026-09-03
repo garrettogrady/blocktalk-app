@@ -5,6 +5,9 @@ struct NotificationsView: View {
     @Environment(AppState.self) private var appState
     @Environment(NotificationStore.self) private var store
     @State private var isLoading = false
+    /// Shown when a tapped notification's post can't be opened (deleted, or someone
+    /// else's since-removed post).
+    @State private var unavailableMessage: String?
 
     private var notifications: [BTNotification] { store.items }
 
@@ -16,7 +19,11 @@ struct NotificationsView: View {
                 } else {
                     List {
                         ForEach(notifications) { notification in
+                            // A row tap (not a Button) — a Button label inside a List
+                            // renders its Text underlined/tinted; a plain row + tap
+                            // gesture keeps the copy clean.
                             notificationRow(notification)
+                                .onTapGesture { open(notification) }
                                 .listRowBackground(
                                     notification.unread
                                         ? Color.btSurface2 : Color.btBg
@@ -28,6 +35,14 @@ struct NotificationsView: View {
                 }
             }
             .background(Color.btBg)
+            .alert("Post unavailable", isPresented: Binding(
+                get: { unavailableMessage != nil },
+                set: { if !$0 { unavailableMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(unavailableMessage ?? "")
+            }
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -85,7 +100,16 @@ struct NotificationsView: View {
             }
 
             Spacer()
+
+            // Only notifications tied to a post can be opened.
+            if notification.relatedPostId != nil {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.btText3)
+                    .padding(.top, 4)
+            }
         }
+        .contentShape(Rectangle())
         .padding(.vertical, BTSpacing.xs)
     }
 
@@ -121,6 +145,38 @@ struct NotificationsView: View {
                 .foregroundStyle(Color.btText3)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Tapping a notification marks it read and opens the post it's about (deep
+    /// drop) via the same SharedPostView cover the push path uses.
+    private func open(_ notification: BTNotification) {
+        // Mark read immediately (local) + persist.
+        if notification.unread {
+            store.markRead(id: notification.id)
+            Task { try? await NotificationService().markRead(id: notification.id) }
+        }
+        // Some notifications (e.g. generic announcements) have no post to open.
+        guard let postId = notification.relatedPostId else { return }
+        Task { @MainActor in
+            guard let post = try? await PostService().fetchPost(id: postId) else {
+                // Couldn't load — the post was deleted, or it's someone else's post
+                // that's since been removed (RLS hides it).
+                unavailableMessage = "This post is no longer available."
+                return
+            }
+            // Option B: your OWN removed/under-review post opens to its moderation
+            // notice (so you learn what happened); someone else's removed post just
+            // reads "no longer available" rather than surfacing a dead post.
+            if post.status != .live && post.userId != appState.currentUser?.id {
+                unavailableMessage = "This post is no longer available."
+                return
+            }
+            // Close this sheet first, then present the post over the You tab so
+            // dismissing the post returns cleanly to the tab (not a stacked sheet).
+            dismiss()
+            try? await Task.sleep(for: .milliseconds(350))
+            appState.deepLinkedPost = post
+        }
     }
 
     private func markAllRead() {

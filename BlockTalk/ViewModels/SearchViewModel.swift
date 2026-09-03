@@ -40,9 +40,15 @@ final class SearchViewModel {
             }
 
             // Filters must be applied before transforms (.order/.limit)
+            // Escape LIKE wildcards so a query like "50% off" or "a_b" matches those
+            // literal characters instead of acting as SQL pattern wildcards.
+            let escaped = q
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "%", with: "\\%")
+                .replacingOccurrences(of: "_", with: "\\_")
             var filterBuilder = supabase.from("posts")
                 .select(PostService.postSelect)
-                .ilike("text", value: "%\(q)%")
+                .ilike("text", value: "%\(escaped)%")
                 .eq("status", value: "live")
 
             if scope == .neighborhood, let nid = neighborhoodId {

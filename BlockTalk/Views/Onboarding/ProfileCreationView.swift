@@ -417,11 +417,15 @@ struct UsernameCreationView: View {
             do {
                 // If the picker fell back to the local directory, the ID is a
                 // random UUID. Resolve the REAL Supabase ID by name so the DB
-                // always stores a valid foreign key.
-                var resolvedHood = hood
+                // always stores a valid foreign key. If it can't be resolved, ABORT
+                // with a neighborhood-specific message — never write the synthetic
+                // UUID (the insert would fail and surface a misleading "alias taken").
                 let service = NeighborhoodService()
-                if let realHood = try? await service.fetchByName(hood.name) {
-                    resolvedHood = realHood
+                guard let resolvedHood = try? await service.fetchByName(hood.name) else {
+                    await MainActor.run {
+                        saveError = "\(hood.name) isn't available yet. Please pick another neighborhood."
+                    }
+                    return
                 }
 
                 let authService = AuthService()

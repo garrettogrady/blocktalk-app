@@ -6,6 +6,8 @@ final class PostDetailViewModel {
     var replies: [Reply] = []
     var isLoading = false
     var error: String?
+    /// Surfaced when a reply fails to persist (the optimistic node is rolled back).
+    var replyError: String?
     var replyText = ""
     var replyingTo: (id: UUID, username: String)?
     var onReplyCreated: ((UUID, UUID) -> Void)?
@@ -63,19 +65,55 @@ final class PostDetailViewModel {
         replyingTo = nil
 
         // Persist to Supabase
+        let tempId = optimistic.id
         Task {
             do {
-                _ = try await replyService.createReply(
+                let saved = try await replyService.createReply(
                     postId: post.id,
                     userId: userId,
                     text: trimmed,
                     parentReplyId: parentId,
                     depth: depth
                 )
+                // Swap the optimistic node's client-generated id for the real DB id, so
+                // voting on / replying to this reply before the next reload targets a row
+                // that actually exists (otherwise it hits an FK violation that gets
+                // silently swallowed and the action is lost).
+                reconcileId(from: tempId, to: saved.id, in: &replies)
                 Analytics.replyCreated()
                 self.onReplyCreated?(userId, post.id)
             } catch {
+                // Persist failed — remove the optimistic node so the UI doesn't show a
+                // reply that isn't really there (and can't be interacted with).
+                removeReply(id: tempId, from: &replies)
+                replyError = "Couldn't post your reply. Check your connection and try again."
                 print("Failed to persist reply: \(error)")
+            }
+        }
+    }
+
+    /// Walk the tree and replace a node's id (used to reconcile an optimistic reply
+    /// with its real DB id after the insert succeeds).
+    private func reconcileId(from oldId: UUID, to newId: UUID, in nodes: inout [Reply]) {
+        for i in nodes.indices {
+            if nodes[i].id == oldId {
+                nodes[i].id = newId
+                return
+            }
+            if var kids = nodes[i].children {
+                reconcileId(from: oldId, to: newId, in: &kids)
+                nodes[i].children = kids
+            }
+        }
+    }
+
+    /// Remove a node by id anywhere in the tree (used to roll back a failed reply).
+    private func removeReply(id: UUID, from nodes: inout [Reply]) {
+        nodes.removeAll { $0.id == id }
+        for i in nodes.indices {
+            if var kids = nodes[i].children {
+                removeReply(id: id, from: &kids)
+                nodes[i].children = kids
             }
         }
     }

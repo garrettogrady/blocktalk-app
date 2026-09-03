@@ -159,6 +159,14 @@ struct PostDetailView: View {
                 await viewModel.loadReplies(for: post)
             }
         }
+        .alert("Couldn't post reply", isPresented: Binding(
+            get: { viewModel.replyError != nil },
+            set: { if !$0 { viewModel.replyError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.replyError ?? "")
+        }
     }
 
     // MARK: - Reply Bar

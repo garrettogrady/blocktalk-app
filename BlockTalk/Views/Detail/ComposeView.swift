@@ -26,7 +26,12 @@ struct ComposeView: View {
 
     /// Pin can be toggled off locally (the ≡ footer button) without closing.
     private var effectivePin: CLLocationCoordinate2D? {
-        pinCleared ? nil : pinDropLocation
+        if pinCleared { return nil }
+        // A tagged business is the AUTHORITATIVE location — the pin belongs ON the
+        // business, not wherever the user happened to start composing. Picking a place
+        // in the search sheet (which can be anywhere in range, not the exact start
+        // spot) moves the pin to it; untagging falls back to the original drop spot.
+        return taggedPlace?.coordinate ?? pinDropLocation
     }
     /// Daily-prompt / NYC-wide compose locks its scope — no feed↔pin toggle
     private var canToggleMode: Bool { !nycWide }
@@ -222,6 +227,12 @@ struct ComposeView: View {
                 if taggedPlace == nil, let initialPlace { taggedPlace = initialPlace }
                 // No snapped corner → reverse-geocode to nearest street (never show coords)
                 if pinCornerName == nil, let coord = pinDropLocation { resolveStreet(coord) }
+            }
+            .onChange(of: taggedPlace) { _, place in
+                // Tagging a place moved the pin (see effectivePin), so re-resolve the
+                // street label from the business's own coordinate — otherwise the "near
+                // X" fallback would still read the original start spot.
+                if let place { resolveStreet(place.coordinate) }
             }
             .onChange(of: viewModel.text) { _, newValue in
                 appState.composeDraft = newValue

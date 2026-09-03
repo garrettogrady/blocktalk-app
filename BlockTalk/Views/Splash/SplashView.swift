@@ -30,8 +30,12 @@ struct LoadingSplashView: View {
 struct SplashView: View {
     @Environment(AppState.self) private var appState
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
+    @Environment(EnrollmentStore.self) private var enrollments
     @State private var isSigningIn = false
     @State private var legalDoc: LegalDocRef?
+    /// Surfaced when sign-in fails after Apple auth — otherwise the spinner just
+    /// vanishes and the user is left on the landing with no feedback.
+    @State private var signInError: String?
 
     // Landing composition — flip these two to swap the hero. Easy revert:
     // set showHeroCard = true / showStreetPins = false to restore the
@@ -203,6 +207,14 @@ struct SplashView: View {
                         }
                         .preferredColorScheme(.dark)
                     }
+                    .alert("Couldn't sign in", isPresented: Binding(
+                        get: { signInError != nil },
+                        set: { if !$0 { signInError = nil } }
+                    )) {
+                        Button("OK", role: .cancel) {}
+                    } message: {
+                        Text(signInError ?? "")
+                    }
             }
         }
     }
@@ -339,16 +351,35 @@ struct SplashView: View {
                             .value
 
                         if let user = existing.first {
-                            // Returning user — resolve neighborhood and skip onboarding
+                            // Returning user — mirror restoreSession() so a fresh sign-in
+                            // lands in the same fully-set-up state as a launch restore
+                            // (home badge, analytics identity, enrollments) rather than a
+                            // half-initialized session that only heals on app restart.
                             appState.currentUser = user
-                            if let homeId = user.homeNeighborhoodId,
-                               let home = neighborhoodCache.neighborhood(id: homeId) {
-                                appState.viewingNeighborhood = home
-                                // Home drives what you BROWSE, not where you can post.
-                                // physicalNeighborhood is GPS-only (set from a real fix)
-                                // so posting stays tied to real-time physical location.
-                                appState.hasResolvedInitialNeighborhood = true
+                            Analytics.identify(userId: user.id, isSeed: user.isSeed ?? true)
+                            if let homeId = user.homeNeighborhoodId {
+                                if let home = neighborhoodCache.neighborhood(id: homeId) {
+                                    appState.homeNeighborhood = home
+                                    appState.viewingNeighborhood = home
+                                    // Home drives what you BROWSE, not where you can post.
+                                    // physicalNeighborhood stays GPS-only.
+                                    appState.hasResolvedInitialNeighborhood = true
+                                } else {
+                                    // ID not in cache (stale/synthetic) — fetch directly.
+                                    let fetched: [Neighborhood] = (try? await supabase.from("neighborhoods")
+                                        .select("id, name, short_code, borough")
+                                        .eq("id", value: homeId.uuidString)
+                                        .limit(1)
+                                        .execute()
+                                        .value) ?? []
+                                    if let home = fetched.first {
+                                        appState.homeNeighborhood = home
+                                        appState.viewingNeighborhood = home
+                                        appState.hasResolvedInitialNeighborhood = true
+                                    }
+                                }
                             }
+                            await enrollments.load(userId: user.id)
                             appState.advanceTo(.app)
                         } else {
                             // New user — how it works, then the rule, then profile
@@ -356,11 +387,16 @@ struct SplashView: View {
                         }
                     } catch {
                         print("Sign in error: \(error)")
+                        signInError = "Couldn't sign you in. Check your connection and try again."
                     }
                 }
             }
         case .failure(let error):
             print("Apple Sign In failed: \(error)")
+            // A user cancel isn't an error worth surfacing; anything else is.
+            if (error as? ASAuthorizationError)?.code != .canceled {
+                signInError = "Sign in with Apple didn't complete. Please try again."
+            }
         }
     }
 }
@@ -369,6 +405,7 @@ struct SplashView: View {
     SplashView()
         .environment(AppState())
         .environment(NeighborhoodCache())
+        .environment(EnrollmentStore())
 }
 
 // MARK: - Pulsing street pin (landing map)
