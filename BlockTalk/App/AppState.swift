@@ -66,7 +66,12 @@ final class AppState {
     /// A post opened via a shared link (blocktalk://p/<id>). When set, it's
     /// presented full-screen over whatever's on screen — so a recipient reads
     /// the post that hooked them before (or instead of) onboarding.
+    /// A post opened from an EXTERNAL share link — presented as SharedPostView
+    /// ("shared with you" framing, works pre-onboarding).
     var deepLinkedPost: Post?
+    /// A post opened from one of the user's OWN notifications (in-app or push tap) —
+    /// presented as the normal post thread (PostDetailView), not the share card.
+    var openedPost: Post?
 
     func advanceTo(_ stage: AppStage) {
         withAnimation {
@@ -86,6 +91,7 @@ final class AppState {
         onboardingNeighborhood = nil
         hasResolvedInitialNeighborhood = false
         deepLinkedPost = nil
+        openedPost = nil
         composeDraft = ""
         composeDraftImage = nil
         selectedTab = 0

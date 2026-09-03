@@ -78,7 +78,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // a few meters between adjacent NYC neighborhoods, e.g. LES → Nolita), or when
         // a materially better fix arrives. Over water / in a gap (no polygon match),
         // keep the current neighborhood rather than clearing it.
-        let crossedBoundary = localMatch != nil && localMatch?.name != currentNeighborhood?.name
+        // Case-insensitive: the polygon name ("Nolita") and the resolved table name
+        // ("NoLita") can differ only by case — a plain != would read as a boundary
+        // cross on every fix and re-resolve endlessly.
+        let crossedBoundary = localMatch != nil
+            && localMatch?.name.caseInsensitiveCompare(currentNeighborhood?.name ?? "") != .orderedSame
         let dominated = !firstTime && accuracy < resolvedAccuracy * 0.5
 
         guard firstTime || crossedBoundary || dominated else { return }

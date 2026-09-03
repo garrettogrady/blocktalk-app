@@ -140,8 +140,10 @@ struct PostCard: View {
                 .padding(.horizontal, BTSpacing.lg)
                 .padding(.vertical, BTSpacing.sm)
             } else if !isPreview && post.status == .removed {
-                // Your post was removed — appeal it (once).
-                Tombstone(variant: .removed, reasonShort: "harassment",
+                // Your post was removed — appeal it (once). Show the actual moderation
+                // reason when the backend recorded one; otherwise a neutral fallback
+                // (never a hardcoded "harassment", which was wrong for most removals).
+                Tombstone(variant: .removed, reasonShort: post.moderationReason,
                           bodyText: post.text, appealed: moderation.hasAppealed(post.id),
                           onAppeal: { if !moderation.hasAppealed(post.id) { showAppeal = true } })
                     .padding(.horizontal, BTSpacing.lg)
@@ -155,7 +157,8 @@ struct PostCard: View {
             }
         }
         .sheet(isPresented: $showAppeal) {
-            AppealView(postId: post.id, removedPostText: post.text, violationReason: "Harassment",
+            AppealView(postId: post.id, removedPostText: post.text,
+                       violationReason: post.moderationReason ?? "a guideline violation",
                        alreadyAppealed: moderation.hasAppealed(post.id),
                        onSubmitted: {
                            moderation.markAppealed(post.id)

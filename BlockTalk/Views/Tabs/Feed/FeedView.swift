@@ -199,6 +199,11 @@ struct FeedView: View {
                 // notice (you can read here but only post where you actually are).
                 if locationService.permissionState != .granted {
                     LocationGateBar(showPreFrame: $showPreFrame)
+                } else if appState.physicalNeighborhood == nil {
+                    // Granted but not resolved yet — show a locating state, NOT the
+                    // browse-only bar (whose button would be a dead click while
+                    // physicalNeighborhood is nil).
+                    locatingBar
                 } else if appState.canPostInViewing {
                     ComposeBarView {
                         showCompose = true
@@ -326,6 +331,25 @@ struct FeedView: View {
             && appState.physicalNeighborhood != nil
             && appState.viewingNeighborhood != nil
             && !appState.canPostInViewing
+    }
+
+    /// Shown while location is granted but the neighborhood hasn't resolved yet —
+    /// a passive indicator (no tappable action that could dead-click).
+    private var locatingBar: some View {
+        HStack(spacing: BTSpacing.sm) {
+            ProgressView().tint(Color.btText2).scaleEffect(0.8)
+            Text("Finding your neighborhood…")
+                .font(BTFont.bodySemibold(size: 12))
+                .foregroundStyle(Color.btText2)
+            Spacer(minLength: 0)
+        }
+        .frame(height: 38)
+        .padding(.horizontal, BTSpacing.md)
+        .background(Color.btSurface)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        .padding(.horizontal, BTSpacing.lg)
+        .padding(.vertical, BTSpacing.sm)
     }
 
     /// Replaces the compose bar when you're viewing a block you're not in —

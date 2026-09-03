@@ -113,6 +113,34 @@ struct BlockTalkApp: App {
                     .environment(enrollments)
                     .preferredColorScheme(.dark)
             }
+            // A post opened from the user's own notification (in-app row or push tap):
+            // the normal thread view, not the "shared with you" card.
+            .fullScreenCover(item: Binding(
+                get: { appState.openedPost },
+                set: { appState.openedPost = $0 }
+            )) { post in
+                NavigationStack {
+                    PostDetailView(post: post)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Done") { appState.openedPost = nil }
+                                    .foregroundStyle(Color.btText2)
+                            }
+                        }
+                }
+                .environment(appState)
+                .environment(locationService)
+                .environment(moderation)
+                .environment(offline)
+                .environment(localContent)
+                .environment(pinStore)
+                .environment(notifications)
+                .environment(neighborhoodCache)
+                .environment(enrollments)
+                .preferredColorScheme(.dark)
+                // "View on map" switches tabs underneath — dismiss so the map is visible.
+                .onChange(of: appState.selectedTab) { _, _ in appState.openedPost = nil }
+            }
             .onOpenURL { url in handleDeepLink(url) }
             .task {
                 UNUserNotificationCenter.current().delegate = pushManager
@@ -142,7 +170,8 @@ struct BlockTalkApp: App {
             }
             .onReceive(NotificationCenter.default.publisher(for: .pushNotificationTapped)) { notification in
                 if let post = notification.userInfo?["post"] as? Post {
-                    appState.deepLinkedPost = post
+                    // A push about your own post → open the thread, not the share card.
+                    appState.openedPost = post
                 }
             }
             .onChange(of: locationService.currentNeighborhood) { old, resolved in

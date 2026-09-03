@@ -15,6 +15,11 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
     var replyCount: Int
     var reportCount: Int
     var status: PostStatus
+    /// Why the post was removed/flagged, when moderation recorded one. Nil today
+    /// (no `moderation_reason` column yet) → the tombstone shows a neutral "guideline
+    /// violation" instead of a hardcoded (and often wrong) reason. Decodes the real
+    /// reason automatically once the backend adds the column.
+    var moderationReason: String?
     var createdAt: Date?
     /// Embedded author (username / number / home short code) when the fetch
     /// joins `users`. Nil for plain selects.
@@ -35,6 +40,7 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
         case replyCount = "reply_count"
         case reportCount = "report_count"
         case status
+        case moderationReason = "moderation_reason"
         case createdAt = "created_at"
         case author
     }

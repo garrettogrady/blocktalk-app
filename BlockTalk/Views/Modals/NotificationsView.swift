@@ -171,11 +171,11 @@ struct NotificationsView: View {
                 unavailableMessage = "This post is no longer available."
                 return
             }
-            // Close this sheet first, then present the post over the You tab so
-            // dismissing the post returns cleanly to the tab (not a stacked sheet).
+            // Close this sheet first, then present the post thread over the You tab so
+            // dismissing it returns cleanly to the tab (not a stacked sheet).
             dismiss()
             try? await Task.sleep(for: .milliseconds(350))
-            appState.deepLinkedPost = post
+            appState.openedPost = post
         }
     }
 
