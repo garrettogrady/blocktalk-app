@@ -71,61 +71,41 @@ struct PersonalBoard: View {
         }
     }
 
-    private struct PostIdRow: Decodable {
-        let postId: UUID
-        enum CodingKeys: String, CodingKey { case postId = "post_id" }
-    }
-
     private func loadPosts() async {
         guard let userId = appState.currentUser?.id else { return }
         loadFailed = false
         do {
-            // User's own posts
-            let created: [Post] = try await supabase.from("posts")
-                .select(PostService.postSelect)
-                .eq("user_id", value: userId.uuidString)
-                .eq("status", value: "live")
-                .order("created_at", ascending: false)
-                .limit(20)
-                .execute()
-                .value
-            createdPosts = created
-            createdCount = created.count
-
-            // Posts the user interacted with (voted or replied to)
-            let votedRows: [PostIdRow] = try await supabase.from("votes")
-                .select("post_id")
-                .eq("user_id", value: userId.uuidString)
-                .execute()
-                .value
-            let votedPostIds = votedRows.map(\.postId)
-
-            let repliedRows: [PostIdRow] = try await supabase.from("replies")
-                .select("post_id")
-                .eq("user_id", value: userId.uuidString)
-                .execute()
-                .value
-            let repliedPostIds = repliedRows.map(\.postId)
-
-            let allInteractedIds = Array(Set(votedPostIds + repliedPostIds))
-            if allInteractedIds.isEmpty {
-                interactedPosts = []
-                interactedCount = 0
-            } else {
-                let interacted: [Post] = try await supabase.from("posts")
-                    .select(PostService.postSelect)
-                    .in("id", values: allInteractedIds.map(\.uuidString))
-                    // Exclude your own posts — voting/replying on your own post keeps
-                    // it in "Created", not "Interacted With" (no double-listing).
-                    .neq("user_id", value: userId.uuidString)
-                    .eq("status", value: "live")
-                    .order("created_at", ascending: false)
-                    .limit(20)
-                    .execute()
-                    .value
-                interactedPosts = interacted
-                interactedCount = interacted.count
+            // Accurate counts from user_stats RPC
+            struct Stats: Decodable {
+                let postCount: Int
+                enum CodingKeys: String, CodingKey { case postCount = "post_count" }
             }
+            let stats: [Stats] = try await supabase.rpc("user_stats", params: ["p_user_id": userId.uuidString])
+                .execute()
+                .value
+            createdCount = stats.first?.postCount ?? 0
+
+            // Created posts via RPC (paginated, no 20-row cap on count)
+            let created: [Post] = try await supabase.rpc("user_created_posts", params: [
+                "p_user_id": userId.uuidString,
+                "p_limit": "50",
+                "p_offset": "0",
+            ]).execute().value
+            createdPosts = created
+
+            // Interacted posts via RPC (no URL-length issue)
+            let interacted: [Post] = try await supabase.rpc("user_interacted_posts", params: [
+                "p_user_id": userId.uuidString,
+                "p_limit": "50",
+                "p_offset": "0",
+            ]).execute().value
+            interactedPosts = interacted
+
+            // Accurate interacted count via RPC
+            let countResult: Int = try await supabase.rpc("user_interacted_count", params: [
+                "p_user_id": userId.uuidString,
+            ]).execute().value
+            interactedCount = countResult
         } catch {
             print("PersonalBoard: failed to load — \(error)")
             loadFailed = true

@@ -173,7 +173,7 @@ struct PostService {
         if let freeText { data["free_text"] = freeText }
 
         try await supabase.from("reports")
-            .insert(data)
+            .upsert(data, onConflict: "reporter_id,post_id", ignoreDuplicates: true)
             .execute()
     }
 }

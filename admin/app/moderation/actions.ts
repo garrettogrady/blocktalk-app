@@ -20,7 +20,8 @@ export async function updatePostStatus(
     .from("posts")
     .update({
       status: newStatus,
-      ...(newStatus === "live" ? { report_count: 0 } : {}),
+      ...(newStatus === "live" ? { report_count: 0, moderation_reason: null } : {}),
+      ...(newStatus === "removed" && reason ? { moderation_reason: reason } : {}),
     })
     .eq("id", postId);
 
