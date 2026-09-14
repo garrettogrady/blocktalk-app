@@ -144,6 +144,7 @@ struct BlockTalkApp: App {
             .onOpenURL { url in handleDeepLink(url) }
             .task {
                 UNUserNotificationCenter.current().delegate = pushManager
+                pushManager.appState = appState
                 pushManager.checkPermission()
                 Analytics.setup()
                 await restoreSession()
@@ -166,12 +167,6 @@ struct BlockTalkApp: App {
                         print("[Push] No token yet on .active — retrying registration")
                         UIApplication.shared.registerForRemoteNotifications()
                     }
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .pushNotificationTapped)) { notification in
-                if let post = notification.userInfo?["post"] as? Post {
-                    // A push about your own post → open the thread, not the share card.
-                    appState.openedPost = post
                 }
             }
             .onChange(of: locationService.currentNeighborhood) { old, resolved in

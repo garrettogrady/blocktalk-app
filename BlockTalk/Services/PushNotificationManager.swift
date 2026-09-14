@@ -11,6 +11,8 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     var permissionState: PushPermissionState = .undetermined
     var showSoftAsk = false
     var currentUserId: UUID?
+    /// Set by BlockTalkApp so push taps can navigate directly without NotificationCenter timing issues.
+    weak var appState: AppState?
 
     private(set) var hasToken: Bool = false
     private var deviceTokenHex: String?
@@ -112,21 +114,13 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
                 let postService = PostService()
                 if let post = try? await postService.fetchPost(id: postId) {
                     await MainActor.run {
-                        NotificationCenter.default.post(
-                            name: .pushNotificationTapped,
-                            object: nil,
-                            userInfo: ["post": post]
-                        )
+                        self.appState?.openedPost = post
                     }
                 }
             }
         }
         completionHandler()
     }
-}
-
-extension Notification.Name {
-    static let pushNotificationTapped = Notification.Name("pushNotificationTapped")
 }
 
 let pushManager = PushNotificationManager()
