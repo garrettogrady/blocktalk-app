@@ -37,6 +37,7 @@ struct BlockTalkApp: App {
     @State private var moderation = ModerationStore()
     @State private var offline = OfflineStore()
     @State private var localContent = LocalContentStore()
+    @State private var edits = ContentEditStore()
     @State private var pinStore = PinStore()
     @State private var notifications = NotificationStore()
     @State private var neighborhoodCache = NeighborhoodCache()
@@ -74,6 +75,7 @@ struct BlockTalkApp: App {
             .environment(notifications)
             .environment(neighborhoodCache)
             .environment(enrollments)
+            .environment(edits)
             .preferredColorScheme(.dark)
             // Cosmetic launch cover: the block.talk logo on dark, sitting ON TOP of the
             // real landing (which renders underneath the whole time — the known-good
@@ -111,6 +113,7 @@ struct BlockTalkApp: App {
                     .environment(notifications)
                     .environment(neighborhoodCache)
                     .environment(enrollments)
+                    .environment(edits)
                     .preferredColorScheme(.dark)
             }
             // A post opened from the user's own notification (in-app row or push tap):
@@ -137,6 +140,7 @@ struct BlockTalkApp: App {
                 .environment(notifications)
                 .environment(neighborhoodCache)
                 .environment(enrollments)
+                .environment(edits)
                 .preferredColorScheme(.dark)
                 // "View on map" switches tabs underneath — dismiss so the map is visible.
                 .onChange(of: appState.selectedTab) { _, _ in appState.openedPost = nil }

@@ -6,7 +6,15 @@ struct PostDetailView: View {
     @Environment(LocalContentStore.self) private var localContent
     @Environment(PinStore.self) private var pinStore
     @Environment(EnrollmentStore.self) private var enrollments
+    @Environment(ContentEditStore.self) private var edits
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel = PostDetailViewModel()
+
+    /// Live, or deleted-with-replies (a tombstone still anchors its thread).
+    private var showsThread: Bool {
+        let status = edits.apply(post).status
+        return status == .live || status == .deleted
+    }
 
     /// The current user's identity, embedded on replies they send.
     private var replyAuthor: ReplyAuthor {
@@ -77,8 +85,9 @@ struct PostDetailView: View {
 
                     // A removed / under-review post is a notice, not a post: the
                     // tombstone (shown by PostCard above) is the whole screen —
-                    // no reply count, no thread, no reply box.
-                    if post.status == .live {
+                    // no reply count, no thread, no reply box. A post deleted by
+                    // its author keeps its thread (other people wrote those).
+                    if showsThread {
                         Divider().background(Color.btLine)
 
                         // Threaded replies
@@ -141,9 +150,13 @@ struct PostDetailView: View {
             // directly (deep link / share) without a list preloading it.
             await pinStore.ensureLoaded(for: [post])
             // Moderated posts are notices, not posts — no replies to load.
-            if post.status == .live {
+            if showsThread {
                 await viewModel.loadReplies(for: post)
             }
+        }
+        // You deleted this post outright from its own screen: nothing left to show.
+        .onChange(of: edits.isHardDeleted(postId: post.id)) { _, gone in
+            if gone { dismiss() }
         }
         .alert("Couldn't post reply", isPresented: Binding(
             get: { viewModel.replyError != nil },
@@ -277,6 +290,7 @@ struct PostDetailView: View {
         )
         .environment(AppState())
         .environment(EnrollmentStore())
+        .environment(ContentEditStore())
     }
     .preferredColorScheme(.dark)
 }

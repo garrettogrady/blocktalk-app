@@ -22,13 +22,21 @@ struct PostCard: View {
     @Environment(PinStore.self) private var pinStore
     @Environment(NotificationStore.self) private var notifications
     @Environment(EnrollmentStore.self) private var enrollments
+    @Environment(ContentEditStore.self) private var edits
     @State private var showReport = false
+    @State private var showEdit = false
+    @State private var showDeleteConfirm = false
+    @State private var showHistory = false
     @State private var showAppeal = false
     @State private var showPushAsk = false
     @State private var showSettingsAlert = false
     @State private var toastMessage = ""
     @State private var toastIcon = "bell.fill"
     @State private var toastVisible = false
+
+    /// The post as it reads right now: the server row plus any edit or delete you
+    /// made this session (so every list updates without a refetch).
+    private var shown: Post { edits.apply(post) }
 
     // Prefer the embedded author from the fetch; fall back to passed params
     private var displayUsername: String { post.author?.username ?? username }
@@ -145,8 +153,21 @@ struct PostCard: View {
 
     var body: some View {
         Group {
+            if edits.isHardDeleted(postId: post.id) {
+                // Gone. The list refetches on its next load; until then, nothing.
+                EmptyView()
+            } else if !isPreview && shown.status == .deleted {
+                // Deleted by author but replies survive. The tombstone only shows in
+                // Post Detail (expandedText); feeds drop deleted posts on refresh.
+                if expandedText {
+                    Tombstone(variant: .deleted, replyCount: post.replyCount)
+                        .padding(.horizontal, BTSpacing.lg)
+                        .padding(.vertical, BTSpacing.sm)
+                } else {
+                    EmptyView()
+                }
             // Reporter-side hide: a post you reported collapses to a tombstone
-            if !isPreview && moderation.isHidden(post.id) {
+            } else if !isPreview && moderation.isHidden(post.id) {
                 Tombstone(
                     variant: .reporter,
                     reasonShort: moderation.reasonShort(post.id),
@@ -268,7 +289,7 @@ struct PostCard: View {
             }
 
             // Body text
-            Text(post.text)
+            Text(shown.text)
                 .font(BTFont.body(size: 13))
                 .foregroundStyle(Color.btText)
                 .lineSpacing(4)
@@ -314,6 +335,26 @@ struct PostCard: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Turn on notifications in Settings to get replies on this post.")
+        }
+        .sheet(isPresented: $showEdit) {
+            EditTextSheet(title: "Edit post", limit: ComposeViewModel.postLimit, original: shown.text) { newText in
+                await saveEdit(newText)
+            }
+        }
+        .sheet(isPresented: $showHistory) {
+            EditHistorySheet(original: shown.originalText ?? "", current: shown.text,
+                             originalAt: post.createdAt, editedAt: shown.editedAt)
+        }
+        .alert("Delete this post?", isPresented: $showDeleteConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { Task { await performDelete() } }
+        } message: {
+            // Naming the surviving reply count heads off "I deleted it, why is it still there."
+            if post.replyCount > 0 {
+                Text("Your text will be removed. The \(post.replyCount) \(post.replyCount == 1 ? "reply" : "replies") underneath it will stay. Other people wrote those.")
+            } else {
+                Text("It'll be gone from the feed, the map and search. This can't be undone.")
+            }
         }
         .sheet(isPresented: $showReport) {
             ReportModalView(postId: post.id) { short in
@@ -436,18 +477,88 @@ struct PostCard: View {
                         showReport = true
                     }
                 }
+            } else if post.status == .live {
+                // Your own post: edit the text, or delete it.
+                ownerMenu
             }
 
             Spacer(minLength: 0)
 
-            // "4m · 7 replies": age moved here from the meta row, no icon
-            (Text(post.createdAt.map { RelativeTime.short(since: $0) + " · " } ?? "")
-                .font(BTFont.mono(size: 11))
-                .foregroundStyle(Color.btText3)
+            // "4m · edited · 7 replies": age moved here from the meta row, no icon.
+            // "edited" is a dotted-underline tap target for the original-vs-now sheet.
+            if shown.editedAt != nil {
+                Button { showHistory = true } label: { timestampRun }
+                    .buttonStyle(.plain)
+            } else {
+                timestampRun
+            }
+        }
+    }
+
+    private var timestampRun: some View {
+        var run = Text(post.createdAt.map { RelativeTime.short(since: $0) + " · " } ?? "")
+            .font(BTFont.mono(size: 11))
+            .foregroundStyle(Color.btText3)
+        if shown.editedAt != nil {
+            run = run
+                + Text("edited").font(BTFont.mono(size: 11)).foregroundStyle(Color.btText3)
+                    .underline(true, pattern: .dot, color: Color.btLine2)
+                + Text(" · ").font(BTFont.mono(size: 11)).foregroundStyle(Color.btText3)
+        }
+        return (run
              + Text("\(post.replyCount)").font(BTFont.monoBold(size: 11)).foregroundStyle(Color.btText)
              + Text(" replies").font(BTFont.monoBold(size: 11)).foregroundStyle(Color.btText2))
-                .lineLimit(1)
-                .fixedSize()
+            .lineLimit(1)
+            .fixedSize()
+    }
+
+    /// Ellipsis box matching the other action buttons; owner only.
+    private var ownerMenu: some View {
+        Menu {
+            Button { showEdit = true } label: { Label("Edit", systemImage: "pencil") }
+            Button(role: .destructive) { showDeleteConfirm = true } label: { Label("Delete", systemImage: "trash") }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.btText2)
+                .frame(width: 30, height: 30)
+                .background(Color.btSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: BTRadius.sm)
+                        .stroke(Color.btLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+        }
+        .accessibilityLabel("More")
+    }
+
+    // MARK: - Edit / Delete
+
+    /// Returns an error message, or nil on success.
+    private func saveEdit(_ newText: String) async -> String? {
+        do {
+            let result = try await ContentEditingService().editPost(id: post.id, text: newText)
+            edits.recordEdit(postId: post.id, .init(
+                text: result.text ?? newText,
+                originalText: result.originalText,
+                editedAt: (result.marked ?? false) ? Date() : shown.editedAt,
+                editCount: result.editCount
+            ))
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    private func performDelete() async {
+        do {
+            let result = try await ContentEditingService().deletePost(id: post.id)
+            switch result.outcome {
+            case .hard: edits.recordHardDelete(postId: post.id)
+            case .tombstone, .none: edits.recordTombstone(postId: post.id)
+            }
+        } catch {
+            showToast(error.localizedDescription, icon: "exclamationmark.triangle")
         }
     }
 
@@ -569,5 +680,6 @@ struct PostCard: View {
         .environment(AppState())
         .environment(ModerationStore())
         .environment(EnrollmentStore())
+        .environment(ContentEditStore())
     }
 }

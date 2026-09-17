@@ -387,6 +387,85 @@ final class LocalContentStore {
     }
 }
 
+/// Session-scoped record of your own edits and deletes, so every list that
+/// shows the post or reply updates instantly without a refetch. The server
+/// (edit_post / delete_post RPCs) decided the outcome; this just mirrors it.
+@Observable
+final class ContentEditStore {
+    struct Patch: Equatable {
+        var text: String
+        var originalText: String?
+        var editedAt: Date?
+        var editCount: Int?
+    }
+
+    private(set) var postPatches: [UUID: Patch] = [:]
+    private(set) var replyPatches: [UUID: Patch] = [:]
+    private(set) var tombstonedPosts: Set<UUID> = []
+    private(set) var tombstonedReplies: Set<UUID> = []
+    private(set) var hardDeletedPosts: Set<UUID> = []
+    private(set) var hardDeletedReplies: Set<UUID> = []
+
+    // MARK: Record
+
+    func recordEdit(postId: UUID, _ patch: Patch) { postPatches[postId] = patch }
+    func recordEdit(replyId: UUID, _ patch: Patch) { replyPatches[replyId] = patch }
+
+    func recordTombstone(postId: UUID) { tombstonedPosts.insert(postId) }
+    func recordTombstone(replyId: UUID) { tombstonedReplies.insert(replyId) }
+
+    func recordHardDelete(postId: UUID) { hardDeletedPosts.insert(postId) }
+    func recordHardDelete(replyId: UUID) { hardDeletedReplies.insert(replyId) }
+
+    // MARK: Read
+
+    func isHardDeleted(postId: UUID) -> Bool { hardDeletedPosts.contains(postId) }
+    func isHardDeleted(replyId: UUID) -> Bool { hardDeletedReplies.contains(replyId) }
+
+    /// The post as it should render right now: server row plus anything you
+    /// changed this session.
+    func apply(_ post: Post) -> Post {
+        var post = post
+        if let p = postPatches[post.id] {
+            post.text = p.text
+            post.originalText = p.originalText
+            post.editedAt = p.editedAt
+            post.editCount = p.editCount
+        }
+        if tombstonedPosts.contains(post.id) {
+            post.status = .deleted
+            post.text = "[deleted]"
+            post.originalText = nil
+            post.editedAt = nil
+            post.imageUrl = nil
+        }
+        return post
+    }
+
+    func apply(_ reply: Reply) -> Reply {
+        var reply = reply
+        if let p = replyPatches[reply.id] {
+            reply.text = p.text
+            reply.originalText = p.originalText
+            reply.editedAt = p.editedAt
+            reply.editCount = p.editCount
+        }
+        if tombstonedReplies.contains(reply.id) {
+            reply.status = .deleted
+            reply.text = "[deleted]"
+            reply.originalText = nil
+            reply.editedAt = nil
+        }
+        return reply
+    }
+
+    func reset() {
+        postPatches = [:]; replyPatches = [:]
+        tombstonedPosts = []; tombstonedReplies = []
+        hardDeletedPosts = []; hardDeletedReplies = []
+    }
+}
+
 /// App-level cache of pins fetched from Supabase, keyed by id. LocalContentStore
 /// only holds pins YOU created this session; this holds the pins behind everyone
 /// ELSE's street comments, so any PostCard in any list (feed, search, trending)

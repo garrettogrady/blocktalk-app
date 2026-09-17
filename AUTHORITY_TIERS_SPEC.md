@@ -1320,7 +1320,7 @@ These came from reading the codebase and are deliberate. Do not revert them to m
 
 Do not build any of these as part of this work.
 
-- **Edits & Deletes** (artifact section 08). Separate spec and separate migration.
+- **Edits & Deletes** (artifact section 08). Built separately; see `EDITS_AND_DELETES_SPEC.md` and `Supabase/00024_edits_and_deletes.sql`.
 - "You're close to the next level" nudges, per-aura-event notifications, or notifications about other users' levels.
 - Showing aura, thresholds or per-action values anywhere in the app, including debug builds outside `SettingsTestingView`.
 - Admin dashboard changes. `aura` is available on `users` if the dashboard wants it later.

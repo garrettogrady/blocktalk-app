@@ -194,7 +194,7 @@ struct NotificationsView: View {
             // Option B: your OWN removed/under-review post opens to its moderation
             // notice (so you learn what happened); someone else's removed post just
             // reads "no longer available" rather than surfacing a dead post.
-            if post.status != .live && post.userId != appState.currentUser?.id {
+            if post.status != .live && post.status != .deleted && post.userId != appState.currentUser?.id {
                 unavailableMessage = "This post is no longer available."
                 return
             }

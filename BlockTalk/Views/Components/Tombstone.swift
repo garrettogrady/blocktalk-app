@@ -5,12 +5,16 @@ struct Tombstone: View {
         case reporter
         case underReview
         case removed
+        /// Deleted by its author, kept because replies exist beneath it.
+        case deleted
     }
 
     let variant: Variant
     var reasonShort: String?
     var bodyText: String?
     var reportCount: Int = 3
+    /// Surviving replies, for the .deleted variant.
+    var replyCount: Int = 0
     var appealed: Bool = false
     var onShowAnyway: (() -> Void)?
     var onAppeal: (() -> Void)?
@@ -22,7 +26,38 @@ struct Tombstone: View {
         case .reporter: reporterView
         case .underReview: underReviewView
         case .removed: removedView
+        case .deleted: deletedView
         }
+    }
+
+    // MARK: - Deleted by author
+
+    /// Quiet by design: a dashed footnote, not a notice. No author, no body, no
+    /// vote pills. The reply count stays because other people wrote those.
+    private var deletedView: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "trash")
+                .font(.system(size: 11))
+                .foregroundStyle(Color.btText3)
+            Text("Deleted by author")
+                .font(BTFont.mono(size: 11))
+                .tracking(0.55)
+                .foregroundStyle(Color.btText3)
+            Spacer(minLength: 0)
+            if replyCount > 0 {
+                (Text("\(replyCount)").foregroundStyle(Color.btText2)
+                 + Text(replyCount == 1 ? " reply" : " replies").foregroundStyle(Color.btText3))
+                    .font(BTFont.monoBold(size: 11))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.md)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .foregroundStyle(Color.btLine2)
+        )
     }
 
     // MARK: - Reporter
@@ -145,6 +180,29 @@ struct Tombstone: View {
     }
 }
 
+/// A reply its author deleted, kept in the thread because replies hang off it.
+struct ReplyDeletedRow: View {
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "trash")
+                .font(.system(size: 11))
+                .foregroundStyle(Color.btText3)
+            Text("Deleted by author")
+                .font(BTFont.mono(size: 11))
+                .tracking(0.55)
+                .foregroundStyle(Color.btText3)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .overlay(
+            RoundedRectangle(cornerRadius: BTRadius.md)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .foregroundStyle(Color.btLine2)
+        )
+    }
+}
+
 /// Compact reply-thread variant — a slim inline row, no body.
 struct ReplyTombstone: View {
     var reasonShort: String?
@@ -184,6 +242,8 @@ struct ReplyTombstone: View {
             Tombstone(variant: .removed, reasonShort: "hate speech", onAppeal: {})
             Tombstone(variant: .removed, reasonShort: "hate speech", appealed: true)
             ReplyTombstone(reasonShort: "spam", onShowAnyway: {})
+            Tombstone(variant: .deleted, replyCount: 7)
+            ReplyDeletedRow()
         }
         .padding()
     }

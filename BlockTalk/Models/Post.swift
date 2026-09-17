@@ -4,7 +4,7 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     let userId: UUID
     let neighborhoodId: UUID
-    let text: String
+    var text: String
     var imageUrl: String?
     var pinId: UUID?
     var isDailyPrompt: Bool
@@ -21,6 +21,11 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
     /// reason automatically once the backend adds the column.
     var moderationReason: String?
     var createdAt: Date?
+    /// Edit history (00024). original_text is captured once, on the first edit
+    /// after engagement, and never overwritten. editedAt set means "show the tag".
+    var originalText: String?
+    var editedAt: Date?
+    var editCount: Int?
     /// Embedded author (username / number / home short code) when the fetch
     /// joins `users`. Nil for plain selects.
     var author: PostAuthor?
@@ -42,6 +47,9 @@ struct Post: Codable, Identifiable, Hashable, Sendable {
         case status
         case moderationReason = "moderation_reason"
         case createdAt = "created_at"
+        case originalText = "original_text"
+        case editedAt = "edited_at"
+        case editCount = "edit_count"
         case author
     }
 }
@@ -77,6 +85,8 @@ enum PostStatus: String, Codable, Sendable {
     case live
     case underReview = "under_review"
     case removed
+    /// Deleted by the author but kept as a tombstone because replies (or a report) exist.
+    case deleted
 }
 
 // Convenience for display
