@@ -94,6 +94,40 @@ struct PostService {
         return posts.first
     }
 
+    /// Fills in `author` for posts that came back without the users join (the
+    /// Personal Board RPCs return bare post rows). One lookup per page, keyed by
+    /// the distinct authors on it, so it stays well under URL-length limits.
+    func attachingAuthors(to posts: [Post]) async throws -> [Post] {
+        let authorIds = Set(posts.filter { $0.author == nil }.map(\.userId))
+        guard !authorIds.isEmpty else { return posts }
+
+        struct AuthorRow: Decodable {
+            let id: UUID
+            let username: String?
+            let userNumber: Int?
+            let home: PostAuthor.HomeRef?
+            enum CodingKeys: String, CodingKey {
+                case id, username, home
+                case userNumber = "user_number"
+            }
+        }
+        let rows: [AuthorRow] = try await supabase.from("users")
+            .select("id, username, user_number, home:neighborhoods(short_code)")
+            .in("id", values: authorIds.map(\.uuidString))
+            .execute()
+            .value
+        let authors = Dictionary(uniqueKeysWithValues: rows.map {
+            ($0.id, PostAuthor(username: $0.username, userNumber: $0.userNumber, home: $0.home))
+        })
+
+        return posts.map { post in
+            guard post.author == nil, let author = authors[post.userId] else { return post }
+            var post = post
+            post.author = author
+            return post
+        }
+    }
+
     func fetchPostForPin(_ pinId: UUID) async throws -> Post? {
         let posts: [Post] = try await supabase.from("posts")
             .select(PostService.postSelect)

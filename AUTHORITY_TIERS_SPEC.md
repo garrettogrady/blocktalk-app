@@ -69,7 +69,7 @@ Read these before writing any code. Each one exists because breaking it breaks t
 2. **SQL is the source of truth for thresholds.** `authority_thresholds()` in the migration and `Authority.thresholds` in Swift must match exactly. A unit test enforces it (Part 6.5). If you change one, change both.
 3. **Clients never write aura.** All aura is written by `SECURITY DEFINER` triggers. Users can already `UPDATE` their own `users` row through RLS, so the migration adds a guard trigger that makes `users.aura` unwritable from the client. Do not remove it.
 4. **Badges are live, never snapshotted.** Tier is derived from the author's current `aura` via the existing embedded author join. Never store tier on posts or replies.
-5. **Never fake a level.** If a card has no author aura (for example an `Interacted With` row on the Personal Board, which is fetched without an author join), render no badge and the default username colour. Do not fall back to "Transplant I".
+5. **Never fake a level.** If a card has no author aura (for example a post whose author lookup failed), render no badge and the default username colour. Do not fall back to "Transplant I".
 6. **Use theme tokens only.** Colours from `Color.bt*`, fonts from `BTFont`, spacing from `BTSpacing`, radii from `BTRadius`. The only new tokens are `btSlicker` and `btSlickerDim`. Raw numbers are allowed only where this spec gives one that has no token (for example `tracking`, a 22pt ladder mark).
 7. **App copy uses American spelling and no em dashes.** "Leveled up", not "levelled up". Copy strings in this file are final; use them verbatim.
 
@@ -900,7 +900,7 @@ var authorityLevel: AuthorityLevel? {
 
 ### 6.4 Service edits
 
-Add `aura` to both embedded author selects. No new queries.
+Add `aura` everywhere the author is loaded. No new queries.
 
 ```swift
 // PostService
@@ -908,6 +908,8 @@ static let postSelect = "*, author:users!posts_user_id_fkey(username, user_numbe
 // ReplyService
 static let replySelect = "*, author:users!replies_user_id_fkey(username, user_number, aura, home:neighborhoods(short_code))"
 ```
+
+The Personal Board loads posts through RPCs that return bare rows, then fills in authors with `PostService.attachingAuthors(to:)`. Add `aura` there too: add `let aura: Int?` to its private `AuthorRow`, add `aura` to its `.select("id, username, user_number, aura, home:neighborhoods(short_code))")`, and pass `aura: $0.aura` into the `PostAuthor` it builds.
 
 ### 6.5 `Utilities/RelativeTime.swift` (new)
 
@@ -1011,9 +1013,9 @@ Four changes. Nothing else in the card moves.
 **a) Author level.** Add alongside the existing `display*` properties:
 
 ```swift
-/// Live tier from the embedded author. Your own posts on the Personal Board are
-/// fetched without an author join, so fall back to your own aura. Anyone else's
-/// post without an author shows no badge rather than a made-up level.
+/// Live tier from the embedded author. Your own posts fall back to your own aura
+/// (covers optimistic cards before the author loads). Anyone else's post without
+/// an author shows no badge rather than a made-up level.
 private var authorLevel: AuthorityLevel? {
     if let aura = post.author?.aura { return Authority.level(for: aura) }
     if isOwnPost, let aura = appState.currentUser?.aura { return Authority.level(for: aura) }
@@ -1359,7 +1361,7 @@ These came from reading the codebase and are deliberate. Do not revert them to m
 | Ladder done-marks lime for all tiers | Done-marks in their own tier colour | The mock's City Slicker done rows were lime; tier colour is consistent with the rest of the feature |
 | "You levelled up" | "You leveled up" | App copy is American English |
 | Pace line "about N weeks" rounding unspecified | `round(days / 7)` | Specified so tests can assert it |
-| Personal Board badges | Own posts fall back to `currentUser.aura`; others show no badge | `user_created_posts` and `user_interacted_posts` return no author join |
+| Personal Board badges | Authors (with `aura`) are attached by `PostService.attachingAuthors(to:)` | `user_created_posts` and `user_interacted_posts` return bare post rows with no author join |
 
 ---
 
@@ -1372,6 +1374,6 @@ Do not build any of these as part of this work.
 - Showing aura, thresholds or per-action values anywhere in the app, including debug builds outside `SettingsTestingView`.
 - Admin dashboard changes. `aura` is available on `users` if the dashboard wants it later.
 - A backfill of historical activity.
-- Adding an author join to the Personal Board RPCs. If `Interacted With` rows should show badges, that is a follow-up.
+- Changing the Personal Board RPCs themselves. Authors are attached client-side (6.4).
 
 **Open item (decide on device, not now):** colour density in a full scrolling feed where every username is tinted. If it reads as noisy in TestFlight, the lightest fix is to drop the badge on feed cards and keep it only in Post Detail, leaving the username tint as the tier signal.

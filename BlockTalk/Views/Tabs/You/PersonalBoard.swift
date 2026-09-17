@@ -91,7 +91,9 @@ struct PersonalBoard: View {
                 "p_limit": "50",
                 "p_offset": "0",
             ]).execute().value
-            createdPosts = created
+            // The RPCs return bare post rows; without the author join every card
+            // falls back to the "@BlockTalker #0" placeholder.
+            createdPosts = try await PostService().attachingAuthors(to: created)
 
             // Interacted posts via RPC (no URL-length issue)
             let interacted: [Post] = try await supabase.rpc("user_interacted_posts", params: [
@@ -99,7 +101,7 @@ struct PersonalBoard: View {
                 "p_limit": "50",
                 "p_offset": "0",
             ]).execute().value
-            interactedPosts = interacted
+            interactedPosts = try await PostService().attachingAuthors(to: interacted)
 
             // Accurate interacted count via RPC
             let countResult: Int = try await supabase.rpc("user_interacted_count", params: [
