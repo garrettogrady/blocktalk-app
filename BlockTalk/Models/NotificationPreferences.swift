@@ -7,6 +7,7 @@ struct NotificationPreferences: Codable {
     var repliedTo: Bool
     var manuallyFollowed: Bool
     var weeklyPrompt: Bool
+    var authority: Bool
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -15,6 +16,7 @@ struct NotificationPreferences: Codable {
         case repliedTo = "replied_to"
         case manuallyFollowed = "manually_followed"
         case weeklyPrompt = "weekly_prompt"
+        case authority
     }
 
     static let defaults = NotificationPreferences(
@@ -23,6 +25,7 @@ struct NotificationPreferences: Codable {
         replies: true,
         repliedTo: true,
         manuallyFollowed: true,
-        weeklyPrompt: true
+        weeklyPrompt: true,
+        authority: true
     )
 }

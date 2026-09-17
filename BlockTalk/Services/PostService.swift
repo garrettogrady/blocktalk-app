@@ -3,7 +3,7 @@ import Foundation
 struct PostService {
     /// Embeds the author (username / number / home short code) so cards render
     /// real identity instead of the placeholder default.
-    static let postSelect = "*, author:users!posts_user_id_fkey(username, user_number, home:neighborhoods(short_code))"
+    static let postSelect = "*, author:users!posts_user_id_fkey(username, user_number, aura, home:neighborhoods(short_code))"
 
     /// City-wide feed for Discover — live posts from EVERY neighborhood, ordered
     /// by the same sort options as a single-neighborhood feed. No neighborhood
@@ -106,18 +106,19 @@ struct PostService {
             let username: String?
             let userNumber: Int?
             let home: PostAuthor.HomeRef?
+            let aura: Int?
             enum CodingKeys: String, CodingKey {
-                case id, username, home
+                case id, username, home, aura
                 case userNumber = "user_number"
             }
         }
         let rows: [AuthorRow] = try await supabase.from("users")
-            .select("id, username, user_number, home:neighborhoods(short_code)")
+            .select("id, username, user_number, aura, home:neighborhoods(short_code)")
             .in("id", values: authorIds.map(\.uuidString))
             .execute()
             .value
         let authors = Dictionary(uniqueKeysWithValues: rows.map {
-            ($0.id, PostAuthor(username: $0.username, userNumber: $0.userNumber, home: $0.home))
+            ($0.id, PostAuthor(username: $0.username, userNumber: $0.userNumber, home: $0.home, aura: $0.aura))
         })
 
         return posts.map { post in

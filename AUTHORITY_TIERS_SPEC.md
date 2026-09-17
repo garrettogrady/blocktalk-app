@@ -143,8 +143,7 @@ Only the **direct** target's author earns received aura. A nested reply pays the
 - **A day is an America/New_York calendar day**, matching the push quiet-hours logic.
 - **Every earning event is recorded once.** A unique index on `(kind, actor_id, post_id, reply_id)` with `NULLS NOT DISTINCT` means un-voting and re-voting never pays twice. When a cap clamps an award to 0, the row is still inserted with `points = 0`, so the uniqueness still holds.
 - **Switching a vote** (the app upserts on `user_id,post_id`, which fires `UPDATE`) records the new direction's received event. The voter's +1 was already recorded and is not paid again.
-- **Deleting a vote, reply or post does not remove aura.**
-- **Moderation removal reverses aura.** When `posts.status` becomes `removed`, the post author's events for that post (`post_created`, `post_upvoted`, `post_downvoted`, `post_replied`) are marked reversed. If the post is later restored, they are un-reversed. Nobody else loses aura (voters and repliers did nothing wrong). Replies have no `status` column today, so reply removal is not handled; that arrives with Edits & Deletes.
+- **Aura never decreases.** Deleting a vote, reply or post, or a moderator removing one, leaves earned aura in place. Reversal on moderation removal was in an earlier draft and was cut on 2026-09-17 as not worth building. Do not add it back.
 
 ### 4.4 Structural property to preserve
 
@@ -257,7 +256,6 @@ CREATE TABLE IF NOT EXISTS aura_events (
   actor_id UUID NOT NULL,
   post_id UUID,
   reply_id UUID,
-  reversed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -351,19 +349,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_delta INT;
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    v_delta := CASE WHEN NEW.reversed_at IS NULL THEN NEW.points ELSE 0 END;
-  ELSE
-    v_delta := (CASE WHEN NEW.reversed_at IS NULL THEN NEW.points ELSE 0 END)
-             - (CASE WHEN OLD.reversed_at IS NULL THEN OLD.points ELSE 0 END);
-  END IF;
-
-  IF v_delta <> 0 THEN
+  -- Aura only ever goes up. Deleting or moderating content never takes it back.
+  IF NEW.points > 0 THEN
     PERFORM set_config('blocktalk.aura_write', 'on', true);
-    UPDATE users SET aura = aura + v_delta WHERE id = NEW.user_id;
+    UPDATE users SET aura = aura + NEW.points WHERE id = NEW.user_id;
     PERFORM set_config('blocktalk.aura_write', 'off', true);
   END IF;
 
@@ -373,7 +363,7 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_apply_aura_event ON aura_events;
 CREATE TRIGGER trg_apply_aura_event
-  AFTER INSERT OR UPDATE OF reversed_at ON aura_events
+  AFTER INSERT ON aura_events
   FOR EACH ROW EXECUTE FUNCTION apply_aura_event();
 
 -- ============================================================
@@ -485,44 +475,7 @@ CREATE TRIGGER trg_aura_on_vote
   FOR EACH ROW EXECUTE FUNCTION aura_on_vote();
 
 -- ============================================================
--- 7. Reversal on moderation removal (and un-reversal on restore)
--- ============================================================
-
-CREATE OR REPLACE FUNCTION aura_on_post_status()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NEW.status = 'removed' THEN
-    UPDATE aura_events
-       SET reversed_at = now()
-     WHERE user_id = NEW.user_id
-       AND post_id = NEW.id
-       AND kind IN ('post_created', 'post_upvoted', 'post_downvoted', 'post_replied')
-       AND reversed_at IS NULL;
-  ELSIF OLD.status = 'removed' THEN
-    UPDATE aura_events
-       SET reversed_at = NULL
-     WHERE user_id = NEW.user_id
-       AND post_id = NEW.id
-       AND kind IN ('post_created', 'post_upvoted', 'post_downvoted', 'post_replied')
-       AND reversed_at IS NOT NULL;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_aura_on_post_status ON posts;
-CREATE TRIGGER trg_aura_on_post_status
-  AFTER UPDATE OF status ON posts
-  FOR EACH ROW
-  WHEN (OLD.status IS DISTINCT FROM NEW.status AND 'removed' IN (OLD.status, NEW.status))
-  EXECUTE FUNCTION aura_on_post_status();
-
--- ============================================================
--- 8. authority_summary RPC (feeds the pace line)
+-- 7. authority_summary RPC (feeds the pace line)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION authority_summary(p_user_id TEXT)
@@ -552,7 +505,6 @@ BEGIN
            SELECT SUM(e.points)
              FROM aura_events e
             WHERE e.user_id = v_user_id
-              AND e.reversed_at IS NULL
               AND e.created_at >= now() - INTERVAL '14 days'
          ), 0) / v_days, 2)
     FROM users u
@@ -563,7 +515,7 @@ $$;
 GRANT EXECUTE ON FUNCTION authority_summary(TEXT) TO authenticated;
 
 -- ============================================================
--- 9. Notification preference + queue kind
+-- 8. Notification preference + queue kind
 -- ============================================================
 
 ALTER TABLE notification_preferences
@@ -574,7 +526,7 @@ ALTER TABLE notification_queue ADD CONSTRAINT notification_queue_kind_check
   CHECK (kind IN ('reply', 'moderation', 'weekly_prompt', 'authority'));
 
 -- ============================================================
--- 10. Level-up notification (in-app + push)
+-- 9. Level-up notification (in-app + push)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION apply_push_quiet_hours(p_at TIMESTAMPTZ)
@@ -608,12 +560,12 @@ DECLARE
   v_push_body    TEXT;
   v_prefs        RECORD;
 BEGIN
-  -- Upward crossings only. Demotion (moderation reversal) never notifies.
+  -- Aura never decreases, so this is a safety guard rather than a real branch.
   IF v_new_level <= v_old_level THEN
     RETURN NEW;
   END IF;
 
-  -- One notification per level, ever. A level re-crossed after a restore stays quiet.
+  -- One notification per level, ever.
   IF EXISTS (
     SELECT 1 FROM notifications
      WHERE user_id = NEW.id AND kind = 'authority' AND meta = 'level:' || v_new_level
@@ -686,8 +638,7 @@ Use two test accounts, A and B. Record `SELECT aura FROM users WHERE id IN (A, B
 | B replies to A's post | B +3, A +10 |
 | A upvotes A's own post | No change |
 | Client-side `UPDATE users SET aura = 99999 WHERE id = A` as A | Aura unchanged |
-| Set A's post `status = 'removed'` | A loses that post's `post_created`, `post_upvoted`, `post_downvoted`, `post_replied` points; B keeps theirs |
-| Set it back to `'live'` | A's points return |
+| Set A's post `status = 'removed'`, then back to `'live'` | No aura changes for anyone |
 | Push A across 50 aura | One `authority` row in `notifications` with `meta = 'level:2'`, title "You're now Transplant II", preview "Two down, fourteen to go." |
 | `SELECT * FROM authority_summary('<A id>')` as A | One row: current aura and a daily rate |
 | Same call as B for A's id | Error "Not authorized" |
@@ -1352,9 +1303,9 @@ These came from reading the codebase and are deliberate. Do not revert them to m
 | Migration `00022_authority.sql` | `00023_authority.sql` | `00022_backend_fixes.sql` already exists |
 | `users.aura` maintained by trigger | Plus a guard trigger that blocks client writes | The existing RLS policy "Users can update own profile" would otherwise let anyone set their own aura |
 | Unique index on `(kind, actor_id, post_id, reply_id)` | Same, with `NULLS NOT DISTINCT` | Every post-level event has `reply_id` NULL; without this clause Postgres treats NULLs as distinct and the index blocks nothing |
-| Reverse aura when `posts.status` or `replies.status` becomes removed | Posts only, reversible on restore via `reversed_at` | `replies` has no `status` column; `moderation_actions` supports `restore`, so reversal must be undoable |
+| Reverse aura when a post or reply is removed by moderation | No reversal at all; aura only ever goes up | Cut on 2026-09-17 as not worth building. Removes a trigger, a column and a whole class of edge cases |
 | `aura_events` references posts and replies | No foreign keys on `post_id` / `reply_id` | Deleting content must not delete earned aura, and nullable FKs would collide in the unique index |
-| "One notification per crossing" | Also deduplicated per level via `notifications.meta = 'level:N'` | A post restored after removal can re-cross a boundary; this keeps the lifetime maximum real |
+| "One notification per crossing" | Also deduplicated per level via `notifications.meta = 'level:N'` | Cheap insurance that the lifetime maximum of 15 stays real even if aura is ever adjusted by hand |
 | Cap "awards nothing once hit" | Clamps to the remaining allowance and still records the event | Keeps the 50/day ceiling exact and keeps the unique index effective when capped |
 | Day boundary unspecified | America/New_York calendar day | Matches existing push quiet-hours logic |
 | Card radius 12, ladder radius 9 | `BTRadius.md` (10) | Matches every existing card on the You tab |

@@ -12,18 +12,40 @@ struct YouView: View {
     @State private var replyCount = 0
     @State private var totalScore = 0
     @State private var downvoteCount = 0
+    /// Level to celebrate with the one-time banner, if any.
+    @State private var pendingLevelUp: AuthorityLevel?
 
     var body: some View {
+        @Bindable var appState = appState
         NavigationStack {
             ScrollView {
                 VStack(spacing: BTSpacing.xxl) {
+                    // One-time level-up banner (shown once per level, above the identity card)
+                    if let level = pendingLevelUp {
+                        LevelUpBanner(level: level) {
+                            if let user = appState.currentUser, let aura = user.aura {
+                                LevelUpTracker.markSeen(userId: user.id, aura: aura)
+                            }
+                            withAnimation { pendingLevelUp = nil }
+                        }
+                        .padding(.horizontal, BTSpacing.lg)
+                        .padding(.top, BTSpacing.md)
+                        .transition(.opacity)
+                    }
+
                     // Identity strip
                     if let user = appState.currentUser {
                         IdentityStrip(user: user, postCount: postCount, replyCount: replyCount,
                                       totalScore: totalScore, downvoteCount: downvoteCount,
                                       homeShortCode: appState.homeNeighborhood?.shortCode)
                             .padding(.horizontal, BTSpacing.lg)
-                            .padding(.top, BTSpacing.md)
+                            .padding(.top, pendingLevelUp == nil ? BTSpacing.md : 0)
+
+                        // Authority card (tier name in display type, progress, levels left)
+                        if let aura = user.aura {
+                            AuthorityCard(aura: aura) { appState.showAuthorityPage = true }
+                                .padding(.horizontal, BTSpacing.lg)
+                        }
                     }
 
                     // Settings + Feedback — visible on landing (not buried under
@@ -53,11 +75,15 @@ struct YouView: View {
             .navigationDestination(for: Post.self) { post in
                 PostDetailView(post: post)
             }
+            .navigationDestination(isPresented: $appState.showAuthorityPage) {
+                AuthorityView()
+            }
             // onAppear so stats + notifications also refresh when you return to
             // the tab (e.g. after posting), not just on first launch.
             .onAppear {
                 Task {
                     await loadStats()
+                    await refreshAura()
                     if let userId = appState.currentUser?.id {
                         await notifications.load(userId: userId)
                     }
@@ -203,6 +229,26 @@ struct YouView: View {
             }
         } catch {
             print("Failed to load user stats: \(error)")
+        }
+    }
+
+    /// Refresh the cached aura so the card, banner and own-post badges are current.
+    private func refreshAura() async {
+        guard let userId = appState.currentUser?.id else { return }
+        struct Row: Decodable { let aura: Int }
+        do {
+            let row: Row = try await supabase.from("users")
+                .select("aura")
+                .eq("id", value: userId.uuidString)
+                .single()
+                .execute()
+                .value
+            appState.currentUser?.aura = row.aura
+            let due = LevelUpTracker.pendingLevel(userId: userId, aura: row.aura)
+            // Don't re-trigger the banner animation on every tab visit.
+            if due != pendingLevelUp { pendingLevelUp = due }
+        } catch {
+            print("Failed to load aura: \(error)")
         }
     }
 

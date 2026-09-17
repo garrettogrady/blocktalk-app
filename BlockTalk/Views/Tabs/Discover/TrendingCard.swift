@@ -152,7 +152,7 @@ struct TrendingCard: View {
                 id: UUID(), userId: UUID(), neighborhoodId: UUID(),
                 text: "the bodega cat on 7th just stole someone's breakfast sandwich right off the counter. no regrets.",
                 isDailyPrompt: false, score: 142, upvoteCount: 150, downvoteCount: 8, replyCount: 38, reportCount: 0, status: .live,
-                author: PostAuthor(username: "streetrat", userNumber: 4827, home: .init(shortCode: "LES"))
+                author: PostAuthor(username: "streetrat", userNumber: 4827, home: .init(shortCode: "LES"), aura: 12000)
             )
         )
         .environment(AppState())

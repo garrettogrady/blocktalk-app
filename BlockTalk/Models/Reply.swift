@@ -37,6 +37,8 @@ struct ReplyAuthor: Codable, Hashable, Sendable {
     let username: String
     let userNumber: Int
     let home: HomeRef?
+    /// Author's live aura; nil when the fetch didn't include it.
+    var aura: Int?
 
     struct HomeRef: Codable, Hashable, Sendable {
         let shortCode: String?
@@ -47,13 +49,15 @@ struct ReplyAuthor: Codable, Hashable, Sendable {
         case username
         case userNumber = "user_number"
         case home
+        case aura
     }
 
     var homeShortCode: String { home?.shortCode ?? "NYC" }
 
-    init(username: String, userNumber: Int, homeShortCode: String) {
+    init(username: String, userNumber: Int, homeShortCode: String, aura: Int? = nil) {
         self.username = username
         self.userNumber = userNumber
         self.home = HomeRef(shortCode: homeShortCode)
+        self.aura = aura
     }
 }

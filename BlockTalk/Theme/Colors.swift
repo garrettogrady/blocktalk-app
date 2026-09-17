@@ -17,6 +17,8 @@ extension Color {
     static let btPinkDim = Color(hex: 0xA82747)
     static let btHouse = Color(hex: 0x7CD9FF)
     static let btWarn = Color(hex: 0xFFB13D)
+    static let btSlicker = Color(hex: 0xBD6BFF)
+    static let btSlickerDim = Color(hex: 0x6E2FA8)
     static let btOnAccent = Color(hex: 0x0A0A0C)
 
     init(hex: UInt, opacity: Double = 1.0) {

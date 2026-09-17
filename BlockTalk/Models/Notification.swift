@@ -18,5 +18,13 @@ struct BTNotification: Codable, Identifiable, Sendable {
         case relatedPostId = "related_post_id"
         case createdAt = "created_at"
     }
+
+    /// The level reached, for kind == "authority" (meta is "level:N").
+    var authorityLevel: AuthorityLevel? {
+        guard kind == "authority", let meta, meta.hasPrefix("level:"),
+              let index = Int(meta.dropFirst("level:".count)),
+              (1...Authority.levelCount).contains(index) else { return nil }
+        return AuthorityLevel(index: index)
+    }
 }
 

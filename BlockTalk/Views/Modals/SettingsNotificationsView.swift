@@ -9,6 +9,7 @@ struct SettingsNotificationsView: View {
     @AppStorage("notif_repliedTo") private var repliedToEnabled = true
     @AppStorage("notif_manuallyFollowed") private var manuallyFollowed = true
     @AppStorage("notif_dailyPrompt") private var dailyPromptEnabled = true
+    @AppStorage("notif_authority") private var authorityEnabled = true
     @AppStorage("notif_moderation") private var moderationEnabled = true
 
     @State private var loaded = false
@@ -97,6 +98,18 @@ struct SettingsNotificationsView: View {
                     }
                     .tint(Color.btLime)
 
+                    Toggle(isOn: $authorityEnabled) {
+                        VStack(alignment: .leading, spacing: BTSpacing.xs) {
+                            Text("Level ups")
+                                .font(BTFont.bodyMedium(size: 15))
+                                .foregroundStyle(Color.btText)
+                            Text("When you reach a new Authority level")
+                                .font(BTFont.body(size: 12))
+                                .foregroundStyle(Color.btText3)
+                        }
+                    }
+                    .tint(Color.btLime)
+
                     HStack {
                         VStack(alignment: .leading, spacing: BTSpacing.xs) {
                             Text("Moderation")
@@ -136,6 +149,7 @@ struct SettingsNotificationsView: View {
         .onChange(of: repliedToEnabled) { _, _ in debounceSave() }
         .onChange(of: manuallyFollowed) { _, _ in debounceSave() }
         .onChange(of: dailyPromptEnabled) { _, _ in debounceSave() }
+        .onChange(of: authorityEnabled) { _, _ in debounceSave() }
     }
 
     private func loadFromServer() async {
@@ -146,6 +160,7 @@ struct SettingsNotificationsView: View {
             repliedToEnabled = prefs.repliedTo
             manuallyFollowed = prefs.manuallyFollowed
             dailyPromptEnabled = prefs.weeklyPrompt
+            authorityEnabled = prefs.authority
         }
         loaded = true
     }
@@ -164,7 +179,8 @@ struct SettingsNotificationsView: View {
                 replies: repliesEnabled,
                 repliedTo: repliedToEnabled,
                 manuallyFollowed: manuallyFollowed,
-                weeklyPrompt: dailyPromptEnabled
+                weeklyPrompt: dailyPromptEnabled,
+                authority: authorityEnabled
             )
             try? await service.upsert(prefs)
         }

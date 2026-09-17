@@ -9,10 +9,14 @@ struct BlockTalkUser: Codable, Identifiable, Sendable {
     var usernameChangedAt: Date?
     var isSeed: Bool?
     var createdAt: Date?
+    /// Cached aura total (maintained server-side). Optional so inserts don't
+    /// send it and older payloads still decode.
+    var aura: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
         case username
+        case aura
         case userNumber = "user_number"
         case homeNeighborhoodId = "home_neighborhood_id"
         case homeChangedAt = "home_changed_at"

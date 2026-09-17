@@ -8,6 +8,13 @@ struct IdentityStrip: View {
     var downvoteCount: Int = 0
     var homeShortCode: String?   // nil until the real home resolves — no fake "LES"
 
+    private var level: AuthorityLevel? { user.aura.map(Authority.level(for:)) }
+    /// Transplant (or unknown) keeps today's grey; higher tiers take the tier colour.
+    private var usernameColor: Color {
+        guard let level, level.tier != .transplant else { return .btText2 }
+        return level.tier.color
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: BTSpacing.lg) {
             // Lime squircle avatar with initial
@@ -30,7 +37,7 @@ struct IdentityStrip: View {
                 HStack(spacing: BTSpacing.xs) {
                     Text("@\(user.username)")
                         .font(BTFont.bodySemibold(size: 13))
-                        .foregroundStyle(Color.btText2)
+                        .foregroundStyle(usernameColor)
                     if let homeShortCode {
                         HomeBadge(shortCode: homeShortCode)
                     }

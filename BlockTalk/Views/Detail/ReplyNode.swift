@@ -12,6 +12,13 @@ struct ReplyNode: View {
     /// You can't report your own reply (same rule as posts).
     private var isOwnReply: Bool { reply.userId == appState.currentUser?.id }
 
+    /// Live tier from the embedded author; your own replies fall back to your aura.
+    private var authorLevel: AuthorityLevel? {
+        if let aura = reply.author?.aura { return Authority.level(for: aura) }
+        if isOwnReply, let aura = appState.currentUser?.aura { return Authority.level(for: aura) }
+        return nil
+    }
+
     // Visual indent cap (Reddit-mobile style): stop indenting past this depth so
     // deep threads don't run off the right edge — but replies are never blocked,
     // they just render at the capped indent.
@@ -35,21 +42,18 @@ struct ReplyNode: View {
                 // Reply content
                 VStack(alignment: .leading, spacing: BTSpacing.sm) {
                     // Meta row
-                    HStack(spacing: BTSpacing.xs) {
+                    HStack(spacing: 6) {
                         if let a = reply.author {
                             Text("@\(a.username)")
                                 .font(BTFont.bodySemibold(size: 11))
-                                .foregroundStyle(Color.btText)
+                                .foregroundStyle(authorLevel?.tier.color ?? Color.btText)
                             Text("#\(a.userNumber.formatted(.number))")
-                                .font(BTFont.monoBold(size: 11))
-                                .foregroundStyle(Color.btLime)
-                            HomeBadge(shortCode: a.homeShortCode)
-                        }
-                        if let createdAt = reply.createdAt {
-                            Text("·").foregroundStyle(Color.btText3)
-                            Text(timeAgo(createdAt))
                                 .font(BTFont.mono(size: 11))
                                 .foregroundStyle(Color.btText3)
+                            if let level = authorLevel {
+                                AuthorityBadge(level: level)
+                            }
+                            HomeBadge(shortCode: a.homeShortCode)
                         }
                         Spacer(minLength: 0)
                     }
@@ -97,6 +101,15 @@ struct ReplyNode: View {
 
                         Spacer()
 
+                        // Age sits here now (moved out of the meta row); replies have
+                        // no reply count so it stands alone.
+                        if let createdAt = reply.createdAt {
+                            Text(RelativeTime.short(since: createdAt))
+                                .font(BTFont.mono(size: 11))
+                                .foregroundStyle(Color.btText3)
+                                .padding(.trailing, BTSpacing.sm)
+                        }
+
                         // Reply is always available — deep replies flatten to the
                         // capped indent, they aren't blocked.
                         if onReplyTap != nil {
@@ -141,16 +154,6 @@ struct ReplyNode: View {
         }
     }
 
-    private func timeAgo(_ date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
-        let minutes = Int(interval / 60)
-        if minutes < 1 { return "now" }
-        if minutes < 60 { return "\(minutes)m" }
-        let hours = minutes / 60
-        if hours < 24 { return "\(hours)h" }
-        let days = hours / 24
-        return "\(days)d"
-    }
 }
 
 #Preview {

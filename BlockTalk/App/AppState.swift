@@ -72,6 +72,8 @@ final class AppState {
     /// A post opened from one of the user's OWN notifications (in-app or push tap) —
     /// presented as the normal post thread (PostDetailView), not the share card.
     var openedPost: Post?
+    /// Pushes AuthorityView onto the You tab's stack (card tap, notification tap, push tap).
+    var showAuthorityPage = false
 
     func advanceTo(_ stage: AppStage) {
         withAnimation {

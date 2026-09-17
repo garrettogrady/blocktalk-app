@@ -108,6 +108,15 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
+        // Level-up pushes carry no post; open the Authority page on the You tab.
+        if userInfo["kind"] as? String == "authority" {
+            Task { @MainActor in
+                self.appState?.selectedTab = 3
+                self.appState?.showAuthorityPage = true
+            }
+            completionHandler()
+            return
+        }
         if let postIdString = userInfo["post_id"] as? String,
            let postId = UUID(uuidString: postIdString) {
             Task {

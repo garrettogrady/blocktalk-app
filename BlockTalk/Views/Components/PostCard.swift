@@ -44,6 +44,22 @@ struct PostCard: View {
 
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }
 
+    /// Live tier from the embedded author. Your own posts fall back to your own aura
+    /// (covers optimistic cards before the author loads). Anyone else's post without
+    /// an author shows no badge rather than a made-up level.
+    private var authorLevel: AuthorityLevel? {
+        if let aura = post.author?.aura { return Authority.level(for: aura) }
+        if isOwnPost, let aura = appState.currentUser?.aura { return Authority.level(for: aura) }
+        return nil
+    }
+
+    /// Whether the meta row carries a place chip (corner or business). Decided by
+    /// post type, never by measured width, so the layout never reshuffles.
+    private var hasPlaceChip: Bool {
+        (streetPin?.placeName != nil && !carriesBusinessOverlay)
+            || (!isBusinessTagged && (streetPin?.cornerName ?? cornerName) != nil)
+    }
+
     /// Route 2 color coding: a street comment tagged to a business is house-blue
     /// ("a place"); a plain corner comment stays lime.
     private var isBusinessTagged: Bool { streetPin?.placeName != nil }
@@ -312,42 +328,60 @@ struct PostCard: View {
 
     // MARK: - Meta Row
 
+    /// One row for a plain post; a pinned post moves the home badge and place chip
+    /// to a second row. Time lives in the action row (see actionRow).
     private var metaRow: some View {
-        HStack(spacing: 6) {
-            Text("@\(displayUsername)")
-                .font(BTFont.bodySemibold(size: 11))
-                .foregroundStyle(Color.btText)
-                .lineLimit(1)
-                .truncationMode(.tail)
+        VStack(alignment: .leading, spacing: BTSpacing.xs) {
+            HStack(spacing: 6) {
+                Text("@\(displayUsername)")
+                    .font(BTFont.bodySemibold(size: 11))
+                    .foregroundStyle(authorLevel?.tier.color ?? Color.btText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-            Text("#\(displayNumber.formatted(.number))")
-                .font(BTFont.monoBold(size: 11))
-                .foregroundStyle(Color.btLime)
-
-            if let shortCode = displayHome {
-                HomeBadge(shortCode: shortCode)
-            }
-
-            // A tagged business shows its chip only when no map/photo is present to
-            // carry the blue place label (else it's redundant). Plain corner
-            // comments show the corner badge.
-            if let place = streetPin?.placeName, !carriesBusinessOverlay {
-                businessChip(place, symbol: streetPin?.placeSymbol ?? "mappin.circle.fill")
-            } else if !isBusinessTagged, let corner = streetPin?.cornerName ?? cornerName {
-                PinBadge(cornerName: corner)
-            }
-
-            if pending {
-                pendingPill
-            } else if let createdAt = post.createdAt {
-                Text("·")
-                    .foregroundStyle(Color.btText3)
-                Text(timeAgo(createdAt))
+                // Grey, not lime: a lime number beside a lime Blocktalker username
+                // would read as two signals meaning different things.
+                Text("#\(displayNumber.formatted(.number))")
                     .font(BTFont.mono(size: 11))
                     .foregroundStyle(Color.btText3)
+
+                if let level = authorLevel {
+                    AuthorityBadge(level: level)
+                }
+
+                if !hasPlaceChip, let shortCode = displayHome {
+                    HomeBadge(shortCode: shortCode)
+                }
+
+                if pending && !hasPlaceChip {
+                    pendingPill
+                }
+
+                Spacer(minLength: 0)
             }
 
-            Spacer(minLength: 0)
+            if hasPlaceChip {
+                HStack(spacing: 6) {
+                    if let shortCode = displayHome {
+                        HomeBadge(shortCode: shortCode)
+                    }
+
+                    // A tagged business shows its chip only when no map/photo is present to
+                    // carry the blue place label (else it's redundant). Plain corner
+                    // comments show the corner badge.
+                    if let place = streetPin?.placeName, !carriesBusinessOverlay {
+                        businessChip(place, symbol: streetPin?.placeSymbol ?? "mappin.circle.fill")
+                    } else if !isBusinessTagged, let corner = streetPin?.cornerName ?? cornerName {
+                        PinBadge(cornerName: corner)
+                    }
+
+                    if pending {
+                        pendingPill
+                    }
+
+                    Spacer(minLength: 0)
+                }
+            }
         }
     }
 
@@ -406,10 +440,14 @@ struct PostCard: View {
 
             Spacer(minLength: 0)
 
-            // Reply count — "N replies", no icon
-            (Text("\(post.replyCount)").foregroundStyle(Color.btText)
-                + Text(" replies").foregroundStyle(Color.btText2))
-                .font(BTFont.monoBold(size: 11))
+            // "4m · 7 replies": age moved here from the meta row, no icon
+            (Text(post.createdAt.map { RelativeTime.short(since: $0) + " · " } ?? "")
+                .font(BTFont.mono(size: 11))
+                .foregroundStyle(Color.btText3)
+             + Text("\(post.replyCount)").font(BTFont.monoBold(size: 11)).foregroundStyle(Color.btText)
+             + Text(" replies").font(BTFont.monoBold(size: 11)).foregroundStyle(Color.btText2))
+                .lineLimit(1)
+                .fixedSize()
         }
     }
 
@@ -505,16 +543,6 @@ struct PostCard: View {
         .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
     }
 
-    // MARK: - Time Ago
-
-    private func timeAgo(_ date: Date) -> String {
-        let minutes = Int(Date().timeIntervalSince(date) / 60)
-        if minutes < 1 { return "just now" }
-        if minutes < 60 { return "\(minutes)m ago" }
-        let hours = minutes / 60
-        if hours < 24 { return "\(hours)h ago" }
-        return "\(hours / 24)d ago"
-    }
 }
 
 #Preview {

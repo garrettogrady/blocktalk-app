@@ -16,7 +16,8 @@ struct PostDetailView: View {
             // Your identity badge = the neighborhood you're FROM (home), matching how
             // post author badges render — not where you happen to be standing right now.
             homeShortCode: appState.homeNeighborhood?.shortCode
-                ?? appState.physicalNeighborhood?.shortCode ?? "NYC"
+                ?? appState.physicalNeighborhood?.shortCode ?? "NYC",
+            aura: appState.currentUser?.aura
         )
     }
     @FocusState private var replyFocused: Bool

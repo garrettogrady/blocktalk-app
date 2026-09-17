@@ -24,10 +24,7 @@ struct NotificationsView: View {
                             // gesture keeps the copy clean.
                             notificationRow(notification)
                                 .onTapGesture { open(notification) }
-                                .listRowBackground(
-                                    notification.unread
-                                        ? Color.btSurface2 : Color.btBg
-                                )
+                                .listRowBackground(rowBackground(notification))
                                 .listRowSeparatorTint(Color.btLine)
                         }
                     }
@@ -64,12 +61,28 @@ struct NotificationsView: View {
 
     // MARK: - Notification Row
 
+    /// Entering a new tier (Blocktalker I, City Slicker I) gets a tinted row with a
+    /// tier-coloured left edge so the two tier crossings stand apart from ordinary
+    /// level-ups. Same edge pattern as the street-comment card.
+    @ViewBuilder
+    private func rowBackground(_ notification: BTNotification) -> some View {
+        if let level = notification.authorityLevel, level.isTierEntry {
+            let tier = level.tier
+            tier.color.opacity(tier == .blocktalker ? 0.05 : 0.07)
+                .overlay(alignment: .leading) {
+                    Rectangle().fill(tier.color).frame(width: 3)
+                }
+        } else {
+            notification.unread ? Color.btSurface2 : Color.btBg
+        }
+    }
+
     private func notificationRow(_ notification: BTNotification) -> some View {
         HStack(alignment: .top, spacing: BTSpacing.md) {
             // Unread indicator
             if notification.unread {
                 Circle()
-                    .fill(Color.btLime)
+                    .fill(notification.authorityLevel?.tier.color ?? Color.btLime)
                     .frame(width: 8, height: 8)
                     .padding(.top, 6)
             } else {
@@ -77,7 +90,7 @@ struct NotificationsView: View {
             }
 
             // Icon based on kind
-            notificationIcon(notification.kind)
+            notificationIcon(notification)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: BTSpacing.xs) {
@@ -101,8 +114,8 @@ struct NotificationsView: View {
 
             Spacer()
 
-            // Only notifications tied to a post can be opened.
-            if notification.relatedPostId != nil {
+            // Only notifications tied to a post (or a level-up) can be opened.
+            if notification.relatedPostId != nil || notification.kind == "authority" {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.btText3)
@@ -114,8 +127,12 @@ struct NotificationsView: View {
     }
 
     @ViewBuilder
-    private func notificationIcon(_ kind: String) -> some View {
-        switch kind {
+    private func notificationIcon(_ notification: BTNotification) -> some View {
+        switch notification.kind {
+        case "authority":
+            Image(systemName: "bolt.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(notification.authorityLevel?.tier.color ?? Color.btLime)
         case "reply":
             Image(systemName: "arrowshape.turn.up.left.fill")
                 .font(.system(size: 14))
@@ -154,6 +171,16 @@ struct NotificationsView: View {
         if notification.unread {
             store.markRead(id: notification.id)
             Task { try? await NotificationService().markRead(id: notification.id) }
+        }
+        // Level-ups open the Authority page on the You tab.
+        if notification.kind == "authority" {
+            Task { @MainActor in
+                dismiss()
+                try? await Task.sleep(for: .milliseconds(350))
+                appState.selectedTab = 3
+                appState.showAuthorityPage = true
+            }
+            return
         }
         // Some notifications (e.g. generic announcements) have no post to open.
         guard let postId = notification.relatedPostId else { return }

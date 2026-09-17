@@ -16,7 +16,8 @@ struct PinDetailView: View {
             userNumber: appState.currentUser?.userNumber ?? 0,
             // Identity badge = the neighborhood you're FROM (home), matching post badges.
             homeShortCode: appState.homeNeighborhood?.shortCode
-                ?? appState.physicalNeighborhood?.shortCode ?? "NYC"
+                ?? appState.physicalNeighborhood?.shortCode ?? "NYC",
+            aura: appState.currentUser?.aura
         )
     }
     @State private var showPreFrame = false

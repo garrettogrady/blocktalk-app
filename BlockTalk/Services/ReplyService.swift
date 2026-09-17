@@ -1,7 +1,7 @@
 import Foundation
 
 struct ReplyService {
-    static let replySelect = "*, author:users!replies_user_id_fkey(username, user_number, home:neighborhoods(short_code))"
+    static let replySelect = "*, author:users!replies_user_id_fkey(username, user_number, aura, home:neighborhoods(short_code))"
 
     func fetchReplies(postId: UUID) async throws -> [Reply] {
         let flat: [Reply] = try await supabase.from("replies")

@@ -479,7 +479,8 @@ struct ComposeView: View {
             username: appState.currentUser?.username,
             userNumber: appState.currentUser?.userNumber,
             home: .init(shortCode: appState.physicalNeighborhood?.shortCode
-                        ?? appState.viewingNeighborhood?.shortCode ?? "LES")
+                        ?? appState.viewingNeighborhood?.shortCode ?? "LES"),
+            aura: appState.currentUser?.aura
         )
 
         Task {
