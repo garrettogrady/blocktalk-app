@@ -1,4 +1,4 @@
-climport CoreLocation
+import CoreLocation
 import Foundation
 import Network
 import SwiftUI
