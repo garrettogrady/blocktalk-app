@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { XCircle } from "lucide-react";
+import Link from "next/link";
 import RemoveDialog from "./remove-dialog";
 
 interface RecentPost {
@@ -58,7 +59,12 @@ export default function RecentPostsTable({
                   {post.author?.username ?? "\u2014"}
                 </td>
                 <td className="px-4 py-3 max-w-md truncate text-gray-600">
-                  {post.text}
+                  <Link
+                    href={`/posts/${post.id}`}
+                    className="hover:text-blue-600 hover:underline"
+                  >
+                    {post.text}
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-gray-500">
                   {post.neighborhood?.name ?? "\u2014"}

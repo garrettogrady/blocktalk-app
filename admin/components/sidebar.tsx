@@ -10,10 +10,12 @@ import {
   Database,
   MessageSquare,
   Search,
+  FileText,
 } from "lucide-react";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/posts", label: "Posts", icon: FileText },
   { href: "/moderation", label: "Moderation", icon: Shield },
   { href: "/moderation/search", label: "Post Search", icon: Search },
   { href: "/appeals", label: "Appeals", icon: Scale },
@@ -32,7 +34,9 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {links.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
+          const active =
+            pathname === href ||
+            (href !== "/" && pathname.startsWith(href));
           return (
             <Link
               key={href}
