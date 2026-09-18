@@ -769,8 +769,11 @@ enum Authority {
     }
 
     /// The Authority page's closing line. `dailyRate` comes from authority_summary().
-    static func paceLine(aura: Int, dailyRate: Double) -> PaceLine {
+    /// Nil in the Transplant tier: those levels are 50 and 150 aura, cleared in a
+    /// session or two, so any estimate there reads as wrong.
+    static func paceLine(aura: Int, dailyRate: Double) -> PaceLine? {
         let level = level(for: aura)
+        guard level.tier != .transplant else { return nil }
         guard let next = level.next else {
             return PaceLine(lead: "You're at the top level. There's nothing above this one.", emphasis: nil)
         }
@@ -893,7 +896,7 @@ Follow the existing XCTest style (`@testable import BlockTalk`, `// MARK:` group
 - `isTierEntry` is true only for 4 and 7.
 - `progress(for:)`: 0 at a threshold, 0.5 halfway, 1 at level 16. `percent(for:)` of 2,999 is 99, not 100.
 - `levelsRemaining(for:)`: 15 at 0, 0 at 22,800.
-- `paceLine`: rate 0 gives the neutral line; 1 day gives the "today" line; 5 days gives "about 5 days."; 21 days gives "about 3 weeks."; 61 days gives the neutral line; level 16 gives the top-level line.
+- `paceLine`: nil anywhere in the Transplant tier (levels 1 to 3); from Blocktalker I up: rate 0 gives the neutral line; 1 day gives the "today" line; 5 days gives "about 5 days."; 21 days gives "about 3 weeks."; 61 days gives the neutral line; level 16 gives the top-level line.
 - `RelativeTime.short`: 30s is "now", 4m is "4m", 2h is "2h", 3d is "3d".
 
 ---
@@ -1156,7 +1159,7 @@ Pushed onto the You tab's `NavigationStack`, so the system back button returns t
 | Eyebrow | `"YOUR LEVEL · \(index) OF 16"`, `BTFont.mono(size: 10)`, `.tracking(1.4)`, `btText3` |
 | Name | `BTFont.display(size: 30)`, `.tracking(-0.6)`, tier colour. `VStack(spacing: 7)` with the eyebrow |
 | Progress | `VStack(alignment: .leading, spacing: 7)`: `AuthorityProgressBar`; `HStack(alignment: .firstTextBaseline)`: `"\(percent)% OF THE WAY"` in `BTFont.monoBold(size: 11)`, `.tracking(0.44)`, tier colour; `Spacer()`; `"TO \(next.name.uppercased())"` in `BTFont.mono(size: 10)`, `btText3` |
-| Pace line | `.padding(.top, 11)` with a 1pt `btLine` rule on top (`.overlay(alignment: .top) { Rectangle().fill(Color.btLine).frame(height: 1) }`). `Text(pace.lead).foregroundStyle(Color.btText3) + Text(pace.emphasis ?? "").font(BTFont.monoBold(size: 10)).foregroundStyle(Color.btText2)`, base font `BTFont.mono(size: 10)`, `.lineSpacing(3)` |
+| Pace line | Omitted entirely in the Transplant tier (`paceLine` returns nil there). Otherwise `.padding(.top, 11)` with a 1pt `btLine` rule on top (`.overlay(alignment: .top) { Rectangle().fill(Color.btLine).frame(height: 1) }`). `Text(pace.lead).foregroundStyle(Color.btText3) + Text(pace.emphasis ?? "").font(BTFont.monoBold(size: 10)).foregroundStyle(Color.btText2)`, base font `BTFont.mono(size: 10)`, `.lineSpacing(3)` |
 | At City Slicker X | Bar full; progress captions become `"TOP LEVEL"` (tier colour) and `"NOTHING ABOVE THIS"`; pace line is the top-level sentence |
 
 #### How aura works
@@ -1312,6 +1315,8 @@ These came from reading the codebase and are deliberate. Do not revert them to m
 | Ladder done-marks lime for all tiers | Done-marks in their own tier colour | The mock's City Slicker done rows were lime; tier colour is consistent with the rest of the feature |
 | "You levelled up" | "You leveled up" | App copy is American English |
 | Pace line "about N weeks" rounding unspecified | `round(days / 7)` | Specified so tests can assert it |
+| Pace line shown at every level | Hidden in the Transplant tier | Transplant II and III are 50 and 150 aura, cleared in a session or two; an estimate there reads as wrong (decided 2026-09-18) |
+| Rate divides by days since signup, capped at 14 | Divides by days since the user first earned aura, capped at 14 (`00025_authority_rate_fix.sql`) | Existing accounts are older than the ledger; dividing by 14 made everyone's first two weeks look 5 to 10x slower than reality |
 | Personal Board badges | Authors (with `aura`) are attached by `PostService.attachingAuthors(to:)` | `user_created_posts` and `user_interacted_posts` return bare post rows with no author join |
 
 ---

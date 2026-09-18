@@ -106,8 +106,11 @@ enum Authority {
     }
 
     /// The Authority page's closing line. `dailyRate` comes from authority_summary().
-    static func paceLine(aura: Int, dailyRate: Double) -> PaceLine {
+    /// Nil in the Transplant tier: those levels are 50 and 150 aura, cleared in a
+    /// session or two, so any estimate there reads as wrong.
+    static func paceLine(aura: Int, dailyRate: Double) -> PaceLine? {
         let level = level(for: aura)
+        guard level.tier != .transplant else { return nil }
         guard let next = level.next else {
             return PaceLine(lead: "You're at the top level. There's nothing above this one.", emphasis: nil)
         }

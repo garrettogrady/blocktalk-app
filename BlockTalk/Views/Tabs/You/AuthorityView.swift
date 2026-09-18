@@ -49,7 +49,7 @@ struct AuthorityView: View {
 
     private func hero(aura: Int, level: AuthorityLevel) -> some View {
         let tier = level.tier
-        let pace = dailyRate.map { Authority.paceLine(aura: aura, dailyRate: $0) }
+        let pace = dailyRate.flatMap { Authority.paceLine(aura: aura, dailyRate: $0) }
 
         return VStack(alignment: .leading, spacing: BTSpacing.lg) {
             VStack(alignment: .leading, spacing: 7) {

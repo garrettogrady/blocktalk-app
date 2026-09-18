@@ -97,29 +97,37 @@ final class AuthorityTests: XCTestCase {
 
     // MARK: - Pace line
 
+    func testPaceLineHiddenInTransplant() {
+        XCTAssertNil(Authority.paceLine(aura: 0, dailyRate: 10))
+        XCTAssertNil(Authority.paceLine(aura: 149, dailyRate: 10))
+        XCTAssertNotNil(Authority.paceLine(aura: 400, dailyRate: 10))
+    }
+
     func testPaceLineNeutralWhenRateIsZero() {
-        XCTAssertEqual(Authority.paceLine(aura: 0, dailyRate: 0).lead, "Keep going and you'll get there.")
+        XCTAssertEqual(Authority.paceLine(aura: 400, dailyRate: 0)?.lead, "Keep going and you'll get there.")
     }
 
     func testPaceLineToday() {
-        XCTAssertEqual(Authority.paceLine(aura: 0, dailyRate: 50).lead, "You'll get there today if you keep this up.")
+        // 500 to Blocktalker II at 500/day
+        XCTAssertEqual(Authority.paceLine(aura: 400, dailyRate: 500)?.lead, "You'll get there today if you keep this up.")
     }
 
     func testPaceLineDays() {
-        XCTAssertEqual(Authority.paceLine(aura: 0, dailyRate: 10).emphasis, "about 5 days.")
+        // 500 to Blocktalker II at 100/day
+        XCTAssertEqual(Authority.paceLine(aura: 400, dailyRate: 100)?.emphasis, "about 5 days.")
     }
 
     func testPaceLineWeeks() {
         // 1,400 aura to City Slicker II at 1,400/21 per day = 21 days = 3 weeks
-        XCTAssertEqual(Authority.paceLine(aura: 3_000, dailyRate: 1_400.0 / 21).emphasis, "about 3 weeks.")
+        XCTAssertEqual(Authority.paceLine(aura: 3_000, dailyRate: 1_400.0 / 21)?.emphasis, "about 3 weeks.")
     }
 
     func testPaceLineSuppressedPast60Days() {
-        XCTAssertEqual(Authority.paceLine(aura: 0, dailyRate: 50.0 / 61).lead, "Keep going and you'll get there.")
+        XCTAssertEqual(Authority.paceLine(aura: 400, dailyRate: 500.0 / 61)?.lead, "Keep going and you'll get there.")
     }
 
     func testPaceLineAtTop() {
-        XCTAssertEqual(Authority.paceLine(aura: 22_800, dailyRate: 10).lead,
+        XCTAssertEqual(Authority.paceLine(aura: 22_800, dailyRate: 10)?.lead,
                        "You're at the top level. There's nothing above this one.")
     }
 
