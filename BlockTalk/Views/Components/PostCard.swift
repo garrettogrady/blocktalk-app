@@ -52,13 +52,16 @@ struct PostCard: View {
 
     private var hasPhoto: Bool { !(post.imageUrl ?? "").isEmpty }
 
-    /// Live tier from the embedded author. Your own posts fall back to your own aura
-    /// (covers optimistic cards before the author loads). Anyone else's post without
-    /// an author shows no badge rather than a made-up level.
+    /// Live tier from the embedded author. For your own posts the embedded aura was
+    /// captured when the list loaded and can lag a level-up; aura only ever goes up,
+    /// so the larger of that and your current profile value is always the right one.
+    /// Anyone else's post without an author shows no badge rather than a made-up level.
     private var authorLevel: AuthorityLevel? {
-        if let aura = post.author?.aura { return Authority.level(for: aura) }
-        if isOwnPost, let aura = appState.currentUser?.aura { return Authority.level(for: aura) }
-        return nil
+        let embedded = post.author?.aura
+        if isOwnPost, let mine = appState.currentUser?.aura {
+            return Authority.level(for: max(mine, embedded ?? 0))
+        }
+        return embedded.map(Authority.level(for:))
     }
 
     /// Whether the meta row carries a place chip (corner or business). Decided by
@@ -433,7 +436,16 @@ struct PostCard: View {
     /// [Backend: clear/switch handled server-side — handoff workstream 1.]
     private func castVote(_ direction: Int) {
         guard let userId = appState.currentUser?.id else { return }
-        Task { try? await PostService().vote(postId: post.id, userId: userId, direction: direction) }
+        Task {
+            do {
+                try await PostService().vote(postId: post.id, userId: userId, direction: direction)
+            } catch {
+                // Only a rate limit is worth interrupting for; other failures stay quiet.
+                if let message = RateLimit.message(for: error) {
+                    showToast(message, icon: "exclamationmark.triangle")
+                }
+            }
+        }
         Analytics.voteCast(direction: direction)
     }
 

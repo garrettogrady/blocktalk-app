@@ -20,11 +20,15 @@ struct ReplyNode: View {
     /// You can't report your own reply (same rule as posts).
     private var isOwnReply: Bool { reply.userId == appState.currentUser?.id }
 
-    /// Live tier from the embedded author; your own replies fall back to your aura.
+    /// Live tier from the embedded author. Your own replies use the larger of the
+    /// embedded aura and your current profile value (aura only goes up, so the
+    /// larger one is always current).
     private var authorLevel: AuthorityLevel? {
-        if let aura = reply.author?.aura { return Authority.level(for: aura) }
-        if isOwnReply, let aura = appState.currentUser?.aura { return Authority.level(for: aura) }
-        return nil
+        let embedded = reply.author?.aura
+        if isOwnReply, let mine = appState.currentUser?.aura {
+            return Authority.level(for: max(mine, embedded ?? 0))
+        }
+        return embedded.map(Authority.level(for:))
     }
 
     // Visual indent cap (Reddit-mobile style): stop indenting past this depth so

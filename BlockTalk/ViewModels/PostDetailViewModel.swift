@@ -86,7 +86,8 @@ final class PostDetailViewModel {
                 // Persist failed — remove the optimistic node so the UI doesn't show a
                 // reply that isn't really there (and can't be interacted with).
                 removeReply(id: tempId, from: &replies)
-                replyError = "Couldn't post your reply. Check your connection and try again."
+                replyError = RateLimit.message(for: error)
+                    ?? "Couldn't post your reply. Check your connection and try again."
                 print("Failed to persist reply: \(error)")
             }
         }
@@ -160,7 +161,12 @@ final class PostDetailViewModel {
 
     func voteOnReply(replyId: UUID, userId: UUID, direction: Int) {
         Task {
-            try? await replyService.vote(replyId: replyId, userId: userId, direction: direction)
+            do {
+                try await replyService.vote(replyId: replyId, userId: userId, direction: direction)
+            } catch {
+                // Only a rate limit is worth interrupting for; other failures stay quiet.
+                if let message = RateLimit.message(for: error) { replyError = message }
+            }
         }
     }
 }
