@@ -117,19 +117,24 @@ struct HowItWorksView: View {
                 .tracking(-0.8)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, BTSpacing.xxxl)
 
-            row("mappin.and.ellipse", Color.btLime,
-                "Post where you are.",
-                "You can only post in the neighborhood you're physically located in. Real presence, authentic commentary.")
+            // The three beats sit centered in the space between headline and button
+            // rather than stacking under the headline and leaving the bottom empty.
+            Spacer(minLength: BTSpacing.xl)
 
-            row("eye", Color.btHouse,
-                "Read anywhere.",
-                "Browse any neighborhood in the city. Reading and voting work from anywhere.")
+            VStack(alignment: .leading, spacing: BTSpacing.sm) {
+                row("mappin",
+                    "Post where you are.",
+                    "You can only post in the neighborhood you're physically located in. Real presence, authentic commentary.")
 
-            row("map.fill", Color.btPink,
-                "Drop it on the map.",
-                "Tag the exact corner or business where something happened. Your comment lives on the spot.")
+                row("text.bubble",
+                    "Read and reply anywhere.",
+                    "Browse any neighborhood in the city. Reading, voting and replying work from anywhere. Only posting needs you there.")
+
+                row("map",
+                    "Drop it on the map.",
+                    "Tag the exact corner or business where something happened. Your comment lives on the spot.")
+            }
 
             Spacer(minLength: BTSpacing.xl)
 
@@ -153,13 +158,9 @@ struct HowItWorksView: View {
         .background(Color.btBg.ignoresSafeArea())
     }
 
-    private func row(_ symbol: String, _ tint: Color, _ title: String, _ body: String) -> some View {
-        HStack(alignment: .top, spacing: BTSpacing.lg) {
-            Image(systemName: symbol)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(tint)
-                .frame(width: 26, height: 26)
-                .padding(.top, 2)
+    private func row(_ symbol: String, _ title: String, _ body: String) -> some View {
+        HStack(alignment: .center, spacing: BTSpacing.lg) {
+            litKey(symbol)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(BTFont.bodyBold(size: 17))
@@ -171,7 +172,38 @@ struct HowItWorksView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.bottom, BTSpacing.xl)
+        .padding(.vertical, BTSpacing.md)
+    }
+
+    /// A backlit key: dark glass face with a hairline top highlight, the glyph
+    /// glowing lime through it, and a soft bloom behind the whole thing.
+    private func litKey(_ symbol: String) -> some View {
+        RoundedRectangle(cornerRadius: 13)
+            .fill(LinearGradient(colors: [Color.btElev, Color.btSurface],
+                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+            .frame(width: 46, height: 46)
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.btLine, lineWidth: 1))
+            .overlay(
+                // One-pixel highlight along the top edge, fading out halfway down.
+                RoundedRectangle(cornerRadius: 13)
+                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center))
+            )
+            .overlay(
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(Color.btLime)
+                    .shadow(color: Color.btLime.opacity(0.55), radius: 5)
+            )
+            .shadow(color: Color.btLime.opacity(0.22), radius: 12, y: 8)
+            // Soft bloom behind the key. A background, not a sibling, so it never
+            // affects the key's own size or the row layout.
+            .background(
+                Circle()
+                    .fill(RadialGradient(colors: [Color.btLime.opacity(0.16), .clear],
+                                         center: .center, startRadius: 0, endRadius: 38))
+                    .frame(width: 76, height: 76)
+            )
     }
 }
 

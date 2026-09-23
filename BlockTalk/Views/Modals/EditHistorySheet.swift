@@ -52,7 +52,7 @@ struct EditHistorySheet: View {
             Text(label)
             Spacer()
             if let date {
-                Text(date.formatted(date: .omitted, time: .shortened).uppercased())
+                Text(Self.stamp(date))
             }
         }
         .font(BTFont.monoBold(size: 9.5))
@@ -62,6 +62,25 @@ struct EditHistorySheet: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
         .background(Color.btSurface2)
+    }
+
+    /// "TODAY · 8:25 AM", "YESTERDAY · 8:47 AM", "SEP 21 · 8:47 AM", or with the
+    /// year when it differs. The two versions can be days apart, so time alone
+    /// isn't enough.
+    static func stamp(_ date: Date, now: Date = Date()) -> String {
+        let cal = Calendar.current
+        let time = date.formatted(date: .omitted, time: .shortened)
+        let day: String
+        if cal.isDate(date, inSameDayAs: now) {
+            day = "Today"
+        } else if let yesterday = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: yesterday) {
+            day = "Yesterday"
+        } else if cal.isDate(date, equalTo: now, toGranularity: .year) {
+            day = date.formatted(.dateTime.month(.abbreviated).day())
+        } else {
+            day = date.formatted(.dateTime.month(.abbreviated).day().year())
+        }
+        return "\(day) · \(time)".uppercased()
     }
 
     private func body(_ text: String, color: Color) -> some View {

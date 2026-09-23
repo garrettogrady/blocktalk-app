@@ -5,7 +5,7 @@ import UIKit
 /// contradict each other.
 enum ProfileCopy {
     static let usernameGuide = "BlockTalk is anonymous. Don't use your real name, or anything that points back to you. You can only set a username once, and it can't be changed."
-    static let aliasGuide = "No real names, nothing traceable — that's the whole point of this place."
+    static let aliasGuide = "No real names, nothing traceable. That's the whole point of this place."
     static let locationRule = "You post wherever you're physically located."
 }
 
@@ -237,6 +237,8 @@ struct UsernameCreationView: View {
     /// Surfaced if the final profile insert fails — otherwise "Continue" looks
     /// dead and the user is stranded on the last onboarding screen.
     @State private var saveError: String?
+    /// Last alias that passed validation, so the preview never shows a broken one.
+    @State private var previewAlias = ""
 
     private var displayName: String {
         viewModel.username.trimmingCharacters(in: .whitespaces)
@@ -264,9 +266,9 @@ struct UsernameCreationView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xl) {
-                    userNumberBanner
                     heading
                     aliasField
+                    preview
                 }
                 .padding(.horizontal, BTSpacing.xxl)
                 .padding(.top, BTSpacing.lg)
@@ -285,6 +287,9 @@ struct UsernameCreationView: View {
         .onChange(of: viewModel.username) { _, _ in
             viewModel.checkUsernameTaken()
         }
+        .onChange(of: viewModel.usernameState) { _, state in
+            if state == .valid { previewAlias = displayName }
+        }
         .alert("Couldn't finish setting up", isPresented: Binding(
             get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
             Button("OK", role: .cancel) { saveError = nil }
@@ -293,25 +298,20 @@ struct UsernameCreationView: View {
         }
     }
 
-    // Was "You are user: 4,827" — a hardcoded fake shown to every signup. The
-    // real user number is a DB sequence assigned at account creation (shown on
-    // your profile after onboarding), so we don't invent one here.
-    private var userNumberBanner: some View {
-        (Text("You're in. ")
-            .font(BTFont.display(size: 20)).foregroundColor(Color.btText)
-         + Text("Now pick your alias.")
-            .font(BTFont.display(size: 20)).foregroundColor(Color.btLime))
-            .tracking(-0.2)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
     private var heading: some View {
-        Text("Set an alias. Not your name.")
-            .font(BTFont.display(size: 30))
-            .foregroundStyle(Color.btText)
-            .tracking(-0.5)
-            .lineSpacing(2)
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Set an alias. Not your name.")
+                .font(BTFont.display(size: 30))
+                .foregroundStyle(Color.btText)
+                .tracking(-0.5)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(ProfileCopy.aliasGuide)
+                .font(BTFont.body(size: 14))
+                .foregroundStyle(Color.btText2)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var aliasField: some View {
@@ -333,10 +333,18 @@ struct UsernameCreationView: View {
                 }
                 // Shuffle a fresh NYC alias
                 Button { shuffle() } label: {
-                    Image(systemName: "shuffle")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.btLime)
-                        .padding(.leading, 4)
+                    HStack(spacing: 5) {
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Shuffle")
+                            .font(BTFont.bodyBold(size: 11))
+                    }
+                    .foregroundStyle(Color.btLime)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.btLime.opacity(0.10))
+                    .overlay(Capsule().stroke(Color.btLime.opacity(0.28), lineWidth: 1))
+                    .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -347,23 +355,64 @@ struct UsernameCreationView: View {
 
             if let msg = usernameError {
                 Text(msg).font(BTFont.body(size: 12)).foregroundStyle(Color.btPink)
-            } else {
-                Text(ProfileCopy.aliasGuide)
-                    .font(BTFont.body(size: 12)).foregroundStyle(Color.btText3).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    // MARK: Preview
+
+    /// How they'll appear on a post: the alias, the Transplant I badge everyone
+    /// starts with, and the home badge from the previous step. Built from the
+    /// real badge views so it matches what they see after signup.
+    private var preview: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.sm) {
+            Text("HOW YOU'LL SHOW UP")
+                .font(BTFont.monoBold(size: 9.5))
+                .tracking(1.5)
+                .foregroundStyle(Color.btText3)
+
+            VStack(alignment: .leading, spacing: BTSpacing.sm) {
+                HStack(spacing: 6) {
+                    Text("@\(previewAlias.isEmpty ? "your_alias" : previewAlias)")
+                        .font(BTFont.bodySemibold(size: 11))
+                        .foregroundStyle(Color.btText)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    AuthorityBadge(level: AuthorityLevel(index: 1))
+                    HomeBadge(shortCode: appState.onboardingNeighborhood?.shortCode ?? "NYC")
+                    Spacer(minLength: 0)
+                }
+
+                Text("Your first post goes here. Only the alias is yours; nothing else is traceable.")
+                    .font(BTFont.body(size: 13))
+                    .foregroundStyle(Color.btText2)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 6) {
+                    VotePills(score: 0, upvoteCount: 0, downvoteCount: 0, onUpvote: {}, onDownvote: {})
+                    Spacer(minLength: 0)
+                    (Text("now · ").foregroundStyle(Color.btText3)
+                     + Text("0").foregroundStyle(Color.btText)
+                     + Text(" replies").foregroundStyle(Color.btText2))
+                        .font(BTFont.monoBold(size: 11))
+                }
+                .allowsHitTesting(false)
+            }
+            .padding(BTSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.btSurface)
+            .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLine, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
         }
     }
 
     // Everyone leaves with an alias — the generated one, an edit of it, or a
     // fresh shuffle. No "BlockTalker" default to skim past.
     private var bottomBar: some View {
-        VStack(spacing: BTSpacing.sm) {
-            primaryButton(canConfirm ? "Continue as @\(displayName)" : "Continue",
-                          enabled: canConfirm) {
-                finish(username: displayName)
-            }
-            secondaryButton("Shuffle a new one") { shuffle() }
+        primaryButton(canConfirm ? "Continue as @\(displayName)" : "Continue",
+                      enabled: canConfirm) {
+            finish(username: displayName)
         }
         .padding(.horizontal, BTSpacing.xxl)
         .padding(.top, BTSpacing.sm)
@@ -386,18 +435,6 @@ struct UsernameCreationView: View {
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
         }
         .disabled(!enabled)
-    }
-
-    private func secondaryButton(_ label: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(BTFont.bodyBold(size: 14)).tracking(0.4).lineLimit(1)
-                .foregroundStyle(Color.btText)
-                .frame(maxWidth: .infinity).frame(height: 50)
-                .background(Color.btSurface)
-                .overlay(RoundedRectangle(cornerRadius: BTRadius.lg).stroke(Color.btLine, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg))
-        }
     }
 
     private func finish(username: String) {

@@ -64,7 +64,7 @@ final class ComposeViewModel {
             Analytics.postCreated(isDailyPrompt: isDailyPrompt)
             return post
         } catch {
-            self.error = error.localizedDescription
+            self.error = RateLimit.message(for: error) ?? error.localizedDescription
             return nil
         }
     }

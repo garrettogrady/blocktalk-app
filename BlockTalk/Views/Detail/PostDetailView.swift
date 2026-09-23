@@ -9,6 +9,9 @@ struct PostDetailView: View {
     @Environment(ContentEditStore.self) private var edits
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = PostDetailViewModel()
+    /// The post refetched on open, so its author badge is from the same moment as
+    /// the replies below it. The list's copy can carry a stale aura for the author.
+    @State private var freshPost: Post?
 
     /// Live, or deleted-with-replies (a tombstone still anchors its thread).
     private var showsThread: Bool {
@@ -74,7 +77,7 @@ struct PostDetailView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // Full post display at top — expanded (full text, standard
                     // layout, not the feed's clamped place-split).
-                    PostCard(post: post, expandedText: true)
+                    PostCard(post: freshPost ?? post, expandedText: true)
                         .padding(.bottom, BTSpacing.md)
 
                     // Street comment → jump to the Map tab, centered on this pin,
@@ -149,6 +152,11 @@ struct PostDetailView: View {
             // Resolve this post's pin (corner + map) in case we arrived here
             // directly (deep link / share) without a list preloading it.
             await pinStore.ensureLoaded(for: [post])
+            // Refresh the post row so its author data (aura, username) is as current
+            // as the replies fetched below. Keep the list's copy if this fails.
+            if let latest = try? await PostService().fetchPost(id: post.id) {
+                freshPost = latest
+            }
             // Moderated posts are notices, not posts — no replies to load.
             if showsThread {
                 await viewModel.loadReplies(for: post)

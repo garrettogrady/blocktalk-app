@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		02BC30947C4EF611E3C13726 /* HomeBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39CEB9A39CC8D21676BA520D /* HomeBadge.swift */; };
 		0339E1EE17F15CD067ADF2C1 /* NeighborhoodService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD50D1AA74856FD67027639 /* NeighborhoodService.swift */; };
+		057D06C18E26F7D3B7629844 /* RateLimitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B986483E9BCEE89A77C25BAA /* RateLimitTests.swift */; };
 		0D68BB22F993AC1427B50437 /* FeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C4985E27B94DBD3AD4806FC /* FeedViewModel.swift */; };
 		1186A11AE19E6ECC03726472 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9688652C1B9A8D35A43A7A31 /* Colors.swift */; };
 		1BB5F9F580E0237EDA01068D /* OfflineStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927EDE0724A7443D3CF76B84 /* OfflineStoreTests.swift */; };
@@ -95,6 +96,7 @@
 		B46F95877DEE29143D1A69EB /* AuthorityBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A1A2A4C8AD8FE46ED780AA /* AuthorityBadge.swift */; };
 		B66CB178786E8CE3A7E0CAB1 /* PinDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24DABD6EC2FA3E80B1FE8D9 /* PinDetailView.swift */; };
 		B90A297CEB7A4B6EC78B4EC8 /* PinDropOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7C327B54D1767B2D7EF137 /* PinDropOverlay.swift */; };
+		B9E1AFE7F24B091F0A81A123 /* RateLimit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87DD167181131FAE6D13366B /* RateLimit.swift */; };
 		C29B7BD6CF309C068BD7EB0C /* Authority.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CE1407371D77C52769E7C1 /* Authority.swift */; };
 		C346873ED74BD413C9C91CE0 /* SettingsTestingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C7B4C30B65896F0AD0D2DFD /* SettingsTestingView.swift */; };
 		C606D395D187A6D90E656FAF /* AuthorityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2628EC8113E188F44073CB00 /* AuthorityTests.swift */; };
@@ -199,6 +201,7 @@
 		79C12CA4DD411194C9C750E4 /* ContentEditStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentEditStoreTests.swift; sourceTree = "<group>"; };
 		79E684DD1135333402323F9E /* BlockTalk.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BlockTalk.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		86282E405F0495811E77641E /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
+		87DD167181131FAE6D13366B /* RateLimit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateLimit.swift; sourceTree = "<group>"; };
 		886A5B7DD1A29BFC742AC1E0 /* DeviceTokenService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTokenService.swift; sourceTree = "<group>"; };
 		8B3F4559827097371549091B /* neighborhood-polygons.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "neighborhood-polygons.json"; sourceTree = "<group>"; };
 		8C7FEA9F4DEFCE4F3DEFAE23 /* OfflineBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBanner.swift; sourceTree = "<group>"; };
@@ -223,6 +226,7 @@
 		B5A1A2A4C8AD8FE46ED780AA /* AuthorityBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthorityBadge.swift; sourceTree = "<group>"; };
 		B69A736D33A481F580C5C630 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
 		B899293CE2781413D7CCA903 /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
+		B986483E9BCEE89A77C25BAA /* RateLimitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateLimitTests.swift; sourceTree = "<group>"; };
 		BBD50D1AA74856FD67027639 /* NeighborhoodService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborhoodService.swift; sourceTree = "<group>"; };
 		BD5A45D3FE09CF862ED940E5 /* PostCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCard.swift; sourceTree = "<group>"; };
 		BDA928B7DC5D9E44E7A2D7F6 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
@@ -331,6 +335,7 @@
 			children = (
 				29B0C530DDC6D4C9385417DB /* LanguageCheckTests.swift */,
 				94E3EDFCE7A454D0964E1BCE /* NeighborhoodPolygonTests.swift */,
+				B986483E9BCEE89A77C25BAA /* RateLimitTests.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -341,6 +346,7 @@
 				1344F3B868CD672196DBD0F4 /* GeoJSON.swift */,
 				1C268216C2F95D876EBDF90D /* LanguageCheck.swift */,
 				61EF10B92BE3EBE75C539898 /* NeighborhoodPolygons.swift */,
+				87DD167181131FAE6D13366B /* RateLimit.swift */,
 				1A46ABF1CE9E7F2732BCD1A4 /* RelativeTime.swift */,
 				6726E70B518A82D2008C21C7 /* ShareHelper.swift */,
 			);
@@ -811,6 +817,7 @@
 				4AD9BCE7ADED18B5536C4287 /* ProfileViewModel.swift in Sources */,
 				8B0412754AC2AC9C7B82DCB4 /* PushNotificationManager.swift in Sources */,
 				325BAC2830C0E4DC230607FD /* PushPermissionSheet.swift in Sources */,
+				B9E1AFE7F24B091F0A81A123 /* RateLimit.swift in Sources */,
 				97DA73375E87582FDC66A267 /* RelativeTime.swift in Sources */,
 				F12137D7DC09D624B39EE511 /* Reply.swift in Sources */,
 				82DCD98DC4561B750572D9E4 /* ReplyNode.swift in Sources */,
@@ -857,6 +864,7 @@
 				F0F3345E73563A1145BF53AE /* PinTests.swift in Sources */,
 				5C50810C26403015999981E6 /* PostDetailViewModelTests.swift in Sources */,
 				6E882DC626579BB8879B4438 /* ProfileViewModelTests.swift in Sources */,
+				057D06C18E26F7D3B7629844 /* RateLimitTests.swift in Sources */,
 				26CF06E93E3929ADA26DD2EB /* ReplyTreeTests.swift in Sources */,
 				8D5EDAB3DF8A98F8451DCB52 /* TestFixtures.swift in Sources */,
 			);

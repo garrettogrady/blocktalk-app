@@ -216,6 +216,23 @@ struct BlockTalkApp: App {
     /// Restore an existing Supabase session on launch. If a session exists,
     /// fetch the user profile and advance to .app. Otherwise stay on .splash.
     private func restoreSession() async {
+        #if DEBUG
+        // Jump straight to an onboarding screen for design iteration, e.g.
+        //   xcrun simctl launch booted com.blocktalk.nyc -onboardingStage how
+        // Accepts how / tone / profile / username. Debug builds only.
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-onboardingStage"), i + 1 < args.count {
+            switch args[i + 1] {
+            case "how": appState.stage = .how
+            case "tone": appState.stage = .tone
+            case "profile": appState.stage = .profile
+            case "username": appState.stage = .username
+            default: break
+            }
+            if appState.stage != .splash { return }
+        }
+        #endif
+
         // Load the neighborhood cache at startup
         await neighborhoodCache.loadAll()
 
