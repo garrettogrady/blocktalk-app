@@ -22,3 +22,27 @@ final class RateLimitTests: XCTestCase {
         XCTAssertNil(RateLimit.message(in: "rate_limited: "))
     }
 }
+
+final class EditHistoryStampTests: XCTestCase {
+    private let cal = Calendar.current
+
+    func testToday() {
+        let now = Date()
+        XCTAssertTrue(EditHistorySheet.stamp(now, now: now).hasPrefix("TODAY · "))
+    }
+
+    func testYesterday() {
+        let now = Date()
+        let y = cal.date(byAdding: .day, value: -1, to: now)!
+        XCTAssertTrue(EditHistorySheet.stamp(y, now: now).hasPrefix("YESTERDAY · "))
+    }
+
+    func testOlderShowsMonthAndDay() {
+        let now = Date()
+        let d = cal.date(byAdding: .day, value: -3, to: now)!
+        let s = EditHistorySheet.stamp(d, now: now)
+        XCTAssertFalse(s.hasPrefix("TODAY"))
+        XCTAssertFalse(s.hasPrefix("YESTERDAY"))
+        XCTAssertTrue(s.contains(" · "))
+    }
+}
