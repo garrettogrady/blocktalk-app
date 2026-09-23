@@ -12,11 +12,15 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     var showSoftAsk = false
     var currentUserId: UUID?
     /// Set by BlockTalkApp so push taps can navigate directly without NotificationCenter timing issues.
-    weak var appState: AppState?
+    weak var appState: AppState? {
+        didSet { deliverPendingNavigation() }
+    }
 
     private(set) var hasToken: Bool = false
     private var deviceTokenHex: String?
     private let tokenService = DeviceTokenService()
+    private var pendingPostId: UUID?
+    private var pendingAuthority = false
 
     func checkPermission() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -108,27 +112,61 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
-        // Level-up pushes carry no post; open the Authority page on the You tab.
+        print("[Push] didReceive notification tap — userInfo keys: \(userInfo.keys)")
         if userInfo["kind"] as? String == "authority" {
-            Task { @MainActor in
-                self.appState?.selectedTab = 3
-                self.appState?.showAuthorityPage = true
+            if let state = appState {
+                Task { @MainActor in
+                    state.selectedTab = 3
+                    state.showAuthorityPage = true
+                }
+            } else {
+                print("[Push] appState nil on authority tap — deferring")
+                pendingAuthority = true
             }
             completionHandler()
             return
         }
         if let postIdString = userInfo["post_id"] as? String,
            let postId = UUID(uuidString: postIdString) {
-            Task {
-                let postService = PostService()
-                if let post = try? await postService.fetchPost(id: postId) {
-                    await MainActor.run {
-                        self.appState?.openedPost = post
-                    }
-                }
+            print("[Push] post_id=\(postIdString) appState=\(appState == nil ? "nil" : "set")")
+            if let state = appState {
+                navigateToPost(postId, appState: state)
+            } else {
+                print("[Push] appState nil — stashing postId for later")
+                pendingPostId = postId
             }
         }
         completionHandler()
+    }
+
+    private func navigateToPost(_ postId: UUID, appState state: AppState) {
+        Task {
+            let postService = PostService()
+            if let post = try? await postService.fetchPost(id: postId) {
+                await MainActor.run {
+                    state.openedPost = post
+                }
+            } else {
+                print("[Push] ⚠️ Failed to fetch post \(postId)")
+            }
+        }
+    }
+
+    private func deliverPendingNavigation() {
+        guard let state = appState else { return }
+        if let postId = pendingPostId {
+            print("[Push] Delivering deferred navigation to post \(postId)")
+            pendingPostId = nil
+            navigateToPost(postId, appState: state)
+        }
+        if pendingAuthority {
+            print("[Push] Delivering deferred authority navigation")
+            pendingAuthority = false
+            Task { @MainActor in
+                state.selectedTab = 3
+                state.showAuthorityPage = true
+            }
+        }
     }
 }
 
