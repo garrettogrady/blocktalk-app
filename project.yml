@@ -35,6 +35,10 @@ targets:
         CFBundleIconName: AppIcon
         UIBackgroundModes:
           - remote-notification
+        CFBundleURLTypes:
+          - CFBundleURLName: com.blocktalk.nyc
+            CFBundleURLSchemes:
+              - blocktalk
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

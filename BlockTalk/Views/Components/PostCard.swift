@@ -189,7 +189,7 @@ struct PostCard: View {
                     .padding(.horizontal, BTSpacing.lg)
                     .padding(.vertical, BTSpacing.sm)
             } else if !isPreview && post.status == .underReview {
-                Tombstone(variant: .underReview, bodyText: post.text)
+                Tombstone(variant: .underReview, bodyText: post.text, reportCount: post.reportCount)
                     .padding(.horizontal, BTSpacing.lg)
                     .padding(.vertical, BTSpacing.sm)
             } else {
@@ -364,7 +364,7 @@ struct PostCard: View {
                 moderation.report(postId: post.id, reasonShort: short)
                 showToast("reported for \(short) · we'll review", icon: "flag.fill")
                 notifications.add(kind: "moderation", title: "Report received",
-                                  preview: "Thanks — we're reviewing this post for \(short).",
+                                  preview: "Thanks. We're reviewing this post for \(short).",
                                   relatedPostId: post.id)
             }
         }
@@ -469,13 +469,14 @@ struct PostCard: View {
             // Bell — enroll toggle + haptic + toast
             actionButton(
                 systemName: enrollments.isEnrolled(post.id) ? "bell.fill" : "bell",
+                label: enrollments.isEnrolled(post.id) ? "Stop notifications for this post" : "Notify me about replies",
                 active: enrollments.isEnrolled(post.id),
                 activeColor: .btLime,
                 action: toggleBell
             )
 
             // Share — native share sheet
-            actionButton(systemName: "square.and.arrow.up") {
+            actionButton(systemName: "square.and.arrow.up", label: "Share") {
                 ShareHelper.sharePost(post)
                 Analytics.shareTapped()
             }
@@ -483,9 +484,9 @@ struct PostCard: View {
             // Flag (hidden on your own posts — you can't report yourself; filled+pink once reported)
             if !isOwnPost {
                 if moderation.isReported(post.id) {
-                    actionButton(systemName: "flag.fill", active: true, activeColor: .btPink) {}
+                    actionButton(systemName: "flag.fill", label: "Reported", active: true, activeColor: .btPink) {}
                 } else {
-                    actionButton(systemName: "flag") {
+                    actionButton(systemName: "flag", label: "Report") {
                         showReport = true
                     }
                 }
@@ -569,12 +570,15 @@ struct PostCard: View {
             case .hard: edits.recordHardDelete(postId: post.id)
             case .tombstone, .none: edits.recordTombstone(postId: post.id)
             }
+            // Either way the map should stop showing its pin (the server already
+            // hides pins with no live post).
+            if let pinId = post.pinId { edits.recordDeletedPin(pinId) }
         } catch {
             showToast(error.localizedDescription, icon: "exclamationmark.triangle")
         }
     }
 
-    private func actionButton(systemName: String, active: Bool = false, activeColor: Color = .btText2, action: @escaping () -> Void) -> some View {
+    private func actionButton(systemName: String, label: String, active: Bool = false, activeColor: Color = .btText2, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 13))
@@ -588,6 +592,7 @@ struct PostCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func toggleBell() {

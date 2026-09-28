@@ -62,6 +62,9 @@ final class AppState {
     /// The neighborhood picked on onboarding step 1, carried to step 2 (username)
     /// so the final profile can be assembled once both are chosen.
     var onboardingNeighborhood: Neighborhood?
+    /// The alias typed on onboarding step 3, kept so going back and forward
+    /// doesn't reshuffle it away.
+    var onboardingAlias: String?
 
     /// A post opened via a shared link (blocktalk://p/<id>). When set, it's
     /// presented full-screen over whatever's on screen — so a recipient reads
@@ -91,6 +94,7 @@ final class AppState {
         physicalNeighborhood = nil
         homeNeighborhood = nil
         onboardingNeighborhood = nil
+        onboardingAlias = nil
         hasResolvedInitialNeighborhood = false
         deepLinkedPost = nil
         openedPost = nil
@@ -117,6 +121,35 @@ final class ModerationStore {
         reportedReasons[postId] = reasonShort
     }
 
+    /// Restore what the server already knows: posts this user reported and
+    /// appeals they filed. Without this both were memory-only and a relaunch
+    /// let the user report or appeal the same post twice.
+    func load(userId: UUID) async {
+        struct ReportRow: Decodable {
+            let postId: UUID
+            let reason: String
+            enum CodingKeys: String, CodingKey { case postId = "post_id", reason }
+        }
+        struct AppealRow: Decodable {
+            let postId: UUID
+            enum CodingKeys: String, CodingKey { case postId = "post_id" }
+        }
+        if let rows: [ReportRow] = try? await supabase.from("reports")
+            .select("post_id, reason")
+            .eq("reporter_id", value: userId.uuidString)
+            .execute().value {
+            for r in rows where reportedReasons[r.postId] == nil {
+                reportedReasons[r.postId] = ReportReason(rawValue: r.reason)?.short ?? r.reason
+            }
+        }
+        if let rows: [AppealRow] = try? await supabase.from("appeals")
+            .select("post_id")
+            .eq("user_id", value: userId.uuidString)
+            .execute().value {
+            appealedPostIds.formUnion(rows.map(\.postId))
+        }
+    }
+
     func markAppealed(_ postId: UUID) { appealedPostIds.insert(postId) }
     func hasAppealed(_ postId: UUID) -> Bool { appealedPostIds.contains(postId) }
 
@@ -126,6 +159,12 @@ final class ModerationStore {
         } else {
             shownAnyway.insert(postId)
         }
+    }
+
+    func reset() {
+        reportedReasons = [:]
+        shownAnyway = []
+        appealedPostIds = []
     }
 
     func isReported(_ postId: UUID) -> Bool { reportedReasons[postId] != nil }
@@ -139,6 +178,9 @@ final class ModerationStore {
 @Observable
 final class NotificationStore {
     private(set) var items: [BTNotification] = []
+    /// True when the last load failed, so the You tab can say so instead of
+    /// showing "No notifications yet" to someone who has some.
+    private(set) var loadFailed = false
 
     var unreadCount: Int { items.filter(\.unread).count }
 
@@ -152,7 +194,9 @@ final class NotificationStore {
                 .execute()
                 .value
             items = fetched
+            loadFailed = false
         } catch {
+            loadFailed = true
             print("NotificationStore: failed to load — \(error)")
         }
     }
@@ -173,6 +217,8 @@ final class NotificationStore {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         items[i].unread = false
     }
+
+    func reset() { items = []; loadFailed = false }
 }
 
 /// Session-scoped offline queue. Posts made offline queue locally; when
@@ -405,6 +451,8 @@ final class ContentEditStore {
     private(set) var tombstonedReplies: Set<UUID> = []
     private(set) var hardDeletedPosts: Set<UUID> = []
     private(set) var hardDeletedReplies: Set<UUID> = []
+    /// Pins whose street comment was deleted this session; the map drops them.
+    private(set) var deletedPinIds: Set<UUID> = []
 
     // MARK: Record
 
@@ -415,6 +463,7 @@ final class ContentEditStore {
     func recordTombstone(replyId: UUID) { tombstonedReplies.insert(replyId) }
 
     func recordHardDelete(postId: UUID) { hardDeletedPosts.insert(postId) }
+    func recordDeletedPin(_ pinId: UUID) { deletedPinIds.insert(pinId) }
     func recordHardDelete(replyId: UUID) { hardDeletedReplies.insert(replyId) }
 
     // MARK: Read
@@ -463,6 +512,7 @@ final class ContentEditStore {
         postPatches = [:]; replyPatches = [:]
         tombstonedPosts = []; tombstonedReplies = []
         hardDeletedPosts = []; hardDeletedReplies = []
+        deletedPinIds = []
     }
 }
 

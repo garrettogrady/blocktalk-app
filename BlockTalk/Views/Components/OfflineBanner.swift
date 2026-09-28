@@ -58,11 +58,11 @@ struct DiscardedPostRow: View {
                 .textSelection(.enabled)
 
             Button {
-                ShareHelper.shareText(post.text)
+                UIPasteboard.general.string = post.text
             } label: {
                 HStack(spacing: BTSpacing.xs) {
                     Image(systemName: "doc.on.doc").font(.system(size: 11))
-                    Text("Tap to copy text").font(BTFont.bodySemibold(size: 12))
+                    Text("Copy text").font(BTFont.bodySemibold(size: 12))
                 }
                 .foregroundStyle(Color.btText2)
                 .padding(.horizontal, BTSpacing.md)

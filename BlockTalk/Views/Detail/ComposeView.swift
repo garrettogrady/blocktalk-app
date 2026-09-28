@@ -18,6 +18,7 @@ struct ComposeView: View {
     @State private var showLibrary = false
     @State private var pinCleared = false
     @State private var submitError: String?
+    @State private var isPosting = false
     // Optional business the street comment is tagged to (Apple Maps POI).
     @State private var taggedPlace: TaggedPlace?
     @State private var showPlacePicker = false
@@ -168,8 +169,8 @@ struct ComposeView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Post") { submitPost() }
                         .font(BTFont.bodySemibold(size: 16))
-                        .foregroundStyle(viewModel.canSubmit ? Color.btLime : Color.btMuted)
-                        .disabled(!viewModel.canSubmit)
+                        .foregroundStyle(viewModel.canSubmit && !isPosting ? Color.btLime : Color.btMuted)
+                        .disabled(!viewModel.canSubmit || isPosting)
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -483,6 +484,10 @@ struct ComposeView: View {
             aura: appState.currentUser?.aura
         )
 
+        // Lock for the whole pin-then-post sequence; the view model's own flag only
+        // covers the post insert, which left a window to double-drop a pin.
+        guard !isPosting else { return }
+        isPosting = true
         Task {
             if let pinLocation = effectivePin {
                 // Street comment: create the pin in Supabase first, then the post.
@@ -510,10 +515,12 @@ struct ComposeView: View {
                         enrollments.enroll(userId: userId, postId: post.id)
                         routeAfterPost()
                     } else {
-                        submitError = viewModel.error ?? "Couldn't post. Try again."
+                        isPosting = false
+                    submitError = viewModel.error ?? "Couldn't post. Try again."
                     }
                 } catch {
                     print("Failed to create pin: \(error)")
+                    isPosting = false
                     submitError = "Couldn't drop your pin. Check your connection and try again."
                 }
             } else {
@@ -525,6 +532,7 @@ struct ComposeView: View {
                     enrollments.enroll(userId: userId, postId: post.id)
                     routeAfterPost()
                 } else {
+                    isPosting = false
                     submitError = viewModel.error ?? "Couldn't post. Try again."
                 }
             }
@@ -886,7 +894,7 @@ struct PlacePickerSheet: View {
                         } else if results.isEmpty {
                             Text(query.isEmpty
                                  ? "No businesses right at your pin."
-                                 : "\u{201C}\(query)\u{201D} isn\u{2019}t at your pin — only places here can be tagged.")
+                                 : "\u{201C}\(query)\u{201D} isn\u{2019}t at your pin. Only places here can be tagged.")
                                 .font(BTFont.body(size: 13)).foregroundStyle(Color.btText3)
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity).padding(.horizontal, BTSpacing.xl).padding(.top, BTSpacing.xxxl)

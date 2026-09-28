@@ -81,8 +81,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // Case-insensitive: the polygon name ("Nolita") and the resolved table name
         // ("NoLita") can differ only by case — a plain != would read as a boundary
         // cross on every fix and re-resolve endlessly.
-        let crossedBoundary = localMatch != nil
-            && localMatch?.name.caseInsensitiveCompare(currentNeighborhood?.name ?? "") != .orderedSame
+        // Also apply the polygon-to-DB alias table ("Flatiron District" vs "Flatiron"),
+        // otherwise those neighborhoods re-resolve on every fix.
+        let localName = localMatch.map { NeighborhoodService.polygonNameAliases[$0.name] ?? $0.name }
+        let crossedBoundary = localName != nil
+            && localName?.caseInsensitiveCompare(currentNeighborhood?.name ?? "") != .orderedSame
         let dominated = !firstTime && accuracy < resolvedAccuracy * 0.5
 
         guard firstTime || crossedBoundary || dominated else { return }
@@ -109,6 +112,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             updatePermissionState()
             if permissionState == .granted {
                 manager.startUpdatingLocation()
+            } else {
+                // Permission revoked: nothing downstream may keep using the last fix.
+                manager.stopUpdatingLocation()
+                currentLocation = nil
+                currentNeighborhood = nil
+                neighborhoodResolved = false
             }
             // Fire analytics when permission transitions from undetermined
             if previousState == .undetermined && (permissionState == .granted || permissionState == .denied) {

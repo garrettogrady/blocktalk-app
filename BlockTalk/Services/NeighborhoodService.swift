@@ -15,7 +15,7 @@ struct NeighborhoodService {
     /// actual words (casing is already handled by the case-insensitive lookup).
     /// Without this, a user standing there resolves to nothing and gets stuck on
     /// "finding your neighborhood…". Verified list: only "Flatiron District" today.
-    private static let polygonNameAliases: [String: String] = [
+    static let polygonNameAliases: [String: String] = [
         "Flatiron District": "Flatiron",
     ]
 

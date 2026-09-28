@@ -13,6 +13,8 @@ final class EnrollmentStore {
         }
     }
 
+    func reset() { enrolledPostIds = [] }
+
     func isEnrolled(_ postId: UUID) -> Bool {
         enrolledPostIds.contains(postId)
     }

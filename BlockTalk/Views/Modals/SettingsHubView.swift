@@ -273,7 +273,7 @@ enum LegalDocs {
     - Spam, scams, coordinated manipulation, fake engagement, or bots.
     - Impersonation, or posting content that isn't yours or that infringes others' rights.
     - Attempts to circumvent presence-based posting, rate limits, or moderation, or to disrupt or reverse-engineer the Service.
-    We may remove content and suspend or terminate accounts that violate these Terms. We provide in-app tools to report content and block users, and we act on reports.
+    We may remove content and suspend or terminate accounts that violate these Terms. We provide in-app tools to report content, and we act on reports.
 
     ## 5. Your content and license to us
     You retain ownership of the content you create. To operate the Service, you grant us a worldwide, non-exclusive, royalty-free license to host, store, display, reproduce, and distribute your content within the Service and its normal operation. This license ends when you delete your account (which removes your posts, replies, and votes), except for copies retained for legal, safety, or backup purposes, or content others have shared.

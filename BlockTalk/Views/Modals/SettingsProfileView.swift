@@ -27,8 +27,9 @@ struct SettingsProfileView: View {
         aliasUnlockDate.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? ""
     }
 
-    // Home neighborhood: soft 90-day cooldown tracked locally. A server-enforced
-    // version would mirror update_username (a changed_at column + RPC).
+    // Home neighborhood: 90-day cooldown. The server column home_changed_at is the
+    // source of truth (written on every change); UserDefaults is only a fallback
+    // for sessions restored before the column was populated.
     private let homeLockDays: Double = 90
     private var homeChangedAtKey: String { "homeNeighborhoodChangedAt_\(appState.currentUser?.id.uuidString ?? "")" }
     private var homeUnlockDate: Date? { homeChangedAt.map { $0.addingTimeInterval(homeLockDays * 86_400) } }
@@ -99,7 +100,7 @@ struct SettingsProfileView: View {
                             .font(BTFont.bodyMedium(size: 15))
                             .foregroundStyle(Color.btText)
                         Spacer()
-                        Text(appState.homeNeighborhood?.name ?? "—")
+                        Text(appState.homeNeighborhood?.name ?? "Not set")
                             .font(BTFont.bodyMedium(size: 14))
                             .foregroundStyle(Color.btText2)
                             .lineLimit(1)
@@ -199,8 +200,12 @@ struct SettingsProfileView: View {
             Text(actionError ?? "")
         }
         .onAppear {
-            let t = UserDefaults.standard.double(forKey: homeChangedAtKey)
-            if t > 0 { homeChangedAt = Date(timeIntervalSince1970: t) }
+            if let server = appState.currentUser?.homeChangedAt {
+                homeChangedAt = server
+            } else {
+                let t = UserDefaults.standard.double(forKey: homeChangedAtKey)
+                if t > 0 { homeChangedAt = Date(timeIntervalSince1970: t) }
+            }
         }
     }
 
@@ -229,14 +234,18 @@ struct SettingsProfileView: View {
                 }
                 return
             }
+            let now = Date()
             try await supabase.from("users")
-                .update(["home_neighborhood_id": real.id.uuidString])
+                .update([
+                    "home_neighborhood_id": real.id.uuidString,
+                    "home_changed_at": ISO8601DateFormatter().string(from: now),
+                ])
                 .eq("id", value: userId.uuidString)
                 .execute()
             await MainActor.run {
                 appState.homeNeighborhood = real
                 appState.currentUser?.homeNeighborhoodId = real.id
-                let now = Date()
+                appState.currentUser?.homeChangedAt = now
                 UserDefaults.standard.set(now.timeIntervalSince1970, forKey: homeChangedAtKey)
                 homeChangedAt = now
             }
@@ -321,6 +330,9 @@ struct SetUsernameSheet: View {
                         .font(BTFont.body(size: 15)).foregroundStyle(Color.btText)
                         .focused($focused)
                         .autocorrectionDisabled().textInputAutocapitalization(.never)
+                        // Same availability check onboarding runs, so a taken alias
+                        // never shows a green check here.
+                        .onChange(of: viewModel.username) { _, _ in viewModel.checkUsernameTaken() }
                     if viewModel.usernameOk {
                         Image(systemName: "checkmark").font(.system(size: 14, weight: .medium)).foregroundStyle(Color.btLime)
                     } else if isErrorState {

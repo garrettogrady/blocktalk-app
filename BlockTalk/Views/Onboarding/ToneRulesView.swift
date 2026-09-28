@@ -54,12 +54,12 @@ struct ToneRulesView: View {
                     .lineSpacing(4)
                     .padding(.bottom, BTSpacing.xl)
 
-                Text("Hate speech, racism, and identifying individuals will get you banned.")
+                Text("Hate speech, racism, threats, and identifying individuals will get you banned.")
                     .font(BTFont.body(size: 20))
                     .foregroundStyle(Color.btText2)
                     .lineSpacing(8)
 
-                Text("Everything else is fair game.")
+                Text("Everything else is fair game, within the guidelines in Settings.")
                     .font(BTFont.bodyBold(size: 20))
                     .foregroundStyle(Color.btText)
                     .lineSpacing(8)

@@ -159,10 +159,15 @@ final class PostDetailViewModel {
         return false
     }
 
+    /// direction 1 / -1 casts or switches; 0 clears the vote.
     func voteOnReply(replyId: UUID, userId: UUID, direction: Int) {
         Task {
             do {
-                try await replyService.vote(replyId: replyId, userId: userId, direction: direction)
+                if direction == 0 {
+                    try await replyService.removeVote(replyId: replyId, userId: userId)
+                } else {
+                    try await replyService.vote(replyId: replyId, userId: userId, direction: direction)
+                }
             } catch {
                 // Only a rate limit is worth interrupting for; other failures stay quiet.
                 if let message = RateLimit.message(for: error) { replyError = message }

@@ -30,7 +30,7 @@ You are solely responsible for the content you post. **We have zero tolerance fo
 - Impersonation, or posting content that isn't yours or that infringes others' rights.
 - Attempts to circumvent presence-based posting, rate limits, or moderation, or to disrupt or reverse-engineer the Service.
 
-We may remove content and suspend or terminate accounts that violate these Terms or our Community Guidelines, with or without notice. We provide in-app tools to **report** content and to **block** users, and we act on reports.
+We may remove content and suspend or terminate accounts that violate these Terms or our Community Guidelines, with or without notice. We provide in-app tools to **report** content, and we act on reports.
 
 ## 5. Your content and license to us
 

@@ -5,6 +5,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         print("[Push] AppDelegate didFinishLaunching")
         print("[Push] isRegisteredForRemoteNotifications = \(application.isRegisteredForRemoteNotifications)")
+        // Must be set before launch finishes, or the tap that launched the app
+        // from a push is never delivered to didReceive.
+        UNUserNotificationCenter.current().delegate = pushManager
         // Register immediately
         application.registerForRemoteNotifications()
         // Retry at staggered intervals — some devices need the app fully
@@ -153,11 +156,31 @@ struct BlockTalkApp: App {
                 Analytics.setup()
                 await restoreSession()
             }
-            .onChange(of: appState.stage) { _, stage in
+            .onChange(of: appState.stage) { old, stage in
                 if stage == .app, let userId = appState.currentUser?.id {
                     pushManager.currentUserId = userId
                     pushManager.checkPermission()
                     pushManager.saveToken(userId: userId)
+                    // Load the inbox now so the You-tab badge is right from the start,
+                    // not only after the tab is visited.
+                    Task { await notifications.load(userId: userId) }
+                    // Reported and appealed posts, so the flag and Appeal states
+                    // survive a relaunch.
+                    Task { await moderation.load(userId: userId) }
+                }
+                // Signed out (or account deleted): every session store must go, or a
+                // second Apple ID on this phone inherits the first one's posts, edits,
+                // hidden posts, notifications, analytics identity and push token.
+                if stage == .splash, old != .splash {
+                    pushManager.unregister()
+                    Analytics.reset()
+                    offline.reset()
+                    localContent.reset()
+                    edits.reset()
+                    pinStore.reset()
+                    notifications.reset()
+                    enrollments.reset()
+                    moderation.reset()
                 }
             }
             .onChange(of: scenePhase) { _, phase in
@@ -166,6 +189,9 @@ struct BlockTalkApp: App {
                     pushManager.checkPermission()
                     Analytics.appOpened()
                     UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+                    if appState.stage == .app, let userId = appState.currentUser?.id {
+                        Task { await notifications.load(userId: userId) }
+                    }
                     // Retry token registration if we still don't have one
                     if !pushManager.hasToken {
                         print("[Push] No token yet on .active — retrying registration")
@@ -181,6 +207,9 @@ struct BlockTalkApp: App {
                     if old == nil {
                         appState.viewingNeighborhood = resolved
                     }
+                } else if resolved == nil {
+                    // Location revoked or lost: posting must stop until it's back.
+                    appState.physicalNeighborhood = nil
                 }
             }
         }

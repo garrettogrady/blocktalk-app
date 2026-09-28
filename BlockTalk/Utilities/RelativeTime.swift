@@ -10,4 +10,10 @@ enum RelativeTime {
         if hours < 24 { return "\(hours)h" }
         return "\(hours / 24)d"
     }
+
+    /// "now", "4m ago", "2h ago", "3d ago". Same thresholds as `short`.
+    static func long(since date: Date, now: Date = Date()) -> String {
+        let s = short(since: date, now: now)
+        return s == "now" ? s : s + " ago"
+    }
 }

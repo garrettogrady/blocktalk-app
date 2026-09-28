@@ -30,6 +30,9 @@ final class DiscoverViewModel {
 
     private let postService = PostService()
     private let pageSize = 15
+    /// Bumped on every first-page load; a page that finishes for an older
+    /// generation (sort changed mid-flight) is dropped instead of appended.
+    private var generation = 0
 
     func load() async {
         isLoading = true
@@ -45,8 +48,11 @@ final class DiscoverViewModel {
 
     /// First page of the city-wide feed (also used on pull-to-refresh + sort change).
     func loadFirstPage() async {
+        generation += 1
+        let mine = generation
         do {
             let first = try await postService.fetchCityWide(sort: sort, offset: 0, pageSize: pageSize)
+            guard mine == generation else { return }
             trendingPosts = first
             canLoadMore = first.count == pageSize   // a full page => there may be more
         } catch {
@@ -60,9 +66,11 @@ final class DiscoverViewModel {
         guard canLoadMore, !isLoadingMore, !isLoading else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
+        let mine = generation
         do {
             let next = try await postService.fetchCityWide(
                 sort: sort, offset: trendingPosts.count, pageSize: pageSize)
+            guard mine == generation else { return }
             // Guard against dupes if new posts shifted the window between pages.
             let existing = Set(trendingPosts.map(\.id))
             trendingPosts += next.filter { !existing.contains($0.id) }

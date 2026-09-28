@@ -13,10 +13,11 @@ struct PostDetailView: View {
     /// the replies below it. The list's copy can carry a stale aura for the author.
     @State private var freshPost: Post?
 
+    /// The post's status as it stands now: refetched row plus this session's edits.
+    private var currentStatus: PostStatus { edits.apply(freshPost ?? post).status }
     /// Live, or deleted-with-replies (a tombstone still anchors its thread).
     private var showsThread: Bool {
-        let status = edits.apply(post).status
-        return status == .live || status == .deleted
+        currentStatus == .live || currentStatus == .deleted
     }
 
     /// The current user's identity, embedded on replies they send.
@@ -126,7 +127,7 @@ struct PostDetailView: View {
 
             // Reply compose bar — only for a live post; a moderated post has
             // nothing to reply to.
-            if post.status == .live {
+            if currentStatus == .live {
                 // Replies aren't presence-gated — reading is global, so replying is
                 // too. (Posts + pins still require you to be physically present.)
                 replyBar
@@ -140,6 +141,7 @@ struct PostDetailView: View {
                     ShareHelper.sharePost(post)
                 } label: {
                     Image(systemName: "square.and.arrow.up")
+                        .accessibilityLabel("Share")
                         .foregroundStyle(Color.btText2)
                 }
             }
@@ -196,6 +198,7 @@ struct PostDetailView: View {
                         viewModel.replyingTo = nil
                     } label: {
                         Image(systemName: "xmark")
+                        .accessibilityLabel("Close")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Color.btText3)
                     }
@@ -248,6 +251,7 @@ struct PostDetailView: View {
                     viewModel.sendReply(post: post, userId: userId, author: replyAuthor)
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
+                        .accessibilityLabel("Send reply")
                         .font(.system(size: 28))
                         .foregroundStyle(canSendReply ? Color.btLime : Color.btMuted)
                 }
@@ -330,6 +334,7 @@ struct SharedPostView: View {
 
                 Button { appState.deepLinkedPost = nil } label: {
                     Image(systemName: "xmark")
+                        .accessibilityLabel("Close")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Color.btText2)
                         .frame(width: 34, height: 34)
@@ -362,8 +367,13 @@ struct SharedPostView: View {
 
             // Join / open
             VStack(spacing: BTSpacing.sm) {
-                Button { appState.deepLinkedPost = nil } label: {
-                    Text(isOnboarded ? "Open in blocktalk" : "Join blocktalk to reply")
+                Button {
+                    appState.deepLinkedPost = nil
+                    // An onboarded recipient goes straight into the thread; a new one
+                    // goes to onboarding, which is where the splash already leads.
+                    if isOnboarded { appState.openedPost = post }
+                } label: {
+                    Text(isOnboarded ? "Open in BlockTalk" : "Join BlockTalk to reply")
                         .font(BTFont.bodyBold(size: 14)).tracking(0.4)
                         .foregroundStyle(Color.btOnAccent)
                         .frame(maxWidth: .infinity).frame(height: 50)

@@ -17,7 +17,7 @@ struct PushPermissionSheet: View {
                     .foregroundStyle(Color.btText)
                     .multilineTextAlignment(.center)
 
-                Text("We'll only notify you about posts you follow — never spam.")
+                Text("Replies on posts you follow, and your own level-ups. Never spam.")
                     .font(BTFont.body(size: 14))
                     .foregroundStyle(Color.btText2)
                     .multilineTextAlignment(.center)

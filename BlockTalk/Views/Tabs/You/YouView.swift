@@ -132,7 +132,7 @@ struct YouView: View {
                 }
 
                 if notifications.items.isEmpty {
-                    Text("No notifications yet — you'll hear when someone replies or votes.")
+                    Text(notifications.loadFailed ? "Couldn't load notifications. Pull to refresh or reopen the tab." : "No notifications yet. You'll hear when someone replies or votes.")
                         .font(BTFont.body(size: 13))
                         .foregroundStyle(Color.btText3)
                         .fixedSize(horizontal: false, vertical: true)

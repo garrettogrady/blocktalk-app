@@ -121,7 +121,7 @@ struct TrendingCard: View {
             ReportModalView(postId: post.id) { short in
                 moderation.report(postId: post.id, reasonShort: short)
                 notifications.add(kind: "moderation", title: "Report received",
-                                  preview: "Thanks — we're reviewing this post.",
+                                  preview: "Thanks. We're reviewing this post.",
                                   relatedPostId: post.id)
             }
         }

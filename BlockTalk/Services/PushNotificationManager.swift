@@ -91,6 +91,23 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         }
     }
 
+    /// Sign-out: stop this device receiving the old account's pushes and forget
+    /// which user the token belongs to. The token itself stays registered with
+    /// APNs so the next sign-in can reuse it.
+    func unregister() {
+        if let userId = currentUserId, let hex = deviceTokenHex {
+            Task {
+                do {
+                    try await tokenService.remove(userId: userId, token: hex)
+                    print("[Push] Token removed for signed-out user")
+                } catch {
+                    print("[Push] Failed to remove device token: \(error)")
+                }
+            }
+        }
+        currentUserId = nil
+    }
+
     // MARK: - UNUserNotificationCenterDelegate
 
     func userNotificationCenter(

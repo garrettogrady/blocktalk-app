@@ -134,6 +134,12 @@ struct ProfileCreationView: View {
             continueBar
         }
         .background(Color.btBg.ignoresSafeArea())
+        // Coming back from the alias step: show the neighborhood already chosen.
+        .onAppear {
+            if viewModel.selectedNeighborhood == nil, let picked = appState.onboardingNeighborhood {
+                viewModel.selectedNeighborhood = picked
+            }
+        }
         .fullScreenCover(isPresented: $showNeighborhoodPicker) {
             NeighborhoodPickerView(
                 currentValue: viewModel.selectedNeighborhood,
@@ -262,7 +268,10 @@ struct UsernameCreationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            onboardingStepBar(3, 3, onBack: { appState.advanceTo(.profile) })
+            onboardingStepBar(3, 3, onBack: {
+                appState.onboardingAlias = viewModel.username
+                appState.advanceTo(.profile)
+            })
 
             ScrollView {
                 VStack(alignment: .leading, spacing: BTSpacing.xl) {
@@ -279,8 +288,11 @@ struct UsernameCreationView: View {
         .background(Color.btBg.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) { bottomBar }
         .onAppear {
-            // Everyone starts with a generated NYC alias — no "BlockTalker" default.
-            if viewModel.username.caseInsensitiveCompare("BlockTalker") == .orderedSame {
+            // Everyone starts with a generated NYC alias, never a "BlockTalker"
+            // default. Coming back from a later step restores what they typed.
+            if let draft = appState.onboardingAlias, !draft.isEmpty {
+                viewModel.username = draft
+            } else if viewModel.username.caseInsensitiveCompare("BlockTalker") == .orderedSame {
                 shuffle()
             }
         }
@@ -479,7 +491,12 @@ struct UsernameCreationView: View {
                     .execute()
                     .value
 
-                guard let user = users.first else { return }
+                guard let user = users.first else {
+                    await MainActor.run {
+                        saveError = "Your profile was created but couldn't be loaded. Force-quit the app and open it again."
+                    }
+                    return
+                }
 
                 appState.currentUser = user
                 appState.viewingNeighborhood = resolvedHood
@@ -493,7 +510,7 @@ struct UsernameCreationView: View {
             } catch {
                 print("Failed to create user profile: \(error)")
                 await MainActor.run {
-                    saveError = "We couldn't create your profile. That alias may have just been taken — try Shuffle, or check your connection."
+                    saveError = "We couldn't create your profile. That alias may have just been taken. Try Shuffle, or check your connection."
                 }
             }
         }

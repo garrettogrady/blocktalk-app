@@ -48,7 +48,8 @@ struct VotePills: View {
     }
 
     private func pill(glyph: String, color: Color, active: Bool, count: Int?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let name = glyph == "▲" ? "Upvote" : "Downvote"
+        return Button(action: action) {
             HStack(spacing: 5) {
                 Text(glyph)
                     .font(BTFont.bodyBold(size: 11))
@@ -67,6 +68,9 @@ struct VotePills: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(name)
+        .accessibilityValue(count.map { "\($0)" } ?? "")
+        .accessibilityAddTraits(active ? .isSelected : [])
     }
 }
 

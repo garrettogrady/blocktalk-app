@@ -148,7 +148,7 @@ struct LocationPreFrameSheet: View {
                 .tracking(-0.5)
                 .foregroundStyle(Color.btText)
                 .multilineTextAlignment(.center)
-            Text("BlockTalk is neighborhood-locked — here's how it works.")
+            Text("BlockTalk is neighborhood-locked. Here's how it works.")
                 .font(BTFont.body(size: 13.5))
                 .foregroundStyle(Color.btText2)
                 .multilineTextAlignment(.center)
@@ -158,7 +158,7 @@ struct LocationPreFrameSheet: View {
 
             // Benefit rows — icon badge + title + subtitle
             VStack(spacing: BTSpacing.md) {
-                benefitRow("mappin.and.ellipse", "Post & reply where you are",
+                benefitRow("mappin.and.ellipse", "Post where you are",
                            "Only from inside the neighborhood")
                 benefitRow("eye.fill", "Browse & vote anywhere",
                            "No location needed to read along")

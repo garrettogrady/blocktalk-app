@@ -42,7 +42,9 @@ struct FeedView: View {
     /// DB posts minus any already shown from local session content — so a
     /// just-created post doesn't appear twice (once local, once from the reload).
     private var dbPosts: [Post] {
-        let localIds = Set(localContent.posts.map(\.id))
+        // Flushed offline posts are rendered in their own section too, so they
+        // must be excluded here or they show twice after the next reload.
+        let localIds = Set(localContent.posts.map(\.id) + offline.flushed.map(\.id))
         return viewModel.posts.filter { !localIds.contains($0.id) }
     }
 
@@ -200,10 +202,15 @@ struct FeedView: View {
                 if locationService.permissionState != .granted {
                     LocationGateBar(showPreFrame: $showPreFrame)
                 } else if appState.physicalNeighborhood == nil {
-                    // Granted but not resolved yet — show a locating state, NOT the
+                    // Granted but not resolved yet: a locating state, NOT the
                     // browse-only bar (whose button would be a dead click while
-                    // physicalNeighborhood is nil).
-                    locatingBar
+                    // physicalNeighborhood is nil). If the fix landed outside every
+                    // covered neighborhood, say so instead of spinning forever.
+                    if locationService.neighborhoodResolved && locationService.currentNeighborhood == nil {
+                        outsideCoverageBar
+                    } else {
+                        locatingBar
+                    }
                 } else if appState.canPostInViewing {
                     ComposeBarView {
                         showCompose = true
@@ -335,6 +342,27 @@ struct FeedView: View {
 
     /// Shown while location is granted but the neighborhood hasn't resolved yet —
     /// a passive indicator (no tappable action that could dead-click).
+    private var outsideCoverageBar: some View {
+        HStack(spacing: BTSpacing.sm) {
+            Image(systemName: "location.slash")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.btText3)
+            Text("You're outside a BlockTalk neighborhood. Browse anywhere; post from inside one.")
+                .font(BTFont.bodySemibold(size: 12))
+                .foregroundStyle(Color.btText2)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 38)
+        .padding(.horizontal, BTSpacing.md)
+        .background(Color.btSurface)
+        .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+        .padding(.horizontal, BTSpacing.lg)
+        .padding(.vertical, BTSpacing.sm)
+    }
+
     private var locatingBar: some View {
         HStack(spacing: BTSpacing.sm) {
             ProgressView().tint(Color.btText2).scaleEffect(0.8)

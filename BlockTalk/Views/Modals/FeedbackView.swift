@@ -86,7 +86,7 @@ struct FeedbackView: View {
                 Image(systemName: "lock")
                     .font(.system(size: 12))
                     .foregroundStyle(Color.btText3)
-                Text("Your user # is attached so we can follow up if needed. Nothing else.")
+                Text("Your account is attached so we can follow up if needed. Nothing else.")
                     .font(BTFont.body(size: 12))
                     .foregroundStyle(Color.btText3)
             }
@@ -136,7 +136,7 @@ struct FeedbackView: View {
                 .font(BTFont.bodySemibold(size: 18))
                 .foregroundStyle(Color.btText)
 
-            Text("We read every message. We don't reply individually — but if it changes something, you'll see it.")
+            Text("We read every message. We don't reply individually, but if it changes something, you'll see it.")
                 .font(BTFont.body(size: 15))
                 .foregroundStyle(Color.btText2)
                 .multilineTextAlignment(.center)

@@ -32,6 +32,14 @@ struct ReplyService {
             .value
     }
 
+    func removeVote(replyId: UUID, userId: UUID) async throws {
+        try await supabase.from("votes")
+            .delete()
+            .eq("user_id", value: userId.uuidString)
+            .eq("reply_id", value: replyId.uuidString)
+            .execute()
+    }
+
     func vote(replyId: UUID, userId: UUID, direction: Int) async throws {
         try await supabase.from("votes")
             .upsert([

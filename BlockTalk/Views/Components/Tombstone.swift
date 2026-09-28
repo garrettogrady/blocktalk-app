@@ -12,7 +12,7 @@ struct Tombstone: View {
     let variant: Variant
     var reasonShort: String?
     var bodyText: String?
-    var reportCount: Int = 3
+    var reportCount: Int = 0
     /// Surviving replies, for the .deleted variant.
     var replyCount: Int = 0
     var appealed: Bool = false
@@ -108,7 +108,7 @@ struct Tombstone: View {
         card(border: Color.btPink.opacity(0.35), fill: Color.btPink.opacity(0.06)) {
             labelRow(icon: "exclamationmark.triangle", color: .btPink,
                      text: reasonShort != nil ? "REMOVED · \(reasonUpper)" : "REMOVED")
-            Text("This post was removed for \(reasonShort ?? "a guideline violation"). This counts as a warning.")
+            Text("This post was removed for \(reasonShort ?? "a guideline violation").")
                 .font(BTFont.body(size: 12.5))
                 .foregroundStyle(Color.btText2)
                 .lineSpacing(3)

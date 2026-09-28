@@ -215,14 +215,7 @@ struct NotificationsView: View {
     }
 
     private func timeAgo(_ date: Date) -> String {
-        let interval = Date().timeIntervalSince(date)
-        let minutes = Int(interval / 60)
-        if minutes < 1 { return "now" }
-        if minutes < 60 { return "\(minutes)m ago" }
-        let hours = minutes / 60
-        if hours < 24 { return "\(hours)h ago" }
-        let days = hours / 24
-        return "\(days)d ago"
+        RelativeTime.long(since: date)
     }
 }
 

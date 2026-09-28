@@ -13,6 +13,7 @@ struct MapTabView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(ContentEditStore.self) private var edits
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @State private var viewModel = MapViewModel()
     @State private var showComposeForPin = false
@@ -38,6 +39,12 @@ struct MapTabView: View {
     // exactly what's checked and where the pin lands.
     @State private var mapSize: CGSize = .zero
     @State private var reticleCoord: CLLocationCoordinate2D?
+    /// Where the reticle should land after centerReticle(on:). The camera handler
+    /// measures where the ring actually points once the move settles and shifts by
+    /// the exact difference, so the ring sits on this coordinate regardless of
+    /// screen size or the map's content margins. Cleared once it converges.
+    @State private var reticleTarget: CLLocationCoordinate2D?
+    @State private var reticleCorrections = 0
     /// The polygon the user is physically standing in, captured when drop mode starts.
     /// The pin must land inside THIS polygon — a true geometric fence that doesn't
     /// depend on neighborhood-name matching (which diverges for Flatiron / Yorkville /
@@ -93,7 +100,7 @@ struct MapTabView: View {
                 // names the tapped neighborhood.
 
                 // Pin annotations (bundled samples + anything created this session)
-                ForEach(viewModel.pins + localContent.pins) { pin in
+                ForEach(visiblePins) { pin in
                     Annotation("", coordinate: pin.coordinate) {
                         // Route 2: business-tagged pins are house-blue with their
                         // category glyph; plain corners stay lime dots.
@@ -144,12 +151,15 @@ struct MapTabView: View {
                 if mapSize != .zero {
                     reticleCoord = proxy.convert(reticlePoint, from: .local)
                 }
+                settleReticle(on: context.region)
             }
             // Resolve the reticle the instant drop mode starts, since the camera
             // handler above now only runs while dropping.
             .onChange(of: viewModel.isDropMode) { _, dropping in
                 if dropping, mapSize != .zero {
                     reticleCoord = proxy.convert(reticlePoint, from: .local)
+                } else if !dropping {
+                    reticleTarget = nil
                 }
             }
             // Tap to select; tap the selected one again to open its feed; tap
@@ -490,6 +500,8 @@ struct MapTabView: View {
     private func goToPin(_ pin: Pin) {
         selectedNeighborhood = nil
         viewModel.cancelDrop()
+        // The one-time recenter on the user must not override a deliberate jump.
+        didCenterOnUser = true
         let region = MKCoordinateRegion(
             center: pin.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.003))
@@ -927,19 +939,53 @@ struct MapTabView: View {
         }
     }
 
-    /// Center the drop reticle on a coordinate. The reticle sits at 42% screen
-    /// height (see reticlePoint), so bias the region center south by that fraction
-    /// of the span — the coordinate lands right under the ring when drop mode opens.
+    /// Center the drop reticle on a coordinate. The reticle sits above the map's
+    /// true center (see reticlePoint), and where that center falls on screen
+    /// depends on the device and the map's bottom content margin, so no fixed
+    /// bias is right everywhere. Instead: center on the coordinate, then let
+    /// settleReticle(on:) measure the ring's real position and correct by the
+    /// exact difference. Before this, the ring (and so the pin) landed a few
+    /// dozen meters south of the user on every drop.
     private func centerReticle(on coord: CLLocationCoordinate2D) {
-        let latDelta = 0.006
-        let lngDelta = 0.005
+        reticleTarget = coord
+        reticleCorrections = 0
         let region = MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: coord.latitude - latDelta * 0.08,
-                                           longitude: coord.longitude),
-            span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: lngDelta)
+            center: coord,
+            span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.005)
         )
         withAnimation(.easeInOut(duration: 0.45)) {
             cameraPosition = .region(region)
+        }
+    }
+
+    /// After a centerReticle(on:) move settles, shift the camera by the exact
+    /// offset between where the ring points and where it should point. Runs at
+    /// most a few times and stops once the ring is within a meter of the target.
+    private func settleReticle(on region: MKCoordinateRegion) {
+        guard let target = reticleTarget, let under = reticleCoord else { return }
+        let dLat = target.latitude - under.latitude
+        let dLng = target.longitude - under.longitude
+        // About 1e-5 degrees is a meter; close enough to call it centered.
+        let done = abs(dLat) < 1e-5 && abs(dLng) < 1e-5
+        if done || reticleCorrections >= 3 {
+            reticleTarget = nil
+            return
+        }
+        reticleCorrections += 1
+        let corrected = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: region.center.latitude + dLat,
+                                           longitude: region.center.longitude + dLng),
+            span: region.span
+        )
+        cameraPosition = .region(corrected)
+    }
+
+    /// Every pin the map should draw: fetched plus session-created, minus any
+    /// whose street comment was deleted this session, deduped by id.
+    private var visiblePins: [Pin] {
+        var seen = Set<UUID>()
+        return (viewModel.pins + localContent.pins).filter { pin in
+            !edits.deletedPinIds.contains(pin.id) && seen.insert(pin.id).inserted
         }
     }
 

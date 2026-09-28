@@ -101,6 +101,10 @@ struct ReplyNode: View {
                             },
                             onDownvote: {
                                 onVote?(reply.id, -1)
+                            },
+                            // Tapping the active arrow again clears the vote (0).
+                            onClear: {
+                                onVote?(reply.id, 0)
                             }
                         )
 
@@ -122,6 +126,7 @@ struct ReplyNode: View {
                                     .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(reported ? "Reported" : "Report reply")
                         } else {
                             ownerMenu
                         }
