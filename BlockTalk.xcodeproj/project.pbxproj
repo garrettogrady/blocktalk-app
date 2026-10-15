@@ -63,6 +63,7 @@
 		6FEB2B58301C156C62729BD2 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = DD2CA7A93C666DEF3BB92114 /* PostHog */; };
 		708F02014BADD6BFC84BEC3A /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 473A22DBDF583BF0A6100EC0 /* Inter-SemiBold.ttf */; };
 		7325764D40C48AD9A0798C2F /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF748309660D275BA9D2E2A /* YouView.swift */; };
+		7590F360B1340E665B70E96D /* RetryAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B69A795619D188981875046 /* RetryAsyncImage.swift */; };
 		766DD925D666F360C9B71B8B /* DailyPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC87FE3D5AB031413CAFFC68 /* DailyPrompt.swift */; };
 		82DCD98DC4561B750572D9E4 /* ReplyNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA613858630E781DC74589D3 /* ReplyNode.swift */; };
 		87589B327CCF3B029D40FF12 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE0954154D4D7AFE837EAE2 /* FeedbackView.swift */; };
@@ -211,6 +212,7 @@
 		927EDE0724A7443D3CF76B84 /* OfflineStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineStoreTests.swift; sourceTree = "<group>"; };
 		94E3EDFCE7A454D0964E1BCE /* NeighborhoodPolygonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborhoodPolygonTests.swift; sourceTree = "<group>"; };
 		9688652C1B9A8D35A43A7A31 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
+		9B69A795619D188981875046 /* RetryAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryAsyncImage.swift; sourceTree = "<group>"; };
 		9C4985E27B94DBD3AD4806FC /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
 		9CFE8CCA317358239A6B2BD8 /* AuthorityProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthorityProgressBar.swift; sourceTree = "<group>"; };
 		9EFDB19407A138D1C999725D /* ComposeViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeViewModelTests.swift; sourceTree = "<group>"; };
@@ -539,6 +541,7 @@
 				8C7FEA9F4DEFCE4F3DEFAE23 /* OfflineBanner.swift */,
 				76D2206B0803D942B40FC35C /* PinBadge.swift */,
 				BD5A45D3FE09CF862ED940E5 /* PostCard.swift */,
+				9B69A795619D188981875046 /* RetryAsyncImage.swift */,
 				3C5FE90A44818E79173DDDFF /* SortTimeFilters.swift */,
 				C2AEBB682C1DCF107AA5C50E /* Tappable.swift */,
 				542BE80462BF7F57AF490477 /* Tombstone.swift */,
@@ -824,6 +827,7 @@
 				6514A0F2AFA8DE177FA55948 /* ReplyService.swift in Sources */,
 				8B4C62B235511727D146B805 /* Report.swift in Sources */,
 				C893074FB6BEC63064D91D85 /* ReportModalView.swift in Sources */,
+				7590F360B1340E665B70E96D /* RetryAsyncImage.swift in Sources */,
 				E54E88719F88EA77E4815733 /* SearchView.swift in Sources */,
 				57AB40D7C742F79B67CDE183 /* SearchViewModel.swift in Sources */,
 				A95103587046A308F652F37D /* SettingsHubView.swift in Sources */,

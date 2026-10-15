@@ -259,35 +259,22 @@ struct PostCard: View {
 
             // Optional image — renders ABOVE the body to match the mock
             if let imageUrl = post.imageUrl, !imageUrl.isEmpty {
-                AsyncImage(url: URL(string: imageUrl)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        // Fit (not fill) so the full photo shows on the card, matching
-                        // the compose preview — what you post is what you see. Capped
-                        // height keeps a tall photo from taking over the feed.
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            // Fill the card width, but cap the height so a tall photo
-                            // doesn't take over the screen — no crop, no distortion.
-                            // Left-aligned so a capped (narrower) photo hugs the edge.
-                            .frame(maxHeight: 380)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            // Business-tagged → the top-left name label; a plain
-                            // corner comment → the lime corner chip bottom-left.
-                            .overlay(alignment: .topLeading) {
-                                if isBusinessTagged { businessMapBanner }
-                            }
-                            .overlay(alignment: .bottomLeading) { photoPinChip }
-                            .cornerRadius(BTRadius.md)
-                    case .failure:
-                        EmptyView()
-                    default:
-                        RoundedRectangle(cornerRadius: BTRadius.md)
-                            .fill(Color.btSurface2)
-                            .frame(height: 120)
-                            .overlay(ProgressView().tint(Color.btText3))
-                    }
+                RetryAsyncImage(url: URL(string: imageUrl)) { image in
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 380)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(alignment: .topLeading) {
+                            if isBusinessTagged { businessMapBanner }
+                        }
+                        .overlay(alignment: .bottomLeading) { photoPinChip }
+                        .cornerRadius(BTRadius.md)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: BTRadius.md)
+                        .fill(Color.btSurface2)
+                        .frame(height: 120)
+                        .overlay(ProgressView().tint(Color.btText3))
                 }
             }
 
