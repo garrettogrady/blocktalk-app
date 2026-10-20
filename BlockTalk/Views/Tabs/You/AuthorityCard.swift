@@ -101,14 +101,10 @@ struct DayOneTile: View {
         Button(action: onTap) {
             HStack(spacing: BTSpacing.md) {
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "key.fill")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("Day One")
-                            .font(BTFont.display(size: 18))
-                            .tracking(-0.2)
-                    }
-                    .foregroundStyle(Color.btGold)
+                    Text("Day One")
+                        .font(BTFont.display(size: 18))
+                        .tracking(-0.2)
+                        .foregroundStyle(Color.btGold)
                     Text((slot.neighborhoodName ?? slot.shortCode ?? "YOUR NEIGHBORHOOD").uppercased() + " · PERMANENT")
                         .font(BTFont.mono(size: 10))
                         .tracking(0.3)
@@ -179,10 +175,10 @@ struct DayOneSheet: View {
 
     private func row(_ text: String) -> some View {
         HStack(alignment: .top, spacing: BTSpacing.sm) {
-            Image(systemName: "key.fill")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.btGold)
-                .padding(.top, 4)
+            Circle()
+                .fill(Color.btGold)
+                .frame(width: 5, height: 5)
+                .padding(.top, 7)
             Text(text)
                 .font(BTFont.body(size: 14))
                 .foregroundStyle(Color.btText2)

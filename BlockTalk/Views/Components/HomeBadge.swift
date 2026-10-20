@@ -10,6 +10,9 @@ struct HomeBadge: View {
             Text(shortCode)
                 .font(BTFont.mono(size: 9))
         }
+        // Never wraps: when the meta row is tight the username truncates instead.
+        .lineLimit(1)
+        .fixedSize()
         .foregroundStyle(Color.btHouse)
         .padding(.horizontal, BTSpacing.sm)
         .padding(.vertical, 2)
