@@ -1,29 +1,35 @@
 import SwiftUI
 
+/// The drop reticle. Laid out bottom-up so the foot of the stem (the ground
+/// shadow) is the view's bottom edge. The map annotation anchors this view at
+/// .bottom, which puts that foot exactly on the coordinate; the ring floats
+/// above it. Users read the point where the pin meets the ground as "the spot",
+/// so that is what has to sit on their location, not the ring.
 struct PinDropOverlay: View {
     var body: some View {
-        // The ring is the layout CENTER so it can be pinned exactly to the
-        // range-checked coordinate; the stem + shadow hang below it.
-        ZStack {
-            // Stem + ground shadow, below the ring
-            VStack(spacing: 0) {
-                Rectangle()
+        VStack(spacing: 0) {
+            // Reticle ring with the center dot
+            ZStack {
+                Circle()
+                    .stroke(Color.btLime, lineWidth: 2.5)
+                    .frame(width: 44, height: 44)
+                    .shadow(color: Color.btLime.opacity(0.3), radius: 8, y: 0)
+                Circle()
                     .fill(Color.btLime)
-                    .frame(width: 2, height: 24)
-                Ellipse()
-                    .fill(Color.black.opacity(0.3))
-                    .frame(width: 12, height: 4)
+                    .frame(width: 8, height: 8)
             }
-            .offset(y: 36)
-
-            // Reticle ring — the aim point
-            Circle()
-                .stroke(Color.btLime, lineWidth: 2.5)
-                .frame(width: 44, height: 44)
-                .shadow(color: Color.btLime.opacity(0.3), radius: 8, y: 0)
-            Circle()
+            // Stem down to the ground
+            Rectangle()
                 .fill(Color.btLime)
-                .frame(width: 8, height: 8)
+                .frame(width: 2, height: 22)
+        }
+        // Ground shadow straddles the bottom edge so the stem visibly touches
+        // the map at the anchor point.
+        .overlay(alignment: .bottom) {
+            Ellipse()
+                .fill(Color.black.opacity(0.35))
+                .frame(width: 14, height: 5)
+                .offset(y: 2)
         }
         .allowsHitTesting(false)
     }

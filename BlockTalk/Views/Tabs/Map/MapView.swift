@@ -129,7 +129,7 @@ struct MapTabView: View {
                 // Drop mode, free pin: the reticle IS the coordinate. It starts on
                 // the user's GPS fix and only moves when they pan.
                 if viewModel.isDropMode, dropTaggedPlace == nil, let coord = reticleCoord {
-                    Annotation("", coordinate: coord, anchor: .center) {
+                    Annotation("", coordinate: coord, anchor: .bottom) {
                         PinDropOverlay()
                     }
                 }
