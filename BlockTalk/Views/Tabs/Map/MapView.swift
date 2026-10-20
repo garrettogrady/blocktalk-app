@@ -37,15 +37,20 @@ struct MapTabView: View {
     // The geographic coordinate directly under the drop reticle. Range-checking
     // and pin placement both use THIS (not region.center) so what you aim is
     // exactly what's checked and where the pin lands.
-    /// The coordinate the pin will drop at. It is a real map annotation, not a
-    /// screen-point crosshair, so it starts at the user's exact GPS fix and the
-    /// camera animation cannot move it. Panning moves it to the new map center
-    /// once the gesture ends (see onMapCameraChange).
+    /// The coordinate the pin will drop at: whatever the map says is under the
+    /// reticle's screen point. Re-read after every camera change.
     @State private var reticleCoord: CLLocationCoordinate2D?
-    /// True while the camera is flying to a coordinate we chose (entering drop
-    /// mode, picking a business). Camera-change events during that flight must
-    /// not re-anchor the pin to the moving map center.
-    @State private var isFlyingReticle = false
+    /// Where the reticle is drawn, in the MapReader's `.local` space. The
+    /// reticle is a fixed screen overlay (so it glides with the map while you
+    /// pan, no lag), and this point is set from the GPS fix itself: once the
+    /// camera has flown to the user, MapKit is asked where that coordinate
+    /// landed on screen and the reticle is drawn exactly there. No guessing
+    /// about margins or camera bias.
+    @State private var reticlePoint: CGPoint?
+    @State private var mapSize: CGSize = .zero
+    /// The coordinate the reticle should be placed on once the next camera move
+    /// settles (entering drop mode, picking a business).
+    @State private var pendingReticleTarget: CLLocationCoordinate2D?
     /// The polygon the user is physically standing in, captured when drop mode starts.
     /// The pin must land inside THIS polygon — a true geometric fence that doesn't
     /// depend on neighborhood-name matching (which diverges for Flatiron / Yorkville /
@@ -126,14 +131,6 @@ struct MapTabView: View {
                     }
                 }
 
-                // Drop mode, free pin: the reticle IS the coordinate. It starts on
-                // the user's GPS fix and only moves when they pan.
-                if viewModel.isDropMode, dropTaggedPlace == nil, let coord = reticleCoord {
-                    Annotation("", coordinate: coord, anchor: .bottom) {
-                        PinDropOverlay()
-                    }
-                }
-
                 // Drop mode with a tagged business — a fixed pin locked on the place
                 // (no movable reticle). The pin lands exactly here, not where you pan.
                 if viewModel.isDropMode, let tagged = dropTaggedPlace {
@@ -155,14 +152,17 @@ struct MapTabView: View {
                 guard viewModel.isDropMode else { return }
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
-                // Our own fly-to just finished: the pin is already where it should
-                // be. Only a user pan re-anchors the pin to the map center.
-                if isFlyingReticle {
-                    isFlyingReticle = false
-                    return
+                // A fly-to we started has settled: draw the reticle wherever the
+                // target coordinate actually landed on screen.
+                if let target = pendingReticleTarget {
+                    pendingReticleTarget = nil
+                    if let pt = proxy.convert(target, to: .local) {
+                        reticlePoint = pt
+                    }
                 }
-                if dropTaggedPlace == nil {
-                    reticleCoord = context.region.center
+                // The drop coordinate is whatever is under the reticle now.
+                if let pt = reticlePoint {
+                    reticleCoord = proxy.convert(pt, from: .local)
                 }
             }
             // Tap to select; tap the selected one again to open its feed; tap
@@ -173,6 +173,23 @@ struct MapTabView: View {
                       !isNearPin(coord) else { return }
                 handleTap(at: coord)
             }
+            }
+            // Reticle: a screen overlay in the MapReader's `.local` space, so it
+            // glides with the map while panning. Its foot (bottom edge) sits on
+            // reticlePoint, the point the drop coordinate is read from.
+            .overlay {
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { mapSize = geo.size }
+                        .onChange(of: geo.size) { _, newValue in mapSize = newValue }
+                    if viewModel.isDropMode, dropTaggedPlace == nil, let pt = reticlePoint {
+                        // .position places the view's CENTER; shift up half the
+                        // height so the foot of the stem lands on pt.
+                        PinDropOverlay()
+                            .fixedSize()
+                            .position(x: pt.x, y: pt.y - PinDropOverlay.height / 2)
+                    }
+                }
             }
             .ignoresSafeArea() // on the MapReader so its `.local` space == tap space
             // MapReader
@@ -524,7 +541,9 @@ struct MapTabView: View {
             placeReticle(at: here)
         } else {
             fencePolygon = nil
+            // No fix: put the reticle a little above the visual center.
             reticleCoord = nil
+            reticlePoint = CGPoint(x: mapSize.width / 2, y: mapSize.height * 0.42)
             focus(on: activeNeighborhoodName)
         }
         viewModel.enterDropMode()
@@ -931,18 +950,14 @@ struct MapTabView: View {
         }
     }
 
-    /// Put the pin exactly on `coord` and fly the camera to look at it. The pin is
-    /// a map annotation, so the flight cannot move it; the only thing the camera
-    /// decides is framing. The pin sits a little above the visual center so the
-    /// bottom panel doesn't cover it. Earlier versions aimed a screen-point
-    /// crosshair and tried to back-solve the camera for it, which left the pin
-    /// 15 to 30 m south of the user on every drop.
+    /// Fly the camera to `coord`, then draw the reticle wherever that coordinate
+    /// lands on screen (resolved in onMapCameraChange once the move settles).
+    /// The camera is biased a touch south so the pin sits above the bottom
+    /// panel; where the reticle is drawn always comes from the coordinate, so
+    /// that bias can never move the drop point.
     private func placeReticle(at coord: CLLocationCoordinate2D) {
         reticleCoord = coord
-        isFlyingReticle = true
-        // Bias the camera center slightly south so the pin lands above the
-        // bottom drop panel. This affects only where the pin appears on screen,
-        // never where it is.
+        pendingReticleTarget = coord
         let latDelta = 0.006
         let region = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: coord.latitude - latDelta * 0.12, longitude: coord.longitude),
@@ -950,12 +965,6 @@ struct MapTabView: View {
         )
         withAnimation(.easeInOut(duration: 0.45)) {
             cameraPosition = .region(region)
-        }
-        // Safety: if no camera event arrives (interrupted flight), stop ignoring
-        // pans after the animation would have finished.
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(700))
-            isFlyingReticle = false
         }
     }
 
