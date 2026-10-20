@@ -51,6 +51,10 @@ struct MapTabView: View {
     /// The coordinate the reticle should be placed on once the next camera move
     /// settles (entering drop mode, picking a business).
     @State private var pendingReticleTarget: CLLocationCoordinate2D?
+    /// The exact spot confirmed with "Drop pin here", captured BEFORE leaving
+    /// drop mode (which clears the reticle) so compose always gets it.
+    @State private var confirmedDropCoordinate: CLLocationCoordinate2D?
+    @State private var reticleZoomToggle = false
     /// The polygon the user is physically standing in, captured when drop mode starts.
     /// The pin must land inside THIS polygon — a true geometric fence that doesn't
     /// depend on neighborhood-name matching (which diverges for Flatiron / Yorkville /
@@ -145,24 +149,44 @@ struct MapTabView: View {
             // don't clip it (App Store compliance).
             .mapControls { }
             .contentMargins(.bottom, 96, for: .automatic)
+            // Settled-camera events only: a per-frame state write here re-rendered
+            // every annotation during a drag, which made the pins jitter. The
+            // reticle is a fixed screen overlay, so it glides with the map anyway;
+            // the drop coordinate and in-range check refresh when the finger lifts,
+            // which is before "Drop pin here" can be tapped.
             .onMapCameraChange { context in
-                // Only churn state while dropping a pin. Doing this on every
-                // camera frame while just browsing re-rendered every annotation
-                // continuously, which made the pins visibly jitter/drift.
                 guard viewModel.isDropMode else { return }
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
                 // A fly-to we started has settled: draw the reticle wherever the
-                // target coordinate actually landed on screen.
+                // target coordinate landed on screen, and we're done placing.
                 if let target = pendingReticleTarget {
                     pendingReticleTarget = nil
-                    if let pt = proxy.convert(target, to: .local) {
-                        reticlePoint = pt
-                    }
+                    placeReticlePoint(for: target, proxy: proxy)
+                    return
+                }
+                // Placement never got a camera event (cleared by the safety timer):
+                // any later event heals it from the coordinate we still have.
+                if reticlePoint == nil, let c = reticleCoord {
+                    placeReticlePoint(for: c, proxy: proxy)
+                    return
                 }
                 // The drop coordinate is whatever is under the reticle now.
                 if let pt = reticlePoint {
                     reticleCoord = proxy.convert(pt, from: .local)
+                }
+            }
+            // Leaving drop mode (Cancel, Drop pin here, View on map) clears the
+            // reticle so the next entry starts clean instead of from stale state.
+            .onChange(of: viewModel.isDropMode) { _, dropping in
+                if dropping {
+                    // No-GPS entry draws the reticle at a default screen point;
+                    // give it a coordinate now rather than waiting for a pan.
+                    if pendingReticleTarget == nil, reticleCoord == nil, let pt = reticlePoint {
+                        reticleCoord = proxy.convert(pt, from: .local)
+                    }
+                } else {
+                    resetReticle()
                 }
             }
             // Tap to select; tap the selected one again to open its feed; tap
@@ -301,21 +325,22 @@ struct MapTabView: View {
                             // Capture the drop location (mapCenter = the reticle),
                             // then leave drop mode so we don't return to it after
                             // posting — that stranded the user in the drop overlay.
-                            guard dropInRange else { return }
+                            guard dropInRange, reticleReady else { return }
+                            confirmedDropCoordinate = effectiveDropCoordinate
                             composePlace = dropTaggedPlace   // nil → plain corner pin
                             showComposeForPin = true
                             viewModel.cancelDrop()
                             resetDropSearch()
                         } label: {
-                            Text(dropInRange ? "Drop pin here" : "Out of range")
+                            Text(!reticleReady ? "Placing pin..." : dropInRange ? "Drop pin here" : "Out of range")
                                 .font(BTFont.bodySemibold(size: 15))
-                                .foregroundStyle(dropInRange ? Color.btBg : Color.btText3)
+                                .foregroundStyle(dropInRange && reticleReady ? Color.btBg : Color.btText3)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, BTSpacing.md)
-                                .background(dropInRange ? Color.btLime : Color.btSurface2)
+                                .background(dropInRange && reticleReady ? Color.btLime : Color.btSurface2)
                                 .cornerRadius(BTRadius.md)
                         }
-                        .disabled(!dropInRange)
+                        .disabled(!dropInRange || !reticleReady)
                     }
                     .padding(.horizontal, BTSpacing.xxl)
                     .padding(.bottom, BTSpacing.xxxl)
@@ -396,7 +421,13 @@ struct MapTabView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showComposeForPin, onDismiss: { composePlace = nil }) {
+        .fullScreenCover(isPresented: $showComposeForPin, onDismiss: {
+            composePlace = nil
+            confirmedDropCoordinate = nil
+        }) {
+            // Never read the live reticle here: it is cleared on leaving drop
+            // mode, so the fallback would be the (biased) map center.
+            let dropAt = confirmedDropCoordinate ?? dropCoordinate
             if let place = composePlace {
                 // Search-first: open compose already pinned to + tagged with the place.
                 ComposeView(
@@ -409,8 +440,8 @@ struct MapTabView: View {
                 // Crosshair drop: pin the exact reticle spot.
                 ComposeView(
                     postingNeighborhood: appState.physicalNeighborhood ?? locationService.currentNeighborhood,
-                    pinDropLocation: dropCoordinate,
-                    pinCornerName: snappedCorner(dropCoordinate)
+                    pinDropLocation: dropAt,
+                    pinCornerName: snappedCorner(dropAt)
                 )
             }
         }
@@ -537,7 +568,9 @@ struct MapTabView: View {
             // Standing just outside a line (GPS wobble on a corner) still fences
             // you to the nearest neighborhood rather than leaving you unfenced.
             fencePolygon = polygons.first { $0.contains(here) }
-                ?? polygons.filter { $0.containsWithGrace(here) }.min { $0.distanceToEdge(here) < $1.distanceToEdge(here) }
+                ?? polygons.filter { $0.containsWithGrace(here) }
+                    .map { ($0, $0.distanceToEdge(here)) }
+                    .min { $0.1 < $1.1 }?.0
             placeReticle(at: here)
         } else {
             fencePolygon = nil
@@ -555,7 +588,7 @@ struct MapTabView: View {
     private var placeSearchCenter: CLLocationCoordinate2D? {
         reticleCoord
             ?? locationService.currentLocation
-            ?? polygons.first { $0.name == activeNeighborhoodName }?.center
+            ?? NeighborhoodPolygon.named(activeNeighborhoodName, in: polygons)?.center
     }
 
     // MARK: - In-drop place search
@@ -737,6 +770,20 @@ struct MapTabView: View {
     }
 
     private var dropInRange: Bool { inRange(effectiveDropCoordinate) }
+
+    /// The pin has a real coordinate to drop at: a tagged place, or a reticle
+    /// that has been placed and resolved. Until then "Drop pin here" would
+    /// drop at a stale or default center.
+    private var reticleReady: Bool {
+        dropTaggedPlace != nil || (reticleCoord != nil && reticlePoint != nil && pendingReticleTarget == nil)
+    }
+
+    private func resetReticle() {
+        reticleCoord = nil
+        reticlePoint = nil
+        pendingReticleTarget = nil
+        fencePolygon = nil
+    }
 
     private func snappedCorner(_ coord: CLLocationCoordinate2D) -> String? {
         let here = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
@@ -957,14 +1004,46 @@ struct MapTabView: View {
     /// that bias can never move the drop point.
     private func placeReticle(at coord: CLLocationCoordinate2D) {
         reticleCoord = coord
+        reticlePoint = nil
         pendingReticleTarget = coord
-        let latDelta = 0.006
+        // Alternate the zoom by an invisible amount so the camera ALWAYS changes,
+        // even when it is already on this spot (drop, cancel, drop again). A
+        // camera that doesn't change fires no event, and the event is what
+        // places the reticle.
+        reticleZoomToggle.toggle()
+        let latDelta = reticleZoomToggle ? 0.006 : 0.0061
         let region = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: coord.latitude - latDelta * 0.12, longitude: coord.longitude),
             span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: 0.005)
         )
         withAnimation(.easeInOut(duration: 0.45)) {
             cameraPosition = .region(region)
+        }
+        // Safety only: if no camera event has arrived by now (a drag that is
+        // still in progress, a slow first render), stop waiting on this target.
+        // The camera handler heals the reticle from reticleCoord on the next
+        // event, so the button can't stay on "Placing pin..." past that.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1500))
+            guard let t = pendingReticleTarget,
+                  t.latitude == coord.latitude, t.longitude == coord.longitude else { return }
+            pendingReticleTarget = nil
+        }
+    }
+
+    /// Draw the reticle where `coord` is on screen and make that the drop
+    /// coordinate. If the user panned the spot off screen mid-placement, draw
+    /// it at the default screen point instead and read the coordinate under
+    /// that, so the reticle is always visible and always matches the drop.
+    private func placeReticlePoint(for coord: CLLocationCoordinate2D, proxy: MapProxy) {
+        if let pt = proxy.convert(coord, to: .local),
+           mapSize == .zero || CGRect(origin: .zero, size: mapSize).insetBy(dx: 8, dy: 8).contains(pt) {
+            reticlePoint = pt
+            reticleCoord = coord
+        } else {
+            let pt = CGPoint(x: mapSize.width / 2, y: mapSize.height * 0.42)
+            reticlePoint = pt
+            reticleCoord = proxy.convert(pt, from: .local)
         }
     }
 

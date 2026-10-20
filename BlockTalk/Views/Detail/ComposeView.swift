@@ -8,6 +8,7 @@ struct ComposeView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var locationService
     @Environment(OfflineStore.self) private var offline
+    @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @Environment(LocalContentStore.self) private var localContent
     @Environment(EnrollmentStore.self) private var enrollments
     @Environment(\.dismiss) private var dismiss
@@ -431,13 +432,23 @@ struct ComposeView: View {
     /// the GPS neighborhood would be refused. Falls back to the GPS neighborhood
     /// only if the pin isn't near any polygon.
     private func pinNeighborhoodId(for coord: CLLocationCoordinate2D, fallback: UUID) async -> UUID {
-        let polys = NeighborhoodPolygonLoader.load()
-        let match = polys.first { $0.contains(coord) }
-            ?? polys.filter { $0.containsWithGrace(coord) }.min { $0.distanceToEdge(coord) < $1.distanceToEdge(coord) }
-        guard let match else { return fallback }
-        let dbName = NeighborhoodService.polygonNameAliases[match.name] ?? match.name
+        guard let dbName = pinNeighborhoodName(for: coord) else { return fallback }
+        // The cache is loaded at launch; only hit the network if it is cold.
+        if let hood = neighborhoodCache.neighborhood(named: dbName) { return hood.id }
         if let hood = try? await NeighborhoodService().fetchByName(dbName) { return hood.id }
         return fallback
+    }
+
+    /// DB name of the neighborhood containing `coord` (or the nearest one within
+    /// the grace zone), nil if the pin is outside every bundled polygon.
+    private func pinNeighborhoodName(for coord: CLLocationCoordinate2D) -> String? {
+        let polys = NeighborhoodPolygonLoader.load()
+        let match = polys.first { $0.contains(coord) }
+            ?? polys.filter { $0.containsWithGrace(coord) }
+                .map { ($0, $0.distanceToEdge(coord)) }
+                .min { $0.1 < $1.1 }?.0
+        guard let match else { return nil }
+        return NeighborhoodService.polygonNameAliases[match.name] ?? match.name
     }
 
     /// The polygon of the neighborhood being posted to, so a typed place search
@@ -469,8 +480,14 @@ struct ComposeView: View {
         // queue too but hold the pin off the map until send.
         if offline.isOffline {
             let body = viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            // A pinned post belongs to the neighborhood the PIN is in, same as the
+            // online path. Cache lookup only; there is no network to fall back to.
+            let queuedHoodId = effectivePin
+                .flatMap { pinNeighborhoodName(for: $0) }
+                .flatMap { neighborhoodCache.neighborhood(named: $0)?.id }
+                ?? neighborhoodId
             let displayPost = Post(
-                id: UUID(), userId: userId, neighborhoodId: neighborhoodId,
+                id: UUID(), userId: userId, neighborhoodId: queuedHoodId,
                 text: body, isDailyPrompt: dailyPromptId != nil, score: 0, upvoteCount: 0,
                 downvoteCount: 0, replyCount: 0, reportCount: 0, status: .live, createdAt: Date()
             )
@@ -479,7 +496,7 @@ struct ComposeView: View {
                 post: displayPost,
                 text: body,
                 userId: userId,
-                neighborhoodId: neighborhoodId,
+                neighborhoodId: queuedHoodId,
                 imageData: imageData,
                 pinCoordinate: effectivePin,
                 pinCornerName: pinCornerName ?? resolvedStreet,
@@ -549,6 +566,7 @@ struct ComposeView: View {
                     // transport failure gets the generic connection message.
                     submitError = RateLimit.message(for: error)
                         ?? ServerMessage.text(for: error)
+                        ?? ServerMessage.anyPostgres(for: error)
                         ?? "Couldn't drop your pin. Check your connection and try again."
                 }
             } else {

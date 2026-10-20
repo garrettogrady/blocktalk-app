@@ -32,6 +32,16 @@ enum RateLimit {
 /// through as-is. Anything else (transport, auth, schema) returns nil so the
 /// caller can show its generic copy.
 enum ServerMessage {
+    /// Any other Postgres error's message, for the one place where hiding it
+    /// behind "check your connection" misled us (a server auth bug refused every
+    /// pin for days and the app called it a connection problem). Prefixed so
+    /// it reads as a server report, not app copy.
+    static func anyPostgres(for error: Error) -> String? {
+        guard let pg = error as? PostgrestError else { return nil }
+        let s = pg.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return s.isEmpty ? nil : "Server said: \(s)"
+    }
+
     static func text(for error: Error) -> String? {
         guard let pg = error as? PostgrestError, pg.code == "P0001" else { return nil }
         let s = pg.message.trimmingCharacters(in: .whitespacesAndNewlines)

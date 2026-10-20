@@ -1,4 +1,8 @@
 -- 00029_les_chinatown_boundary.sql
+-- FOLDED INTO 00031, which writes real polygons for every neighborhood
+-- (including these two, identical data). Running 00031 makes this file
+-- unnecessary; running both is harmless.
+--
 -- Move the LES / Chinatown line to Bowery and Canal.
 --
 -- The app's bundled polygon had the two neighborhoods meeting on a diagonal

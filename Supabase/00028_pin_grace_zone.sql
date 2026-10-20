@@ -1,4 +1,8 @@
 -- 00028_pin_grace_zone.sql
+-- SUPERSEDED BY 00030. Do not run this after 00030: it would reintroduce the
+-- uppercase-UUID bug that refused every pin. Run 00030 instead; it contains
+-- all of this file's grace-zone logic.
+--
 -- Let a pin land up to 150 m outside the neighborhood it's posted to.
 --
 -- 00027 made create_pin verify the point against the neighborhood polygon

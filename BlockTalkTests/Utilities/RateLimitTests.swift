@@ -71,6 +71,13 @@ final class ServerMessageTests: XCTestCase {
         XCTAssertNil(ServerMessage.text(for: pg(code: nil, message: "anything")))
     }
 
+    func testAnyPostgresSurfacesEveryCode() {
+        XCTAssertEqual(ServerMessage.anyPostgres(for: pg(code: "42501", message: "Not authorized")), "Server said: Not authorized")
+        XCTAssertEqual(ServerMessage.anyPostgres(for: pg(code: nil, message: "  x  ")), "Server said: x")
+        XCTAssertNil(ServerMessage.anyPostgres(for: pg(code: "P0001", message: "   ")))
+        XCTAssertNil(ServerMessage.anyPostgres(for: URLError(.timedOut)))
+    }
+
     func testNonPostgrestErrorsAreNil() {
         XCTAssertNil(ServerMessage.text(for: URLError(.notConnectedToInternet)))
         XCTAssertNil(RateLimit.message(for: URLError(.notConnectedToInternet)))

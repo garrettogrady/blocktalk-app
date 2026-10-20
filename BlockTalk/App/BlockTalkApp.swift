@@ -79,6 +79,14 @@ struct BlockTalkApp: App {
             .environment(neighborhoodCache)
             .environment(enrollments)
             .environment(edits)
+            // The launch load runs before a fresh sign-in has a session, and the
+            // neighborhoods table is readable only when signed in, so reload the
+            // cache once the user reaches the app if it came back empty.
+            .task(id: appState.stage) {
+                if appState.stage == .app, neighborhoodCache.neighborhoods.isEmpty {
+                    await neighborhoodCache.loadAll()
+                }
+            }
             .preferredColorScheme(.dark)
             // Cosmetic launch cover: the block.talk logo on dark, sitting ON TOP of the
             // real landing (which renders underneath the whole time — the known-good
