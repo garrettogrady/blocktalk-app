@@ -37,14 +37,15 @@ struct MapTabView: View {
     // The geographic coordinate directly under the drop reticle. Range-checking
     // and pin placement both use THIS (not region.center) so what you aim is
     // exactly what's checked and where the pin lands.
-    @State private var mapSize: CGSize = .zero
+    /// The coordinate the pin will drop at. It is a real map annotation, not a
+    /// screen-point crosshair, so it starts at the user's exact GPS fix and the
+    /// camera animation cannot move it. Panning moves it to the new map center
+    /// once the gesture ends (see onMapCameraChange).
     @State private var reticleCoord: CLLocationCoordinate2D?
-    /// Where the reticle should land after centerReticle(on:). The camera handler
-    /// measures where the ring actually points once the move settles and shifts by
-    /// the exact difference, so the ring sits on this coordinate regardless of
-    /// screen size or the map's content margins. Cleared once it converges.
-    @State private var reticleTarget: CLLocationCoordinate2D?
-    @State private var reticleCorrections = 0
+    /// True while the camera is flying to a coordinate we chose (entering drop
+    /// mode, picking a business). Camera-change events during that flight must
+    /// not re-anchor the pin to the moving map center.
+    @State private var isFlyingReticle = false
     /// The polygon the user is physically standing in, captured when drop mode starts.
     /// The pin must land inside THIS polygon — a true geometric fence that doesn't
     /// depend on neighborhood-name matching (which diverges for Flatiron / Yorkville /
@@ -125,6 +126,14 @@ struct MapTabView: View {
                     }
                 }
 
+                // Drop mode, free pin: the reticle IS the coordinate. It starts on
+                // the user's GPS fix and only moves when they pan.
+                if viewModel.isDropMode, dropTaggedPlace == nil, let coord = reticleCoord {
+                    Annotation("", coordinate: coord, anchor: .center) {
+                        PinDropOverlay()
+                    }
+                }
+
                 // Drop mode with a tagged business — a fixed pin locked on the place
                 // (no movable reticle). The pin lands exactly here, not where you pan.
                 if viewModel.isDropMode, let tagged = dropTaggedPlace {
@@ -146,20 +155,14 @@ struct MapTabView: View {
                 guard viewModel.isDropMode else { return }
                 viewModel.updateRadius(from: context.region)
                 mapCenter = context.region.center
-                // Resolve the coordinate under the reticle in the SAME space the
-                // reticle is drawn, so aim == checked == dropped.
-                if mapSize != .zero {
-                    reticleCoord = proxy.convert(reticlePoint, from: .local)
+                // Our own fly-to just finished: the pin is already where it should
+                // be. Only a user pan re-anchors the pin to the map center.
+                if isFlyingReticle {
+                    isFlyingReticle = false
+                    return
                 }
-                settleReticle(on: context.region)
-            }
-            // Resolve the reticle the instant drop mode starts, since the camera
-            // handler above now only runs while dropping.
-            .onChange(of: viewModel.isDropMode) { _, dropping in
-                if dropping, mapSize != .zero {
-                    reticleCoord = proxy.convert(reticlePoint, from: .local)
-                } else if !dropping {
-                    reticleTarget = nil
+                if dropTaggedPlace == nil {
+                    reticleCoord = context.region.center
                 }
             }
             // Tap to select; tap the selected one again to open its feed; tap
@@ -169,20 +172,6 @@ struct MapTabView: View {
                       let coord = proxy.convert(screenPoint, from: .local),
                       !isNearPin(coord) else { return }
                 handleTap(at: coord)
-            }
-            // Reticle lives in the MapReader's `.local` space (same as proxy),
-            // pinned to the exact point we range-check.
-            .overlay {
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear { mapSize = geo.size }
-                        .onChange(of: geo.size) { _, newValue in mapSize = newValue }
-                    // Only for a free crosshair pin — a tagged business is locked to
-                    // its own location (shown as a fixed pin), not the movable reticle.
-                    if viewModel.isDropMode && dropTaggedPlace == nil {
-                        PinDropOverlay().position(reticlePoint)
-                    }
-                }
             }
             }
             .ignoresSafeArea() // on the MapReader so its `.local` space == tap space
@@ -532,9 +521,10 @@ struct MapTabView: View {
             // you to the nearest neighborhood rather than leaving you unfenced.
             fencePolygon = polygons.first { $0.contains(here) }
                 ?? polygons.filter { $0.containsWithGrace(here) }.min { $0.distanceToEdge(here) < $1.distanceToEdge(here) }
-            centerReticle(on: here)
+            placeReticle(at: here)
         } else {
             fencePolygon = nil
+            reticleCoord = nil
             focus(on: activeNeighborhoodName)
         }
         viewModel.enterDropMode()
@@ -555,7 +545,10 @@ struct MapTabView: View {
         guard let center = placeSearchCenter else { return }
         let q = dropSearchQuery
         dropSearchLoading = true
-        let found = await PlaceSearch.places(query: q, center: center, radius: 800, maxResults: 20)
+        // A typed search reaches the whole neighborhood you're fenced to; an
+        // empty one shows what's right at the pin.
+        let found = await PlaceSearch.places(query: q, center: center, radius: 800, maxResults: 20,
+                                             fence: fencePolygon)
         // The user kept typing while this was in flight — drop the stale response.
         guard q == dropSearchQuery else { return }
         dropSearchResults = found
@@ -566,7 +559,7 @@ struct MapTabView: View {
     /// pin is now on the place, ready to confirm with "Drop pin here".
     private func pickDropPlace(_ place: TaggedPlace) {
         dropTaggedPlace = place
-        centerReticle(on: place.coordinate)
+        placeReticle(at: place.coordinate)
         dropSearchQuery = ""
         dropSearchResults = []
         dropSearchFocused = false
@@ -694,14 +687,8 @@ struct MapTabView: View {
     /// outline you can post, outside you can't. If nothing is highlighted we
     /// don't block. Precision is only as good as the bundled polygon shape
     /// (see HANDOFF — swap in the exact NTA polygons to tighten the outline).
-    /// Screen point of the reticle ring, in the MapReader's `.local` space.
-    /// This is the single source of truth for "where the pin goes".
-    private var reticlePoint: CGPoint {
-        CGPoint(x: mapSize.width / 2, y: mapSize.height * 0.42)
-    }
-
-    /// The coordinate the pin will drop at — under the reticle (falls back to the
-    /// region center only before the reticle coordinate has resolved).
+    /// The coordinate the pin will drop at: the reticle annotation (falls back
+    /// to the region center only before it has been placed).
     private var dropCoordinate: CLLocationCoordinate2D { reticleCoord ?? mapCenter }
 
     /// Where the pin will ACTUALLY land: a searched business (if tagged) wins over
@@ -944,45 +931,32 @@ struct MapTabView: View {
         }
     }
 
-    /// Center the drop reticle on a coordinate. The reticle sits above the map's
-    /// true center (see reticlePoint), and where that center falls on screen
-    /// depends on the device and the map's bottom content margin, so no fixed
-    /// bias is right everywhere. Instead: center on the coordinate, then let
-    /// settleReticle(on:) measure the ring's real position and correct by the
-    /// exact difference. Before this, the ring (and so the pin) landed a few
-    /// dozen meters south of the user on every drop.
-    private func centerReticle(on coord: CLLocationCoordinate2D) {
-        reticleTarget = coord
-        reticleCorrections = 0
+    /// Put the pin exactly on `coord` and fly the camera to look at it. The pin is
+    /// a map annotation, so the flight cannot move it; the only thing the camera
+    /// decides is framing. The pin sits a little above the visual center so the
+    /// bottom panel doesn't cover it. Earlier versions aimed a screen-point
+    /// crosshair and tried to back-solve the camera for it, which left the pin
+    /// 15 to 30 m south of the user on every drop.
+    private func placeReticle(at coord: CLLocationCoordinate2D) {
+        reticleCoord = coord
+        isFlyingReticle = true
+        // Bias the camera center slightly south so the pin lands above the
+        // bottom drop panel. This affects only where the pin appears on screen,
+        // never where it is.
+        let latDelta = 0.006
         let region = MKCoordinateRegion(
-            center: coord,
-            span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.005)
+            center: CLLocationCoordinate2D(latitude: coord.latitude - latDelta * 0.12, longitude: coord.longitude),
+            span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: 0.005)
         )
         withAnimation(.easeInOut(duration: 0.45)) {
             cameraPosition = .region(region)
         }
-    }
-
-    /// After a centerReticle(on:) move settles, shift the camera by the exact
-    /// offset between where the ring points and where it should point. Runs at
-    /// most a few times and stops once the ring is within a meter of the target.
-    private func settleReticle(on region: MKCoordinateRegion) {
-        guard let target = reticleTarget, let under = reticleCoord else { return }
-        let dLat = target.latitude - under.latitude
-        let dLng = target.longitude - under.longitude
-        // About 1e-5 degrees is a meter; close enough to call it centered.
-        let done = abs(dLat) < 1e-5 && abs(dLng) < 1e-5
-        if done || reticleCorrections >= 3 {
-            reticleTarget = nil
-            return
+        // Safety: if no camera event arrives (interrupted flight), stop ignoring
+        // pans after the animation would have finished.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            isFlyingReticle = false
         }
-        reticleCorrections += 1
-        let corrected = MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: region.center.latitude + dLat,
-                                           longitude: region.center.longitude + dLng),
-            span: region.span
-        )
-        cameraPosition = .region(corrected)
     }
 
     /// Every pin the map should draw: fetched plus session-created, minus any

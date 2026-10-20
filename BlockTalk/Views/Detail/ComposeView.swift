@@ -208,7 +208,7 @@ struct ComposeView: View {
             }
             .sheet(isPresented: $showPlacePicker) {
                 if let coord = effectivePin {
-                    PlacePickerSheet(center: coord, selected: taggedPlace) { place in
+                    PlacePickerSheet(center: coord, fence: postingFence, selected: taggedPlace) { place in
                         taggedPlace = place
                     }
                     .presentationDetents([.large])
@@ -424,6 +424,13 @@ struct ComposeView: View {
             ?? "your neighborhood"
     }
 
+    /// The polygon of the neighborhood being posted to, so a typed place search
+    /// can reach all of it (not just the block around the pin).
+    private var postingFence: NeighborhoodPolygon? {
+        guard let name = postingNeighborhood?.name ?? locationService.currentNeighborhood?.name else { return nil }
+        return NeighborhoodPolygon.named(name, in: NeighborhoodPolygonLoader.load())
+    }
+
     // MARK: - Submit
 
     private func submitPost() {
@@ -602,10 +609,15 @@ enum PlaceSearch {
         .airport, .campground, .marina,
     ]
 
-    /// Allowed places near `center`, within `radius`, closest first, capped.
-    /// Empty `query` → nearby POIs only; otherwise a text search biased to here.
+    /// Allowed places near `center`, closest first, capped.
+    /// Empty `query` → nearby POIs within `radius` only (what's at the pin).
+    /// Typed `query` → anywhere in `fence` (the neighborhood being posted to,
+    /// plus the usual grace) when one is given, otherwise within `radius`.
+    /// A user at home must be able to find a spot on the other side of the
+    /// neighborhood by name; a tight circle around the pin hid it.
     static func places(query: String, center: CLLocationCoordinate2D,
-                       radius: CLLocationDistance, maxResults: Int) async -> [TaggedPlace] {
+                       radius: CLLocationDistance, maxResults: Int,
+                       fence: NeighborhoodPolygon? = nil) async -> [TaggedPlace] {
         let q = query.trimmingCharacters(in: .whitespaces)
 
         // Nearby POIs are always fetched — they carry reliable categories that a
@@ -620,9 +632,13 @@ enum PlaceSearch {
         } else {
             let textReq = MKLocalSearch.Request()
             textReq.naturalLanguageQuery = q
-            textReq.region = MKCoordinateRegion(center: center,
-                                                latitudinalMeters: radius * 2,
-                                                longitudinalMeters: radius * 2)
+            if let fence {
+                textReq.region = fence.boundingRegion(paddingMeters: NeighborhoodPolygon.graceMeters)
+            } else {
+                textReq.region = MKCoordinateRegion(center: center,
+                                                    latitudinalMeters: radius * 2,
+                                                    longitudinalMeters: radius * 2)
+            }
             let textHits = await items(textReq)
             // Type-ahead: also match the already-fetched nearby places by name, so a
             // partial query ("ess") surfaces nearby hits ("Essex Market") instantly
@@ -645,7 +661,13 @@ enum PlaceSearch {
             CLLocation(latitude: center.latitude, longitude: center.longitude)
                 .distance(from: CLLocation(latitude: p.latitude, longitude: p.longitude))
         }
-        return Array(places.filter { dist($0) <= radius }
+        // Keep what the user is allowed to pin: inside the neighborhood (with
+        // grace) for a typed search, or within the local radius otherwise.
+        let allowed: (TaggedPlace) -> Bool = { p in
+            if !q.isEmpty, let fence { return fence.containsWithGrace(p.coordinate) }
+            return dist(p) <= radius
+        }
+        return Array(places.filter(allowed)
             .sorted { dist($0) < dist($1) }
             .prefix(maxResults))
     }
@@ -855,6 +877,8 @@ func placeDisplay(name: String, category: MKPointOfInterestCategory?) -> (label:
 
 struct PlacePickerSheet: View {
     let center: CLLocationCoordinate2D
+    /// The neighborhood being posted to; a typed search reaches all of it.
+    var fence: NeighborhoodPolygon?
     var selected: TaggedPlace?
     var onPick: (TaggedPlace?) -> Void
 
@@ -863,13 +887,6 @@ struct PlacePickerSheet: View {
     @State private var results: [TaggedPlace] = []
     @State private var loading = false
 
-    // Show every real storefront, only dropping transit/parking/infrastructure.
-    // A whitelist silently hid businesses Apple filed under an odd category
-    // (e.g. a climbing gym that isn't tagged .fitnessCenter).
-    private let excludedCategories: [MKPointOfInterestCategory] = [
-        .publicTransport, .parking, .gasStation, .evCharger,
-        .airport, .campground, .marina,
-    ]
 
     // Precision comes from closest-first + the cap, not a razor-thin radius —
     // ~360 ft is forgiving enough not to drop the business you're standing near
@@ -997,82 +1014,20 @@ struct PlacePickerSheet: View {
         return String(format: "%.1f mi", meters / 1609.34)
     }
 
-    private func mapItemToPlace(_ item: MKMapItem, nearby: [MKMapItem] = []) -> TaggedPlace? {
-        guard let name = item.name else { return nil }
-        var (label, symbol) = placeDisplay(name: name, category: item.pointOfInterestCategory)
 
-        // Icon rescue: a typed hit often has no Apple category, so if it's still
-        // a generic pin, borrow the category from a nearby POI at the same spot
-        // (the nearby request carries reliable categories). This is what makes
-        // the right icon show up across the board, not just for known brands.
-        if symbol == "mappin.circle.fill" {
-            let here = item.placemark.coordinate
-            if let match = nearby.first(where: { poi in
-                poi.pointOfInterestCategory != nil &&
-                CLLocation(latitude: here.latitude, longitude: here.longitude)
-                    .distance(from: CLLocation(latitude: poi.placemark.coordinate.latitude,
-                                               longitude: poi.placemark.coordinate.longitude)) < 25
-            }) {
-                (label, symbol) = placeCategoryDisplay(match.pointOfInterestCategory)
-            }
-        }
 
-        let c = item.placemark.coordinate
-        return TaggedPlace(name: name, category: label, symbol: symbol,
-                           latitude: c.latitude, longitude: c.longitude)
-    }
-
-    private func mapItems(_ request: MKLocalSearch.Request) async -> [MKMapItem] {
-        (try? await MKLocalSearch(request: request).start())?.mapItems ?? []
-    }
-
-    private func mapItems(_ request: MKLocalPointsOfInterestRequest) async -> [MKMapItem] {
-        (try? await MKLocalSearch(request: request).start())?.mapItems ?? []
-    }
-
-    private func meters(to place: TaggedPlace) -> CLLocationDistance {
-        CLLocation(latitude: center.latitude, longitude: center.longitude)
-            .distance(from: CLLocation(latitude: place.latitude, longitude: place.longitude))
-    }
-
-    /// Keep only places actually at the pin, closest first, capped so a dense
-    /// block shows the nearest handful rather than everything in range.
-    private func withinRange(_ places: [TaggedPlace]) -> [TaggedPlace] {
-        Array(places
-            .filter { meters(to: $0) <= maxPlaceMeters }
-            .sorted { meters(to: $0) < meters(to: $1) }
-            .prefix(maxResults))
-    }
 
     private func runNearby() async {
         loading = true
-        // Apple only returns POIs inside this radius, so the request itself
-        // enforces the cap; we still sort closest-first.
-        let req = MKLocalPointsOfInterestRequest(center: center, radius: maxPlaceMeters)
-        req.pointOfInterestFilter = MKPointOfInterestFilter(excluding: excludedCategories)
-        let nearby = await mapItems(req)
-        results = withinRange(nearby.compactMap { mapItemToPlace($0, nearby: nearby) })
+        results = await PlaceSearch.places(query: "", center: center, radius: maxPlaceMeters,
+                                           maxResults: maxResults, fence: fence)
         loading = false
     }
 
     private func runSearch(_ q: String) async {
         loading = true
-        // A text query's region is only a bias, not a hard limit — Apple can
-        // return matches far away. Search a tight box AND filter by real
-        // distance so you can't tag a business that isn't at your pin.
-        let textReq = MKLocalSearch.Request()
-        textReq.naturalLanguageQuery = q
-        textReq.region = MKCoordinateRegion(center: center,
-                                            latitudinalMeters: maxPlaceMeters * 2,
-                                            longitudinalMeters: maxPlaceMeters * 2)
-        // Fetch nearby POIs in parallel so typed hits can borrow real categories.
-        let poiReq = MKLocalPointsOfInterestRequest(center: center, radius: maxPlaceMeters)
-        poiReq.pointOfInterestFilter = MKPointOfInterestFilter(excluding: excludedCategories)
-
-        async let textItems = mapItems(textReq)
-        async let nearbyItems = mapItems(poiReq)
-        let (text, nearby) = await (textItems, nearbyItems)
-        results = withinRange(text.compactMap { mapItemToPlace($0, nearby: nearby) })
+        results = await PlaceSearch.places(query: q, center: center, radius: maxPlaceMeters,
+                                           maxResults: maxResults, fence: fence)
         loading = false
     }
 }

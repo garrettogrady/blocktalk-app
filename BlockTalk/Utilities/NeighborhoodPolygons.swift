@@ -40,6 +40,35 @@ struct NeighborhoodPolygon: Identifiable {
         contains(coord) || distanceToEdge(coord) <= meters
     }
 
+    /// A map region covering the whole polygon, padded by `paddingMeters` on
+    /// every side. Used to scope a place search to "this neighborhood".
+    func boundingRegion(paddingMeters: CLLocationDistance = 0) -> MKCoordinateRegion {
+        var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0
+        for ring in rings {
+            for p in ring {
+                minLat = min(minLat, p.latitude);  maxLat = max(maxLat, p.latitude)
+                minLng = min(minLng, p.longitude); maxLng = max(maxLng, p.longitude)
+            }
+        }
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2)
+        let padLat = paddingMeters / 111_000
+        let padLng = paddingMeters / (111_000 * cos(center.latitude * .pi / 180))
+        return MKCoordinateRegion(
+            center: center,
+            span: MKCoordinateSpan(latitudeDelta: (maxLat - minLat) + 2 * padLat,
+                                   longitudeDelta: (maxLng - minLng) + 2 * padLng))
+    }
+
+    /// The bundled polygon for a Supabase neighborhood name, translating the
+    /// few names that differ ("Flatiron" is "Flatiron District" in the bundle).
+    static func named(_ dbName: String, in polygons: [NeighborhoodPolygon]) -> NeighborhoodPolygon? {
+        if let exact = polygons.first(where: { $0.name.caseInsensitiveCompare(dbName) == .orderedSame }) {
+            return exact
+        }
+        let aliased = NeighborhoodService.polygonNameAliases.first { $0.value.caseInsensitiveCompare(dbName) == .orderedSame }?.key
+        return aliased.flatMap { a in polygons.first { $0.name == a } }
+    }
+
     /// Shortest distance from a point to any edge of any ring, in meters.
     func distanceToEdge(_ p: CLLocationCoordinate2D) -> CLLocationDistance {
         // Flatten to a local plane: scale longitude by cos(lat) so degrees are

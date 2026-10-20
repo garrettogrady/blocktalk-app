@@ -122,3 +122,42 @@ final class NeighborhoodPolygonGraceTests: XCTestCase {
         XCTAssertEqual(NeighborhoodPolygon.graceMeters, 150)
     }
 }
+
+final class NeighborhoodPolygonLookupTests: XCTestCase {
+    func testBoundingRegionCoversPolygonWithPadding() {
+        let box = NeighborhoodPolygon(name: "Box", rings: [[
+            CLLocationCoordinate2D(latitude: 40.7150, longitude: -73.9900),
+            CLLocationCoordinate2D(latitude: 40.7150, longitude: -73.9800),
+            CLLocationCoordinate2D(latitude: 40.7240, longitude: -73.9800),
+            CLLocationCoordinate2D(latitude: 40.7240, longitude: -73.9900),
+        ]])
+        let r = box.boundingRegion(paddingMeters: 150)
+        XCTAssertEqual(r.center.latitude, 40.7195, accuracy: 1e-6)
+        XCTAssertEqual(r.center.longitude, -73.9850, accuracy: 1e-6)
+        // 0.009 deg of polygon plus 150 m (~0.00135 deg) on each side
+        XCTAssertEqual(r.span.latitudeDelta, 0.009 + 2 * 150.0 / 111_000, accuracy: 1e-5)
+        XCTAssertGreaterThan(r.span.longitudeDelta, 0.010)
+    }
+
+    func testNamedResolvesExactAndAliasedNames() {
+        let all = NeighborhoodPolygonLoader.load()
+        XCTAssertEqual(NeighborhoodPolygon.named("Lower East Side", in: all)?.name, "Lower East Side")
+        XCTAssertEqual(NeighborhoodPolygon.named("lower east side", in: all)?.name, "Lower East Side")
+        // Supabase says "Flatiron"; the bundle says "Flatiron District".
+        XCTAssertEqual(NeighborhoodPolygon.named("Flatiron", in: all)?.name, "Flatiron District")
+        XCTAssertNil(NeighborhoodPolygon.named("Narnia", in: all))
+    }
+
+    func testDimesSquareIsLowerEastSideNow() {
+        let all = NeighborhoodPolygonLoader.load()
+        let les = NeighborhoodPolygon.named("Lower East Side", in: all)!
+        let chinatown = NeighborhoodPolygon.named("Chinatown", in: all)!
+        let dimes = CLLocationCoordinate2D(latitude: 40.7146, longitude: -73.9910)
+        XCTAssertTrue(les.contains(dimes))
+        XCTAssertFalse(chinatown.contains(dimes))
+        // West side of Bowery stays Chinatown.
+        let bowery = CLLocationCoordinate2D(latitude: 40.7185, longitude: -73.9960)
+        XCTAssertTrue(chinatown.contains(bowery))
+        XCTAssertFalse(les.contains(bowery))
+    }
+}
