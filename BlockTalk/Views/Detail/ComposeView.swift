@@ -9,6 +9,7 @@ struct ComposeView: View {
     @Environment(LocationService.self) private var locationService
     @Environment(OfflineStore.self) private var offline
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
+    @Environment(DayOneStore.self) private var dayOne: DayOneStore?
     @Environment(LocalContentStore.self) private var localContent
     @Environment(EnrollmentStore.self) private var enrollments
     @Environment(\.dismiss) private var dismiss
@@ -588,6 +589,11 @@ struct ComposeView: View {
     /// Post-submit routing follows the post type: pin → Map, feed → Feed,
     /// NYC-wide prompt answers skip routing.
     private func routeAfterPost() {
+        // A first post may have just claimed a Day One slot; refresh so the
+        // badge is on the new post immediately rather than after a relaunch.
+        if let dayOne, let me = appState.currentUser?.id ?? appState.session?.user.id, dayOne.slot(for: me) == nil {
+            Task { await dayOne.loadAll() }
+        }
         appState.composeDraft = ""
         appState.composeDraftImage = nil
         if pushManager.permissionState == .undetermined {

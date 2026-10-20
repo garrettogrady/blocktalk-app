@@ -542,3 +542,88 @@ final class PinStore {
 
     func reset() { pinsById = [:] }
 }
+
+// MARK: - Day One (the first 50 accounts to post from each home neighborhood)
+
+/// One permanent Day One slot (Supabase/00032_day_one.sql): a neighborhood,
+/// a number 1 to 50, and the member who claimed it. `userId` is nil when
+/// that account was deleted; the slot stays claimed.
+struct DayOneSlot: Decodable, Hashable, Sendable {
+    static let capacity = 50
+
+    let neighborhoodId: UUID
+    let rank: Int
+    let userId: UUID?
+    let shortCode: String?
+    let neighborhoodName: String?
+    let username: String?
+
+    init(neighborhoodId: UUID, rank: Int, userId: UUID?,
+         shortCode: String? = nil, neighborhoodName: String? = nil, username: String? = nil) {
+        self.neighborhoodId = neighborhoodId
+        self.rank = rank
+        self.userId = userId
+        self.shortCode = shortCode
+        self.neighborhoodName = neighborhoodName
+        self.username = username
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case rank, user, neighborhood
+        case neighborhoodId = "neighborhood_id"
+        case userId = "user_id"
+    }
+    private struct UserRef: Decodable { let username: String? }
+    private struct HoodRef: Decodable {
+        let shortCode: String?
+        let name: String?
+        enum CodingKeys: String, CodingKey { case name; case shortCode = "short_code" }
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        neighborhoodId = try c.decode(UUID.self, forKey: .neighborhoodId)
+        rank = try c.decode(Int.self, forKey: .rank)
+        userId = try c.decodeIfPresent(UUID.self, forKey: .userId)
+        username = try c.decodeIfPresent(UserRef.self, forKey: .user)?.username
+        let hood = try c.decodeIfPresent(HoodRef.self, forKey: .neighborhood)
+        shortCode = hood?.shortCode
+        neighborhoodName = hood?.name
+    }
+}
+
+/// Who holds a Day One slot, by author. Loaded once at launch (claimed slots
+/// only, so a few hundred rows at most for a long while). Until 00032 runs the
+/// table doesn't exist, the load fails quietly, and no badges show.
+@MainActor
+@Observable
+final class DayOneStore {
+    private(set) var slots: [DayOneSlot] = []
+    private(set) var loaded = false
+    private var byUser: [UUID: DayOneSlot] = [:]
+
+    func slot(for userId: UUID) -> DayOneSlot? { byUser[userId] }
+    func rank(for userId: UUID) -> Int? { byUser[userId]?.rank }
+    func claimed(in neighborhoodId: UUID) -> Int { slots.filter { $0.neighborhoodId == neighborhoodId }.count }
+    func remaining(in neighborhoodId: UUID) -> Int { max(0, DayOneSlot.capacity - claimed(in: neighborhoodId)) }
+
+    func loadAll() async {
+        do {
+            let fetched: [DayOneSlot] = try await supabase.from("day_one_slots")
+                .select("neighborhood_id, rank, user_id, user:users(username), neighborhood:neighborhoods(short_code, name)")
+                .order("claimed_at")
+                .execute()
+                .value
+            apply(fetched)
+        } catch {
+            print("DayOneStore: failed to load (table missing until 00032 runs?): \(error)")
+        }
+    }
+
+    func apply(_ fetched: [DayOneSlot]) {
+        slots = fetched
+        byUser = Dictionary(fetched.compactMap { s in s.userId.map { ($0, s) } },
+                            uniquingKeysWith: { a, _ in a })
+        loaded = true
+    }
+}

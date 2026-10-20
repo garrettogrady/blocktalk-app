@@ -23,6 +23,8 @@ struct PostCard: View {
     @Environment(NotificationStore.self) private var notifications
     @Environment(EnrollmentStore.self) private var enrollments
     @Environment(ContentEditStore.self) private var edits
+    // Optional: previews and tests may host a card without the store.
+    @Environment(DayOneStore.self) private var dayOne: DayOneStore?
     @State private var showReport = false
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
@@ -375,6 +377,12 @@ struct PostCard: View {
                 Text("#\(displayNumber.formatted(.number))")
                     .font(BTFont.mono(size: 11))
                     .foregroundStyle(Color.btText3)
+
+                // Day One outranks the tier in permanence, so it sits first. It
+                // names its neighborhood only when that isn't the author's home.
+                if let slot = dayOne?.slot(for: post.userId) {
+                    DayOneBadge(shortCode: slot.shortCode == displayHome ? nil : slot.shortCode)
+                }
 
                 if let level = authorLevel {
                     AuthorityBadge(level: level)

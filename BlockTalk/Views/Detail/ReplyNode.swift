@@ -7,6 +7,7 @@ struct ReplyNode: View {
 
     @Environment(AppState.self) private var appState
     @Environment(ContentEditStore.self) private var edits
+    @Environment(DayOneStore.self) private var dayOne: DayOneStore?
     @State private var showReport = false
     @State private var reported = false
     @State private var showEdit = false
@@ -75,6 +76,9 @@ struct ReplyNode: View {
                             Text("#\(a.userNumber.formatted(.number))")
                                 .font(BTFont.mono(size: 11))
                                 .foregroundStyle(Color.btText3)
+                            if let slot = dayOne?.slot(for: reply.userId) {
+                                DayOneBadge(shortCode: slot.shortCode == a.homeShortCode ? nil : slot.shortCode)
+                            }
                             if let level = authorLevel {
                                 AuthorityBadge(level: level)
                             }

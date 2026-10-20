@@ -4,6 +4,8 @@ struct YouView: View {
     @Environment(AppState.self) private var appState
     @Environment(OfflineStore.self) private var offline
     @Environment(NotificationStore.self) private var notifications
+    @Environment(DayOneStore.self) private var dayOne: DayOneStore?
+    @State private var showDayOne = false
     @State private var showNotifications = false
     @State private var showSettings = false
     @State private var showFeedback = false
@@ -40,6 +42,12 @@ struct YouView: View {
                                       homeShortCode: appState.homeNeighborhood?.shortCode)
                             .padding(.horizontal, BTSpacing.lg)
                             .padding(.top, pendingLevelUp == nil ? BTSpacing.md : 0)
+
+                        // Day One tile: only for one of the first 50 accounts to post
+                        if let slot = dayOne?.slot(for: user.id) {
+                            DayOneTile(slot: slot) { showDayOne = true }
+                                .padding(.horizontal, BTSpacing.lg)
+                        }
 
                         // Authority card (tier name in display type, progress, levels left)
                         if let aura = user.aura {
@@ -91,6 +99,15 @@ struct YouView: View {
             }
             .sheet(isPresented: $showNotifications) {
                 NotificationsView()
+            }
+            .sheet(isPresented: $showDayOne) {
+                Group {
+                    if let slot = appState.currentUser.flatMap({ dayOne?.slot(for: $0.id) }) {
+                        DayOneSheet(slot: slot)
+                    }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showSettings) {
                 NavigationStack {

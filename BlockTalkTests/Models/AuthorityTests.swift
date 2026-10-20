@@ -153,3 +153,62 @@ final class AuthorityTests: XCTestCase {
         XCTAssertEqual(RelativeTime.short(since: now.addingTimeInterval(-259_200), now: now), "3d")
     }
 }
+
+final class DayOneStoreTests: XCTestCase {
+    private let alice = UUID()
+    private let bob = UUID()
+    private let les = UUID()
+    private let fidi = UUID()
+
+    @MainActor
+    func testLookupAndPerNeighborhoodCounts() {
+        let store = DayOneStore()
+        store.apply([
+            DayOneSlot(neighborhoodId: les, rank: 1, userId: alice, shortCode: "LES"),
+            DayOneSlot(neighborhoodId: fidi, rank: 1, userId: bob, shortCode: "FIDI"),
+            DayOneSlot(neighborhoodId: les, rank: 2, userId: UUID(), shortCode: "LES"),
+        ])
+        XCTAssertEqual(store.rank(for: alice), 1)
+        XCTAssertEqual(store.slot(for: bob)?.shortCode, "FIDI")
+        XCTAssertNil(store.slot(for: UUID()))
+        XCTAssertEqual(store.claimed(in: les), 2)
+        XCTAssertEqual(store.remaining(in: les), 48)
+        XCTAssertEqual(store.remaining(in: fidi), 49)
+        XCTAssertEqual(store.remaining(in: UUID()), DayOneSlot.capacity, "an untouched neighborhood has all fifty")
+        XCTAssertTrue(store.loaded)
+    }
+
+    @MainActor
+    func testDeletedAccountKeepsItsSlot() {
+        let store = DayOneStore()
+        store.apply([DayOneSlot(neighborhoodId: les, rank: 1, userId: nil),
+                     DayOneSlot(neighborhoodId: les, rank: 2, userId: alice)])
+        XCTAssertEqual(store.remaining(in: les), 48, "a vacated slot is not refilled")
+        XCTAssertEqual(store.rank(for: alice), 2)
+    }
+
+    func testDecodesSupabaseShape() throws {
+        let json = """
+        [{"neighborhood_id": "\(les.uuidString)", "rank": 1, "user_id": "\(alice.uuidString)",
+          "user": {"username": "orchardst"}, "neighborhood": {"short_code": "LES", "name": "Lower East Side"}},
+         {"neighborhood_id": "\(fidi.uuidString)", "rank": 2, "user_id": null, "user": null, "neighborhood": null}]
+        """.data(using: .utf8)!
+        let slots = try JSONDecoder().decode([DayOneSlot].self, from: json)
+        XCTAssertEqual(slots[0].neighborhoodId, les)
+        XCTAssertEqual(slots[0].rank, 1)
+        XCTAssertEqual(slots[0].userId, alice)
+        XCTAssertEqual(slots[0].username, "orchardst")
+        XCTAssertEqual(slots[0].shortCode, "LES")
+        XCTAssertEqual(slots[0].neighborhoodName, "Lower East Side")
+        XCTAssertNil(slots[1].userId)
+        XCTAssertNil(slots[1].shortCode)
+    }
+
+    @MainActor
+    func testEmptyStoreShowsNothing() {
+        let store = DayOneStore()
+        XCTAssertFalse(store.loaded)
+        XCTAssertNil(store.slot(for: alice))
+        XCTAssertEqual(store.remaining(in: les), DayOneSlot.capacity)
+    }
+}

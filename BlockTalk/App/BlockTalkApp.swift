@@ -45,6 +45,7 @@ struct BlockTalkApp: App {
     @State private var notifications = NotificationStore()
     @State private var neighborhoodCache = NeighborhoodCache()
     @State private var enrollments = EnrollmentStore()
+    @State private var dayOne = DayOneStore()
     /// Drives the cosmetic launch logo overlay ONLY. Never touched by session restore
     /// or any network call — dismissed by a local, hard-capped timer (see body .task),
     /// so it can never trap the app. Starts true so the logo shows the instant we render.
@@ -79,12 +80,16 @@ struct BlockTalkApp: App {
             .environment(neighborhoodCache)
             .environment(enrollments)
             .environment(edits)
+            .environment(dayOne)
             // The launch load runs before a fresh sign-in has a session, and the
             // neighborhoods table is readable only when signed in, so reload the
             // cache once the user reaches the app if it came back empty.
             .task(id: appState.stage) {
                 if appState.stage == .app, neighborhoodCache.neighborhoods.isEmpty {
                     await neighborhoodCache.loadAll()
+                }
+                if appState.stage == .app, !dayOne.loaded {
+                    await dayOne.loadAll()
                 }
             }
             .preferredColorScheme(.dark)
@@ -270,8 +275,10 @@ struct BlockTalkApp: App {
         }
         #endif
 
-        // Load the neighborhood cache at startup
-        await neighborhoodCache.loadAll()
+        // Load the neighborhood cache and the Day One slots at startup, together.
+        async let hoods: Void = neighborhoodCache.loadAll()
+        async let slots: Void = dayOne.loadAll()
+        _ = await (hoods, slots)
 
         do {
             let session = try await supabase.auth.session

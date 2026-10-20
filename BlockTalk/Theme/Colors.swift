@@ -20,6 +20,9 @@ extension Color {
     static let btSlicker = Color(hex: 0xBD6BFF)
     static let btSlickerDim = Color(hex: 0x6E2FA8)
     static let btOnAccent = Color(hex: 0x0A0A0C)
+    /// Day One badge only. Gold is reserved so the badge reads as rare.
+    static let btGold = Color(hex: 0xF3D26B)
+    static let btGoldDim = Color(hex: 0x8A7430)
 
     init(hex: UInt, opacity: Double = 1.0) {
         self.init(
