@@ -16,7 +16,10 @@ struct PinService {
     func createPin(userId: UUID, coordinate: CLLocationCoordinate2D, cornerName: String?, neighborhoodId: UUID,
                    placeName: String? = nil, placeCategory: String? = nil, placeSymbol: String? = nil) async throws -> Pin {
         let params = CreatePinParams(
-            p_user_id: userId.uuidString,
+            // Lowercase on purpose: Postgres renders UUIDs lowercase, and the
+            // server once compared this as text (00027/00028). Harmless under
+            // the fixed function (00030), which compares as UUID.
+            p_user_id: userId.uuidString.lowercased(),
             p_lat: coordinate.latitude,
             p_lng: coordinate.longitude,
             p_corner_name: cornerName,

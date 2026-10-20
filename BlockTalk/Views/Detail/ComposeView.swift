@@ -424,6 +424,22 @@ struct ComposeView: View {
             ?? "your neighborhood"
     }
 
+    /// For a street comment, the neighborhood the pin itself sits in (or is
+    /// nearest to, within grace). The user may be standing in the LES and drop
+    /// the pin a block over the Chinatown line; the pin belongs to Chinatown and
+    /// the server checks the point against the claimed neighborhood, so claiming
+    /// the GPS neighborhood would be refused. Falls back to the GPS neighborhood
+    /// only if the pin isn't near any polygon.
+    private func pinNeighborhoodId(for coord: CLLocationCoordinate2D, fallback: UUID) async -> UUID {
+        let polys = NeighborhoodPolygonLoader.load()
+        let match = polys.first { $0.contains(coord) }
+            ?? polys.filter { $0.containsWithGrace(coord) }.min { $0.distanceToEdge(coord) < $1.distanceToEdge(coord) }
+        guard let match else { return fallback }
+        let dbName = NeighborhoodService.polygonNameAliases[match.name] ?? match.name
+        if let hood = try? await NeighborhoodService().fetchByName(dbName) { return hood.id }
+        return fallback
+    }
+
     /// The polygon of the neighborhood being posted to, so a typed place search
     /// can reach all of it (not just the block around the pin).
     private var postingFence: NeighborhoodPolygon? {
@@ -500,11 +516,12 @@ struct ComposeView: View {
                 // Street comment: create the pin in Supabase first, then the post.
                 let pinService = PinService()
                 do {
+                    let pinHoodId = await pinNeighborhoodId(for: pinLocation, fallback: neighborhoodId)
                     var pin = try await pinService.createPin(
                         userId: userId,
                         coordinate: pinLocation,
                         cornerName: pinCornerName ?? resolvedStreet,
-                        neighborhoodId: neighborhoodId,
+                        neighborhoodId: pinHoodId,
                         placeName: taggedPlace?.name,
                         placeCategory: taggedPlace?.category,
                         placeSymbol: taggedPlace?.symbol
@@ -517,7 +534,7 @@ struct ComposeView: View {
                         pin.placeCategory = place.category
                         pin.placeSymbol = place.symbol
                     }
-                    if let post = await viewModel.submit(userId: userId, neighborhoodId: neighborhoodId, author: author, pinId: pin.id) {
+                    if let post = await viewModel.submit(userId: userId, neighborhoodId: pinHoodId, author: author, pinId: pin.id) {
                         localContent.add(post: post, pin: pin)
                         enrollments.enroll(userId: userId, postId: post.id)
                         routeAfterPost()

@@ -1,22 +1,24 @@
 import Foundation
+import Supabase
 
 /// Server-side rate limits (Supabase/00026_rate_limits.sql) reject an insert
-/// with an error whose message is "rate_limited: <sentence for the user>".
-/// This pulls that sentence out so screens can show it instead of a generic
-/// "couldn't post" message.
+/// with a Postgres error whose message is "rate_limited: <sentence>". This
+/// pulls the sentence out so screens can show it instead of a generic failure.
 enum RateLimit {
     static let marker = "rate_limited: "
 
     /// The user-facing sentence, or nil if this isn't a rate-limit error.
     static func message(for error: Error) -> String? {
-        message(in: String(describing: error)) ?? message(in: error.localizedDescription)
+        if let pg = error as? PostgrestError {
+            return message(in: pg.message)
+        }
+        return message(in: String(describing: error)) ?? message(in: error.localizedDescription)
     }
 
     static func message(in text: String) -> String? {
         guard let range = text.range(of: marker) else { return nil }
         var rest = text[range.upperBound...]
-        // The message is usually followed by the framework's own decoration
-        // (a closing quote, "hint:", "code:"). Keep just the sentence.
+        // When parsing a printed description, stop at the framework's decoration.
         if let end = rest.firstIndex(where: { $0 == "\"" || $0 == "\n" }) {
             rest = rest[..<end]
         }
@@ -25,16 +27,14 @@ enum RateLimit {
     }
 }
 
-/// Plain-English refusals raised by our own SQL functions (ERRCODE P0001). The
-/// message is already written for the user, so pass it through as-is.
+/// Plain-English refusals raised by our own SQL functions (SQLSTATE P0001,
+/// RAISE EXCEPTION). The message is already written for the user, so pass it
+/// through as-is. Anything else (transport, auth, schema) returns nil so the
+/// caller can show its generic copy.
 enum ServerMessage {
     static func text(for error: Error) -> String? {
-        let raw = String(describing: error)
-        // PostgrestError prints as: ...code: Optional("P0001"), message: "...")
-        guard raw.contains("P0001"), let r = raw.range(of: "message: \"") else { return nil }
-        let rest = raw[r.upperBound...]
-        guard let end = rest.firstIndex(of: "\"") else { return nil }
-        let s = String(rest[..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pg = error as? PostgrestError, pg.code == "P0001" else { return nil }
+        let s = pg.message.trimmingCharacters(in: .whitespacesAndNewlines)
         return s.isEmpty || s.hasPrefix(RateLimit.marker) ? nil : s
     }
 }

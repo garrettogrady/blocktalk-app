@@ -1,4 +1,5 @@
 import XCTest
+import Supabase
 @testable import BlockTalk
 
 final class RateLimitTests: XCTestCase {
@@ -44,5 +45,34 @@ final class EditHistoryStampTests: XCTestCase {
         XCTAssertFalse(s.hasPrefix("TODAY"))
         XCTAssertFalse(s.hasPrefix("YESTERDAY"))
         XCTAssertTrue(s.contains(" · "))
+    }
+}
+
+final class ServerMessageTests: XCTestCase {
+    private func pg(code: String?, message: String) -> PostgrestError {
+        PostgrestError(detail: nil, hint: nil, code: code, message: message)
+    }
+
+    func testPassesThroughOurOwnRefusals() {
+        let e = pg(code: "P0001", message: "That spot is too far from where you are. Pins stay within a block of you.")
+        XCTAssertEqual(ServerMessage.text(for: e), "That spot is too far from where you are. Pins stay within a block of you.")
+    }
+
+    func testIgnoresRateLimitSoRateLimitHandlesIt() {
+        let e = pg(code: "P0001", message: "rate_limited: Slow down. You can post again in about a minute.")
+        XCTAssertNil(ServerMessage.text(for: e))
+        XCTAssertEqual(RateLimit.message(for: e), "Slow down. You can post again in about a minute.")
+    }
+
+    func testIgnoresOtherCodes() {
+        // The bug that bit create_pin: an auth refusal is not user copy.
+        XCTAssertNil(ServerMessage.text(for: pg(code: "42501", message: "Not authorized")))
+        XCTAssertNil(ServerMessage.text(for: pg(code: "42703", message: "column users_1.aura does not exist")))
+        XCTAssertNil(ServerMessage.text(for: pg(code: nil, message: "anything")))
+    }
+
+    func testNonPostgrestErrorsAreNil() {
+        XCTAssertNil(ServerMessage.text(for: URLError(.notConnectedToInternet)))
+        XCTAssertNil(RateLimit.message(for: URLError(.notConnectedToInternet)))
     }
 }
