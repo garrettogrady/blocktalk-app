@@ -29,6 +29,40 @@ struct NeighborhoodPolygon: Identifiable {
         rings.contains { Self.pointInRing(coord, $0) }
     }
 
+    /// How far a neighborhood boundary may be overshot and still count as "here".
+    /// About one long block. Street corners sit exactly on these lines and GPS
+    /// wanders 10 to 30 m, so a zero-tolerance fence blocked people standing on
+    /// their own corner. Mirrored server-side in create_pin (00028).
+    static let graceMeters: CLLocationDistance = 150
+
+    /// Inside the polygon, or within `graceMeters` of its edge.
+    func containsWithGrace(_ coord: CLLocationCoordinate2D, meters: CLLocationDistance = graceMeters) -> Bool {
+        contains(coord) || distanceToEdge(coord) <= meters
+    }
+
+    /// Shortest distance from a point to any edge of any ring, in meters.
+    func distanceToEdge(_ p: CLLocationCoordinate2D) -> CLLocationDistance {
+        // Flatten to a local plane: scale longitude by cos(lat) so degrees are
+        // roughly isotropic, project onto each segment, measure the real distance.
+        let k = cos(p.latitude * .pi / 180)
+        var best = CLLocationDistance.greatestFiniteMagnitude
+        let here = CLLocation(latitude: p.latitude, longitude: p.longitude)
+        for ring in rings where ring.count > 1 {
+            for i in 0..<ring.count {
+                let a = ring[i], b = ring[(i + 1) % ring.count]
+                let ax = a.longitude * k, ay = a.latitude
+                let bx = b.longitude * k, by = b.latitude
+                let px = p.longitude * k, py = p.latitude
+                let dx = bx - ax, dy = by - ay
+                let len2 = dx * dx + dy * dy
+                let t = len2 == 0 ? 0 : max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / len2))
+                let q = CLLocation(latitude: ay + t * dy, longitude: (ax + t * dx) / k)
+                best = min(best, here.distance(from: q))
+            }
+        }
+        return best
+    }
+
     static func pointInRing(_ p: CLLocationCoordinate2D, _ ring: [CLLocationCoordinate2D]) -> Bool {
         guard ring.count > 2 else { return false }
         var inside = false

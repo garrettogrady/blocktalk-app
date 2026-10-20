@@ -24,3 +24,17 @@ enum RateLimit {
         return sentence.isEmpty ? nil : sentence
     }
 }
+
+/// Plain-English refusals raised by our own SQL functions (ERRCODE P0001). The
+/// message is already written for the user, so pass it through as-is.
+enum ServerMessage {
+    static func text(for error: Error) -> String? {
+        let raw = String(describing: error)
+        // PostgrestError prints as: ...code: Optional("P0001"), message: "...")
+        guard raw.contains("P0001"), let r = raw.range(of: "message: \"") else { return nil }
+        let rest = raw[r.upperBound...]
+        guard let end = rest.firstIndex(of: "\"") else { return nil }
+        let s = String(rest[..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return s.isEmpty || s.hasPrefix(RateLimit.marker) ? nil : s
+    }
+}

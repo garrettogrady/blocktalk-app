@@ -87,3 +87,38 @@ final class NeighborhoodPolygonTests: XCTestCase {
         }
     }
 }
+
+final class NeighborhoodPolygonGraceTests: XCTestCase {
+    // A 1 km square-ish box around a point in the LES.
+    private let box = NeighborhoodPolygon(name: "Box", rings: [[
+        CLLocationCoordinate2D(latitude: 40.7150, longitude: -73.9900),
+        CLLocationCoordinate2D(latitude: 40.7150, longitude: -73.9800),
+        CLLocationCoordinate2D(latitude: 40.7240, longitude: -73.9800),
+        CLLocationCoordinate2D(latitude: 40.7240, longitude: -73.9900),
+    ]])
+
+    func testInsideHasZeroDistanceSemantics() {
+        let inside = CLLocationCoordinate2D(latitude: 40.7195, longitude: -73.9850)
+        XCTAssertTrue(box.contains(inside))
+        XCTAssertTrue(box.containsWithGrace(inside))
+    }
+
+    func testJustOutsideIsWithinGrace() {
+        // ~50 m south of the southern edge (0.00045 deg lat).
+        let p = CLLocationCoordinate2D(latitude: 40.7150 - 0.00045, longitude: -73.9850)
+        XCTAssertFalse(box.contains(p))
+        XCTAssertEqual(box.distanceToEdge(p), 50, accuracy: 5)
+        XCTAssertTrue(box.containsWithGrace(p))
+    }
+
+    func testFarOutsideIsNotWithinGrace() {
+        // ~400 m south.
+        let p = CLLocationCoordinate2D(latitude: 40.7150 - 0.0036, longitude: -73.9850)
+        XCTAssertFalse(box.containsWithGrace(p))
+        XCTAssertEqual(box.distanceToEdge(p), 400, accuracy: 10)
+    }
+
+    func testGraceLimitIsAboutABlock() {
+        XCTAssertEqual(NeighborhoodPolygon.graceMeters, 150)
+    }
+}

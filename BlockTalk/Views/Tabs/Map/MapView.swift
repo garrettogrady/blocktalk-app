@@ -528,7 +528,10 @@ struct MapTabView: View {
             // in this same polygon. Computed once here (not per camera frame) to keep
             // the drag smooth. Nil if GPS is unresolved or the fix isn't inside any
             // bundled polygon → inRange falls back to name matching.
+            // Standing just outside a line (GPS wobble on a corner) still fences
+            // you to the nearest neighborhood rather than leaving you unfenced.
             fencePolygon = polygons.first { $0.contains(here) }
+                ?? polygons.filter { $0.containsWithGrace(here) }.min { $0.distanceToEdge(here) < $1.distanceToEdge(here) }
             centerReticle(on: here)
         } else {
             fencePolygon = nil
@@ -715,14 +718,16 @@ struct MapTabView: View {
         // physically standing in (captured on drop start). This is purely geometric
         // and never depends on neighborhood-name matching, so it can't silently
         // fail open when Supabase names and bundled NTA names diverge.
+        // Both checks allow a short overshoot past the line (see graceMeters):
+        // corners sit on boundaries and a pin a block away is still "here".
         if let fence = fencePolygon {
-            return fence.contains(c)
+            return fence.containsWithGrace(c)
         }
         // Fallback (no GPS fix, or the user's location wasn't inside any bundled
         // polygon): match by name. Only truly unfenced when nothing matches.
         let highlighted = polygons.filter { isCurrentNeighborhood($0.name) }
         guard !highlighted.isEmpty else { return true }
-        return highlighted.contains { $0.contains(c) }
+        return highlighted.contains { $0.containsWithGrace(c) }
     }
 
     private var dropInRange: Bool { inRange(effectiveDropCoordinate) }
@@ -753,7 +758,7 @@ struct MapTabView: View {
                     .buttonStyle(.plain)
                 }
                 Text(inRange ? "tap Drop pin here to post"
-                             : "you can only drop pins in your current neighborhood")
+                             : "too far from where you are. pins stay within a block of you")
                     .font(BTFont.body(size: 11))
                     .foregroundStyle(inRange ? Color.btText2 : Color.btWarn.opacity(0.85))
                     .multilineTextAlignment(.center)
@@ -764,7 +769,7 @@ struct MapTabView: View {
                     .foregroundStyle(inRange ? Color.btText : Color.btWarn)
                 Text(inRange
                      ? (corner ?? "drag the map, or search a place above")
-                     : "you can only drop pins in your current neighborhood")
+                     : "too far from where you are. pins stay within a block of you")
                     .font(inRange && corner != nil ? BTFont.monoBold(size: 11) : BTFont.body(size: 11))
                     .foregroundStyle(inRange && corner != nil ? Color.btLime : (inRange ? Color.btText2 : Color.btWarn.opacity(0.85)))
                     .multilineTextAlignment(.center)

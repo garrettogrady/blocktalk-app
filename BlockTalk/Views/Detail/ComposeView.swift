@@ -521,7 +521,11 @@ struct ComposeView: View {
                 } catch {
                     print("Failed to create pin: \(error)")
                     isPosting = false
-                    submitError = "Couldn't drop your pin. Check your connection and try again."
+                    // The server explains refusals (out of range, rate limit); only a
+                    // transport failure gets the generic connection message.
+                    submitError = RateLimit.message(for: error)
+                        ?? ServerMessage.text(for: error)
+                        ?? "Couldn't drop your pin. Check your connection and try again."
                 }
             } else {
                 // Tag prompt answers so they appear in the prompt's response feed
