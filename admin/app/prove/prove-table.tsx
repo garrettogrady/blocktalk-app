@@ -166,7 +166,7 @@ export default function ProveTable({ responses }: { responses: SurveyResponse[] 
                       <td colSpan={8} className="px-3 py-4">
                         <div className="grid md:grid-cols-2 gap-4 text-sm">
                           <Answer label="Q1 · When you say the city, you mean" choice={r.q1_choice} text={r.q1_text} />
-                          <Answer label="Q2 · Does that change where you stand on Earth" choice={r.q2_choice} text={r.q2_text} />
+                          <Answer label="Q2 · Does the previous answer change by where you are" choice={r.q2_choice} text={r.q2_text} />
                           <Answer label="Q3 · Green MetroCard" choice={r.q3_choice} />
                           <Answer label="Q4 · Washington Square Park" choice={r.q4_choice} />
                           <Answer label="Q5 · Before the MetroCard" choice={r.q5_choice} />

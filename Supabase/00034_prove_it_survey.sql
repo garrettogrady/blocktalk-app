@@ -61,9 +61,9 @@ IMMUTABLE
 AS $$
   SELECT CASE p_q
     WHEN 1 THEN CASE p_choice
-      WHEN 'The five boroughs' THEN 1
+      WHEN 'The five boroughs' THEN 2
       WHEN 'Manhattan' THEN 2
-      WHEN 'Manhattan, Brooklyn, and the parts of Queens I can reach without a transfer' THEN 2
+      WHEN 'Manhattan, Brooklyn, and the parts of Queens I can reach without a transfer' THEN 1
       WHEN 'The five boroughs plus Long Island' THEN 0
       WHEN 'Other' THEN 1
       ELSE 0 END

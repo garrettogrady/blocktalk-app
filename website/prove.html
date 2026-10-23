@@ -58,7 +58,7 @@ select:invalid{color:#6F6D64}
 .card{--tier:var(--lime);border:1px solid var(--tier);border-radius:16px;padding:26px 22px;margin-top:8px;background:#141512;background:linear-gradient(180deg,color-mix(in srgb,var(--tier) 10%,transparent),transparent 70%)}
 .card.t-cs{--tier:var(--slicker)} .card.t-bt{--tier:var(--lime)} .card.t-tr{--tier:var(--cream)} .card.t-to{--tier:var(--pink)}
 .card .lab{font-size:11px;letter-spacing:.22em;color:var(--dim);margin:0 0 18px}
-.card .tier{font-weight:900;text-transform:uppercase;letter-spacing:-.03em;line-height:.9;font-size:clamp(40px,13vw,66px);color:var(--tier);margin:0}
+.card .tier{font-weight:900;text-transform:uppercase;letter-spacing:-.03em;line-height:.9;font-size:clamp(40px,13vw,66px);color:var(--tier);margin:0;display:block;max-width:100%}
 .card .score{font-size:15px;letter-spacing:.08em;color:var(--cream);margin:18px 0 0}
 .card .flavor{font-size:17px;color:var(--cream);margin:16px 0 0;line-height:1.35}
 .after{color:var(--dim);font-size:15px;margin:22px 0 0;line-height:1.5} .after b{color:var(--cream);font-weight:600}
@@ -135,9 +135,9 @@ select:invalid{color:#6F6D64}
   // recomputes them from the option text. Q7: any text at all is worth 2.
   var Q = [
     { key:"q1", title:"When you say “the city,” you mean:",
-      opts:[["The five boroughs",1],["Manhattan",2],["Manhattan, Brooklyn, and the parts of Queens I can reach without a transfer",2],["The five boroughs plus Long Island",0],["Other",1]],
+      opts:[["The five boroughs",2],["Manhattan",2],["Manhattan, Brooklyn, and the parts of Queens I can reach without a transfer",1],["The five boroughs plus Long Island",0],["Other",1]],
       textOn:"Other", placeholder:"go on…" },
-    { key:"q2", title:"Does that answer change depending on where you are physically standing on Earth?",
+    { key:"q2", title:"Does the answer to the previous question change depending on where you are geographically located at the time of answering?",
       opts:[["No. The city is the city.",1],["Yes. Let me explain.",2]], textOn:"Yes. Let me explain.", placeholder:"explain yourself" },
     { key:"q3", title:"A green MetroCard means:",
       opts:[["Reduced fare for seniors",0],["The MTA's charitable giving program",0],["You are in high school",2],["Limited collector's edition",0]] },
@@ -146,14 +146,14 @@ select:invalid{color:#6F6D64}
     { key:"q5", title:"Before the MetroCard, you paid for the subway with:",
       opts:[["Dollar bills",0],["Quarters",0],["Tokens",2],["Paper tickets from the kiosk",0]] },
     { key:"q6", title:"What does \u201cit's brick outside\u201d mean?",
-      opts:[["It's snowing very heavily",0],["You're horny",0],["There is construction on the street",0],["It's cold outside",2]] },
+      opts:[["It's snowing very heavily",0],["There is construction on the street",0],["It's cold outside",2]] },
     { key:"q7", title:"New Jersey.", opts:[], freeOnly:true, textPoints:2 }
   ];
   var TIERS = [
-    [12,"CITY SLICKER","You knew about the bodies. The block needs voices like yours."],
-    [8,"BLOCKTALKER","You'd survive here. You might even thrive."],
-    [5,"TRANSPLANT","Everyone starts somewhere. Even the bodega cat was a kitten once."],
-    [0,"TOURIST","Welcome to New York. Please stand to the right."]
+    [12,"CITY SLICKER","Okay, you actually might be native. Check your texts."],
+    [8,"BLOCKTALKER","Cheers, it's not your first day on earth. You do seem to know the city."],
+    [5,"TRANSPLANT","No way, you moved here? That's so interesting and cool."],
+    [0,"TOURIST","Welcome to the city, asshole. Don't walk so slowly, and if you're in a group, don't take up the whole sidewalk."]
   ];
 
   var src = (new URLSearchParams(location.search).get("src") || "direct").toLowerCase();
@@ -242,10 +242,20 @@ select:invalid{color:#6F6D64}
     var card = document.querySelector(".card");
     card.className = "card " + ({ "CITY SLICKER":"t-cs", "BLOCKTALKER":"t-bt", "TRANSPLANT":"t-tr", "TOURIST":"t-to" })[t[1]];
     $("v-tier").textContent = t[1];
+    fitTier();
     $("v-score").textContent = score + " / 14";
     $("v-flavor").textContent = t[2];
     show("s-verdict"); progress(N + 2);
   }
+
+  // Shrink the tier name until its longest word fits the card (one word per line is fine, overflow is not).
+  function fitTier(){
+    var el = $("v-tier"); var size = 66; var max = Math.min(66, window.innerWidth * 0.13);
+    el.style.fontSize = max + "px";
+    var guard = 0;
+    while (el.scrollWidth > el.clientWidth && size > 22 && guard++ < 40) { size = Math.min(size, max) - 2; el.style.fontSize = size + "px"; }
+  }
+  window.addEventListener("resize", function(){ if ($("s-verdict").classList.contains("on")) fitTier(); });
 
   $("capture").onsubmit = function(e){
     e.preventDefault();
