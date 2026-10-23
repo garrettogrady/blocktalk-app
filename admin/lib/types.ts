@@ -88,3 +88,27 @@ export interface Appeal {
   user?: { username: string; user_number: number };
   post?: Post;
 }
+
+/** One "Prove you're a real New Yorker" survey submission (Supabase/00034). */
+export interface SurveyResponse {
+  id: string;
+  created_at: string;
+  src: "p1" | "p2" | "p3" | "direct";
+  q1_choice: string | null;
+  q1_text: string | null;
+  q2_choice: string | null;
+  q2_text: string | null;
+  q3_choice: string | null;
+  q4_choice: string | null;
+  q5_choice: string | null;
+  q6_choice: string | null;
+  q7_text: string | null;
+  score: number;
+  tier: "CITY SLICKER" | "BLOCKTALKER" | "TRANSPLANT" | "TOURIST";
+  email: string;
+  neighborhood: string;
+  phone: string | null;
+  sms_consent: boolean;
+  contacted: boolean;
+  user_agent: string | null;
+}

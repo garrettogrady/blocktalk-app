@@ -12,6 +12,7 @@ SELECT
   (SELECT ST_NPoints(polygon) > 5 FROM neighborhoods WHERE name = 'Lower East Side')     AS "00031 real polygons",
   (SELECT to_regclass('public.day_one_slots') IS NOT NULL)                              AS "00032 day one",
   (SELECT EXISTS (SELECT 1 FROM users WHERE user_number = 101))                         AS "00033 founder numbers",
+  (SELECT to_regclass('public.survey_responses') IS NOT NULL)                           AS "00034 prove it survey",
   (SELECT to_regprocedure('enforce_rate_limit()') IS NOT NULL)                          AS "00026 rate limits (prereq)",
   (SELECT to_regprocedure('guard_users_aura()') IS NOT NULL)                            AS "00027 security (prereq)";
 ```
@@ -65,6 +66,19 @@ handing out a reserved number later from this editor.
   QuentinBarriotino and garton. It refuses to run if either name isn't found.
 - Expect: `Done. Matt = 101, Garrett = 102, N other accounts numbered 103 to M. Next signup gets M+1.`
 - Check: `SELECT username, user_number FROM users ORDER BY user_number LIMIT 5;`
+
+## 5. `00034_prove_it_survey.sql`  (independent of the others; run before stickers go out)
+
+The "Prove you're a real New Yorker" sticker funnel on blocktalk.nyc/prove.
+Two locked-down tables (`survey_responses`, `survey_scans`) and two functions
+the page calls anonymously (`submit_survey_response`, `log_survey_scan`).
+Scoring is recomputed server-side. The admin "Prove It" tab reads these.
+
+- Fill in: nothing.
+- Expect: `Prove It survey ready. 0 responses, 0 scans so far.`
+- Check: `SELECT to_regclass('public.survey_responses') IS NOT NULL;` is `true`.
+- Until this runs, the survey page still shows people a verdict but their
+  answers are not saved, so run it before any QR code is printed.
 
 ## Do NOT run
 

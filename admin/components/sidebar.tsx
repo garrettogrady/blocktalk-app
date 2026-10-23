@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Search,
   FileText,
+  ClipboardCheck,
 } from "lucide-react";
 
 const links = [
@@ -21,6 +22,7 @@ const links = [
   { href: "/appeals", label: "Appeals", icon: Scale },
   { href: "/users", label: "Users", icon: Users },
   { href: "/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/prove", label: "Prove It", icon: ClipboardCheck },
   { href: "/seed", label: "Seed DB", icon: Database },
 ];
 

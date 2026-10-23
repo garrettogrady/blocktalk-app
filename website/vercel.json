@@ -1,4 +1,15 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    { "source": "/p1", "destination": "/prove?src=p1", "permanent": false },
+    { "source": "/p2", "destination": "/prove?src=p2", "permanent": false },
+    { "source": "/p3", "destination": "/prove?src=p3", "permanent": false }
+  ],
+  "headers": [
+    {
+      "source": "/prove",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    }
+  ]
 }
