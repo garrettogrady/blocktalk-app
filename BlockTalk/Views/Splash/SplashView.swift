@@ -382,8 +382,8 @@ struct SplashView: View {
                             await enrollments.load(userId: user.id)
                             appState.advanceTo(.app)
                         } else {
-                            // New user — how it works, then the rule, then profile
-                            appState.advanceTo(.how)
+                            // New user — invite code, then how it works, then profile
+                            appState.advanceTo(.inviteCode)
                         }
                     } catch {
                         print("Sign in error: \(error)")

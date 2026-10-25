@@ -7,6 +7,7 @@ import UIKit
 
 enum AppStage {
     case splash
+    case inviteCode  // new users enter an invite code
     case how
     case tone
     case profile     // step 1: home neighborhood

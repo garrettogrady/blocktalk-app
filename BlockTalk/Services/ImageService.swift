@@ -8,8 +8,14 @@ struct ImageService {
     /// images; nothing in the app renders wider than a screen.
     static let maxEdge: CGFloat = 1600
 
+    private let safety = ImageSafetyService()
+
     /// Upload an image to Supabase Storage and return its public URL.
     func upload(image: UIImage, userId: UUID) async throws -> String {
+        let safetyResult = await safety.check(image)
+        if case .blocked = safetyResult {
+            throw ImageError.contentBlocked
+        }
         guard let data = Self.downscaled(image).jpegData(compressionQuality: 0.8) else {
             throw ImageError.compressionFailed
         }
@@ -42,10 +48,12 @@ struct ImageService {
 
     enum ImageError: LocalizedError {
         case compressionFailed
+        case contentBlocked
 
         var errorDescription: String? {
             switch self {
             case .compressionFailed: "Failed to compress image"
+            case .contentBlocked: "This image can't be posted because it may violate our content guidelines."
             }
         }
     }

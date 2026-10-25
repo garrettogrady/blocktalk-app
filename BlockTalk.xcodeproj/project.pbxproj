@@ -65,7 +65,9 @@
 		7325764D40C48AD9A0798C2F /* YouView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FF748309660D275BA9D2E2A /* YouView.swift */; };
 		7590F360B1340E665B70E96D /* RetryAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B69A795619D188981875046 /* RetryAsyncImage.swift */; };
 		766DD925D666F360C9B71B8B /* DailyPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC87FE3D5AB031413CAFFC68 /* DailyPrompt.swift */; };
+		7D188072B0D28247160DB511 /* InviteCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F2641C2CE4B45AE0F4C8BEB /* InviteCodeView.swift */; };
 		82DCD98DC4561B750572D9E4 /* ReplyNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA613858630E781DC74589D3 /* ReplyNode.swift */; };
+		8502584E76C7FA150C81279F /* ImageSafetyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A44BD50EFD3404418C0ADA /* ImageSafetyService.swift */; };
 		87589B327CCF3B029D40FF12 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE0954154D4D7AFE837EAE2 /* FeedbackView.swift */; };
 		88CC5D20FDF5704AC52CFF01 /* LevelUpBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166FB7C4AAEA2AF1056CA1E3 /* LevelUpBanner.swift */; };
 		896AF269F3548B66C7819732 /* NeighborhoodPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6AB18098EF23DFC5434C32F /* NeighborhoodPickerView.swift */; };
@@ -212,11 +214,13 @@
 		927EDE0724A7443D3CF76B84 /* OfflineStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineStoreTests.swift; sourceTree = "<group>"; };
 		94E3EDFCE7A454D0964E1BCE /* NeighborhoodPolygonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborhoodPolygonTests.swift; sourceTree = "<group>"; };
 		9688652C1B9A8D35A43A7A31 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
+		96A44BD50EFD3404418C0ADA /* ImageSafetyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageSafetyService.swift; sourceTree = "<group>"; };
 		9B69A795619D188981875046 /* RetryAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryAsyncImage.swift; sourceTree = "<group>"; };
 		9C4985E27B94DBD3AD4806FC /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
 		9CFE8CCA317358239A6B2BD8 /* AuthorityProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthorityProgressBar.swift; sourceTree = "<group>"; };
 		9EFDB19407A138D1C999725D /* ComposeViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeViewModelTests.swift; sourceTree = "<group>"; };
 		9F1C77EEEAA092565BD824E7 /* DailyPromptFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyPromptFeedView.swift; sourceTree = "<group>"; };
+		9F2641C2CE4B45AE0F4C8BEB /* InviteCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeView.swift; sourceTree = "<group>"; };
 		A0E6E7C597E7A67046AAFE6C /* ModerationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModerationStoreTests.swift; sourceTree = "<group>"; };
 		A14239B4A03FC23A46EE11D1 /* MapViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModelTests.swift; sourceTree = "<group>"; };
 		A24DABD6EC2FA3E80B1FE8D9 /* PinDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinDetailView.swift; sourceTree = "<group>"; };
@@ -504,6 +508,7 @@
 				48DD1B2BFC2141419FFA1741 /* ContentEditingService.swift */,
 				886A5B7DD1A29BFC742AC1E0 /* DeviceTokenService.swift */,
 				02F4E5C73F87CEB746EA3557 /* EnrollmentService.swift */,
+				96A44BD50EFD3404418C0ADA /* ImageSafetyService.swift */,
 				2C1FEFFF514B238E66BC1B90 /* ImageService.swift */,
 				030C402FE90609B895FADFE8 /* LocationService.swift */,
 				34A3F4B43AC95AC34FB13E85 /* NeighborhoodCache.swift */,
@@ -639,6 +644,7 @@
 		ED193724374D6E503CCCD1EC /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				9F2641C2CE4B45AE0F4C8BEB /* InviteCodeView.swift */,
 				07FC37129499EA981031E1D9 /* ProfileCreationView.swift */,
 				D8C9DF02E83103EFD296F689 /* ToneRulesView.swift */,
 			);
@@ -784,7 +790,9 @@
 				FD0147CE1A5956FEF42967AC /* GeoJSON.swift in Sources */,
 				02BC30947C4EF611E3C13726 /* HomeBadge.swift in Sources */,
 				5203346C635734F8481118F0 /* IdentityStrip.swift in Sources */,
+				8502584E76C7FA150C81279F /* ImageSafetyService.swift in Sources */,
 				43ED442426A1922A9D9D7375 /* ImageService.swift in Sources */,
+				7D188072B0D28247160DB511 /* InviteCodeView.swift in Sources */,
 				CA207DC2700C2A5405E1F8AD /* LanguageCheck.swift in Sources */,
 				88CC5D20FDF5704AC52CFF01 /* LevelUpBanner.swift in Sources */,
 				28A0017859EC3DCB66694E97 /* LinkPreviewCard.swift in Sources */,

@@ -58,6 +58,8 @@ struct BlockTalkApp: App {
                 switch appState.stage {
                 case .splash:
                     SplashView()
+                case .inviteCode:
+                    InviteCodeView()
                 case .how:
                     HowItWorksView()
                 case .tone:
@@ -265,6 +267,7 @@ struct BlockTalkApp: App {
         let args = ProcessInfo.processInfo.arguments
         if let i = args.firstIndex(of: "-onboardingStage"), i + 1 < args.count {
             switch args[i + 1] {
+            case "inviteCode": appState.stage = .inviteCode
             case "how": appState.stage = .how
             case "tone": appState.stage = .tone
             case "profile": appState.stage = .profile

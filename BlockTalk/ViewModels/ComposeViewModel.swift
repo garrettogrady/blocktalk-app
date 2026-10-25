@@ -43,6 +43,9 @@ final class ComposeViewModel {
         if let image = selectedImage {
             do {
                 imageUrl = try await imageService.upload(image: image, userId: userId)
+            } catch let err as ImageService.ImageError where err == .contentBlocked {
+                self.error = err.localizedDescription
+                return nil
             } catch {
                 self.error = "Couldn't upload your photo. Check your connection and try again."
                 return nil
