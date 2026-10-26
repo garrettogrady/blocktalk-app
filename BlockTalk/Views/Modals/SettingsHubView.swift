@@ -18,6 +18,12 @@ struct SettingsHubView: View {
                 } label: {
                     settingsRow(icon: "bell", title: "Notifications")
                 }
+
+                NavigationLink {
+                    ShareInviteView()
+                } label: {
+                    settingsRow(icon: "envelope.open", title: "Invite Friends")
+                }
             } header: {
                 Text("ACCOUNT")
                     .font(BTFont.mono(size: 11))
