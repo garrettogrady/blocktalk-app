@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prove it. Purist edition. · block.talk</title>
+<meta name="description" content="Eleven questions. The harder version. We'll know.">
+<meta property="og:title" content="Think you're a New Yorker? Prove it. Purist edition.">
+<meta property="og:description" content="Eleven questions. The harder version. We'll know.">
+<meta name="theme-color" content="#0F100E">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="site.css">
+</head>
+<body data-quiz="purist">
+<div class="top">
+  <a class="wordmark" href="/">block<i>.</i>talk</a>
+  <span class="count mono" id="count"></span>
+</div>
+<nav class="tabs">
+  <a href="/who">Who do you think you are?</a>
+  <a href="/ai">AI this and AI that</a>
+  <a href="/influencers">Fuck influencers</a>
+</nav>
+<div class="bar" aria-hidden="true"><i id="bar"></i></div>
+
+<main id="app">
+  <section class="screen on" id="s-intro">
+    <p class="eyebrow mono">Purist edition. No googling.</p>
+    <h1>Think you're a New Yorker? <em>Prove it.</em></h1>
+    <p class="sub">Eleven questions. The harder version.</p>
+    <div class="foot stack"><button class="btn" id="start">Start &rarr;</button><a class="btn alt" href="/">Too much? Regular version</a></div>
+  </section>
+
+  <section class="screen" id="s-q">
+    <div class="q">
+      <h2 id="q-title"></h2>
+      <div class="opts" id="q-opts"></div>
+      <textarea id="q-text" rows="3" class="hide"></textarea>
+    </div>
+    <div class="foot">
+      <button class="back" id="back">&larr; Back</button>
+      <button class="btn" id="next" disabled>Next &rarr;</button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-capture">
+    <form id="capture" novalidate>
+      <h2>Where do we send the results?</h2>
+      <p class="sub"><span class="wm">block<i>.</i>talk</span> opens in the Lower East Side first. You'll know when your neighborhood goes live.</p>
+      <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" required placeholder="you@somewhere.com"></div>
+      <div class="field hoodfield"><label for="hood">Neighborhood</label>
+        <input id="hood" name="neighborhood" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Start typing, then pick one" required>
+        <ul class="hoodlist" id="hoodlist" hidden></ul></div>
+      <div class="field"><label for="phone">Phone <span style="text-transform:none;letter-spacing:0">(optional)</span></label><input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="so we can text you. we barely will."></div>
+      <label class="check" id="smsrow" hidden><input type="checkbox" id="sms" name="sms"><span>Text me when it's live. Standard rates, no spam, we're not like that.</span></label>
+      <div class="hp" aria-hidden="true"><label>Website<input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></label></div>
+      <p class="err mono" id="err"></p>
+      <div class="foot"><button type="button" class="back" id="back2">&larr; Back</button><button type="submit" class="btn" id="submit" disabled>Get my verdict &rarr;</button></div>
+    </form>
+  </section>
+
+  <section class="screen" id="s-verdict">
+    <div class="card">
+      <p class="lab mono">BLOCK.TALK CERTIFICATION</p>
+      <p class="tier" id="v-tier"></p>
+      <p class="score mono" id="v-score"></p>
+      <p class="flavor" id="v-flavor"></p>
+    </div>
+    <p class="after"><b>We're reviewing your answers and might be in touch.</b> Your block isn't live yet. When it is, you'll be first to know.</p>
+    <div class="share"><button class="btn" id="share">Share with your friends &rarr;</button><p class="hint mono" id="sharehint"></p></div>
+  </section>
+</main>
+<script src="neighborhoods.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>
