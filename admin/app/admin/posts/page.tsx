@@ -73,7 +73,7 @@ function Pagination({
     <div className="flex items-center justify-center gap-1 mt-6">
       {currentPage > 1 && (
         <a
-          href={`/posts?page=${currentPage - 1}`}
+          href={`/admin/posts?page=${currentPage - 1}`}
           className="px-3 py-1.5 text-sm rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
         >
           Previous
@@ -87,7 +87,7 @@ function Pagination({
         ) : (
           <a
             key={p}
-            href={`/posts?page=${p}`}
+            href={`/admin/posts?page=${p}`}
             className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
               p === currentPage
                 ? "bg-blue-600 text-white"
@@ -100,7 +100,7 @@ function Pagination({
       )}
       {currentPage < totalPages && (
         <a
-          href={`/posts?page=${currentPage + 1}`}
+          href={`/admin/posts?page=${currentPage + 1}`}
           className="px-3 py-1.5 text-sm rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
         >
           Next

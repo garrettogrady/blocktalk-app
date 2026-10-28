@@ -56,8 +56,8 @@ export async function updatePostStatus(
     await supabaseAdmin.from("reports").delete().eq("post_id", postId);
   }
 
-  revalidatePath("/moderation");
-  revalidatePath("/");
+  revalidatePath("/admin/moderation");
+  revalidatePath("/admin");
   return { success: true };
 }
 

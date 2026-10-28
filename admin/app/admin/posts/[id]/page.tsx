@@ -59,7 +59,7 @@ export default async function PostDetailPage({ params }: Props) {
   return (
     <div>
       <Link
-        href="/posts"
+        href="/admin/posts"
         className="text-sm text-blue-600 hover:underline mb-4 inline-block"
       >
         &larr; Back to Posts

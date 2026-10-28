@@ -15,15 +15,15 @@ import {
 } from "lucide-react";
 
 const links = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/posts", label: "Posts", icon: FileText },
-  { href: "/moderation", label: "Moderation", icon: Shield },
-  { href: "/moderation/search", label: "Post Search", icon: Search },
-  { href: "/appeals", label: "Appeals", icon: Scale },
-  { href: "/users", label: "Users", icon: Users },
-  { href: "/feedback", label: "Feedback", icon: MessageSquare },
-  { href: "/prove", label: "Prove It", icon: ClipboardCheck },
-  { href: "/seed", label: "Seed DB", icon: Database },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/posts", label: "Posts", icon: FileText },
+  { href: "/admin/moderation", label: "Moderation", icon: Shield },
+  { href: "/admin/moderation/search", label: "Post Search", icon: Search },
+  { href: "/admin/appeals", label: "Appeals", icon: Scale },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/admin/prove", label: "Prove It", icon: ClipboardCheck },
+  { href: "/admin/seed", label: "Seed DB", icon: Database },
 ];
 
 export default function Sidebar() {
@@ -38,7 +38,7 @@ export default function Sidebar() {
         {links.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href ||
-            (href !== "/" && pathname.startsWith(href));
+            (href !== "/admin" && pathname.startsWith(href));
           return (
             <Link
               key={href}

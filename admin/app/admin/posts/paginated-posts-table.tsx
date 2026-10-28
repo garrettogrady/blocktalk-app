@@ -50,7 +50,7 @@ export default function PaginatedPostsTable({ posts }: { posts: Post[] }) {
               </td>
               <td className="px-4 py-3 max-w-md truncate text-gray-600">
                 <Link
-                  href={`/posts/${post.id}`}
+                  href={`/admin/posts/${post.id}`}
                   className="hover:text-blue-600 hover:underline"
                 >
                   {post.text}

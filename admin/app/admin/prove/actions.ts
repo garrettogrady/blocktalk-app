@@ -7,7 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 export async function setContacted(id: string, contacted: boolean) {
   const { error } = await supabaseAdmin.from("survey_responses").update({ contacted }).eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/prove");
+  revalidatePath("/admin/prove");
   return { ok: true };
 }
 
@@ -15,6 +15,6 @@ export async function setContacted(id: string, contacted: boolean) {
 export async function setRantContacted(id: string, contacted: boolean) {
   const { error } = await supabaseAdmin.from("rant_responses").update({ contacted }).eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/prove");
+  revalidatePath("/admin/prove");
   return { ok: true };
 }

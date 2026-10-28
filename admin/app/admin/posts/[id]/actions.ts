@@ -24,8 +24,8 @@ export async function deleteReply(replyId: string, postId: string) {
     .update({ reply_count: count ?? 0 })
     .eq("id", postId);
 
-  revalidatePath(`/posts/${postId}`);
-  revalidatePath("/posts");
-  revalidatePath("/");
+  revalidatePath(`/admin/posts/${postId}`);
+  revalidatePath("/admin/posts");
+  revalidatePath("/admin");
   return { success: true };
 }

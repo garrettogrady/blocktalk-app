@@ -1,9 +1,9 @@
 "use server";
 
 import { Client } from "pg";
-import seedMockSql from "../../sql/seed_mock.sql";
-import seedRepliesSql from "../../sql/seed_replies.sql";
-import seedReportsSql from "../../sql/seed_reports.sql";
+import seedMockSql from "../../../sql/seed_mock.sql";
+import seedRepliesSql from "../../../sql/seed_replies.sql";
+import seedReportsSql from "../../../sql/seed_reports.sql";
 
 async function executeSql(sql: string): Promise<{ success: boolean; error?: string }> {
   const dbUrl = process.env.SUPABASE_DB_URL;

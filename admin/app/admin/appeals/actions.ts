@@ -71,8 +71,8 @@ export async function updateAppealStatus(
     });
   }
 
-  revalidatePath("/appeals");
-  revalidatePath("/moderation");
-  revalidatePath("/");
+  revalidatePath("/admin/appeals");
+  revalidatePath("/admin/moderation");
+  revalidatePath("/admin");
   return { success: true };
 }

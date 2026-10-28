@@ -9,8 +9,8 @@ import {
   Shield,
   Scale,
 } from "lucide-react";
-import { updatePostStatus } from "@/app/moderation/actions";
-import { updateAppealStatus } from "@/app/appeals/actions";
+import { updatePostStatus } from "@/app/admin/moderation/actions";
+import { updateAppealStatus } from "@/app/admin/appeals/actions";
 import { useState } from "react";
 
 interface ActionPost {
@@ -156,7 +156,7 @@ export default function NeedsAction({
                       Restore
                     </button>
                     <Link
-                      href="/moderation"
+                      href="/admin/moderation"
                       className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
                     >
                       Review
@@ -169,7 +169,7 @@ export default function NeedsAction({
           {p1Total > p1Posts.length && (
             <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
               <Link
-                href="/moderation"
+                href="/admin/moderation"
                 className="text-xs text-blue-600 hover:underline"
               >
                 View all {p1Total} P1 reports
@@ -182,7 +182,7 @@ export default function NeedsAction({
       {/* P2 summary */}
       {p2Count > 0 && (
         <Link
-          href="/moderation"
+          href="/admin/moderation"
           className="block bg-white rounded-lg border border-yellow-200 px-4 py-3 hover:bg-yellow-50 transition-colors"
         >
           <div className="flex items-center gap-2">
@@ -271,7 +271,7 @@ export default function NeedsAction({
           {appealsTotal > pendingAppeals.length && (
             <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
               <Link
-                href="/appeals"
+                href="/admin/appeals"
                 className="text-xs text-blue-600 hover:underline"
               >
                 View all {appealsTotal} pending appeals

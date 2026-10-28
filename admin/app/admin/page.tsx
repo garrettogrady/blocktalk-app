@@ -4,7 +4,7 @@ import TrendCard from "@/components/trend-card";
 import NeedsAction from "@/components/needs-action";
 import RecentPostsTable from "@/components/recent-posts-table";
 import PostSearch from "@/components/post-search";
-import { searchPosts } from "@/app/moderation/search/actions";
+import { searchPosts } from "@/app/admin/moderation/search/actions";
 
 export const dynamic = "force-dynamic";
 

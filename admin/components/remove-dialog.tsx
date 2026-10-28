@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { XCircle, X } from "lucide-react";
-import { directRemovePost } from "@/app/moderation/actions";
+import { directRemovePost } from "@/app/admin/moderation/actions";
 
 const VIOLATION_REASONS = [
   "threats",
