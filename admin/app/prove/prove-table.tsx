@@ -135,7 +135,7 @@ export default function ProveTable({ responses, questions }: { responses: Survey
                 <Rows key={r.id}>
                   <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => setExpanded(open ? null : r.id)}>
                     <td className="pl-3 text-gray-400">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</td>
-                    <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString("en-US")}</td>
                     <td className="px-3 py-3 font-mono text-xs text-gray-600">{r.quiz}</td>
                     <td className="px-3 py-3 font-medium">{r.email}</td>
                     <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{r.phone ? `${r.phone}${r.sms_consent ? " (sms ok)" : ""}` : "none"}</td>

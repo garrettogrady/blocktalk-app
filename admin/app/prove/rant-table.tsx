@@ -75,7 +75,7 @@ export default function RantTable({ rants }: { rants: RantResponse[] }) {
             return (
               <li key={r.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
-                  <span>{new Date(r.created_at).toLocaleString()}</span>
+                  <span>{new Date(r.created_at).toLocaleString("en-US")}</span>
                   <span className="uppercase">{TABS[r.tab] ?? r.tab}</span>
                   <span className={r.email ? "text-gray-900 font-semibold" : ""}>{r.email ?? "no email"}</span>
                   <button onClick={() => toggle(r)} disabled={busy === r.id}
