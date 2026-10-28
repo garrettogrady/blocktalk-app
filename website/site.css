@@ -1,0 +1,99 @@
+/* blocktalk.nyc pre-launch: the quiz, the purist quiz, the three rant tabs.
+   Same tokens as the app. System fonts only, so a sticker scan loads instantly. */
+:root{--ink:#0F100E;--cream:#ECEAE1;--on:#0A0A0C;--dim:#9B998E;--faint:rgba(236,234,225,.12);--line:rgba(236,234,225,.18);--field:#17181B;--slicker:#BD6BFF;--lime:#C9F24E;--pink:#F27C9B}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--ink);color:var(--cream);height:100%}
+body{font:16px/1.45 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;padding:calc(env(safe-area-inset-top,0px) + 18px) 20px calc(env(safe-area-inset-bottom,0px) + 28px);display:flex;flex-direction:column;min-height:100%}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+/* top bar + tabs */
+.top{display:flex;align-items:center;justify-content:space-between;max-width:560px;width:100%;margin:0 auto 10px}
+.wordmark{font-weight:800;font-size:17px;letter-spacing:-.02em;color:var(--cream);text-decoration:none}
+.wordmark i{font-style:normal;color:var(--lime)}
+.count{font-size:11px;letter-spacing:.14em;color:var(--dim)}
+/* three tabs, always all visible: a 3-column grid, text wraps inside each */
+.tabs{max-width:560px;width:100%;margin:0 auto 6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding-bottom:6px}
+.tabs a{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;line-height:1.35;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);text-decoration:none;text-align:center;padding:4px 0 6px;border-bottom:1px solid transparent;text-wrap:balance}
+.tabs a.on,.tabs a:hover{color:var(--cream);border-bottom-color:var(--lime)}
+.bar{max-width:560px;width:100%;margin:0 auto 26px;height:2px;background:var(--faint)}
+.bar i{display:block;height:100%;width:0;background:var(--lime);transition:width .35s ease}
+main{max-width:560px;width:100%;margin:0 auto;flex:1 0 auto;display:flex;flex-direction:column}
+/* body is a flex column: the header rows must never shrink to make room for a tall page */
+.top,.tabs,.bar{flex:none}
+
+/* screens */
+.screen{display:none;flex:1;flex-direction:column}
+.screen.on{display:flex;animation:in .28s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.screen.on{animation:none}.bar i{transition:none}}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--lime);margin:0 0 16px}
+h1,h2{font-weight:900;text-transform:uppercase;letter-spacing:-.025em;line-height:.95;margin:0;text-wrap:balance}
+h1{font-size:clamp(40px,12vw,64px)} h1 em{font-style:normal;color:var(--lime)}
+h2{font-size:clamp(26px,7.4vw,38px)}
+.sub{font-size:17px;color:var(--dim);margin:16px 0 0;max-width:34ch}
+.sub b{color:var(--cream);font-weight:600}
+.sub .wm{color:var(--cream);font-weight:800;letter-spacing:-.02em} .sub .wm i{font-style:normal;color:var(--lime)}
+/* neighborhood picker: type to search the app's list, tap to pick */
+.hoodfield{position:relative}
+.hoodlist{list-style:none;margin:6px 0 0;padding:6px;background:var(--field);border:1px solid var(--line);border-radius:12px;max-height:264px;overflow-y:auto}
+.hoodlist li{padding:11px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.hoodlist li:hover,.hoodlist li.hi{background:rgba(236,234,225,.07)}
+.hoodlist li small{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.hoodlist li.none{color:var(--dim)}
+#hood.picked{border-color:var(--lime);box-shadow:inset 0 0 0 1px var(--lime)}
+
+/* questions */
+.q{margin:10px 0 0}
+.q h2{text-transform:none;letter-spacing:-.015em;font-weight:800;line-height:1.08}
+.opts{display:flex;flex-direction:column;gap:10px;margin-top:26px}
+.opt{display:block;width:100%;text-align:left;font:inherit;font-size:16px;line-height:1.3;color:var(--cream);background:transparent;border:1px solid var(--line);border-radius:12px;padding:15px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt:active{transform:scale(.995)}
+.opt.sel{border-color:var(--lime);box-shadow:inset 0 0 0 1px var(--lime)}
+.opt:focus-visible,.btn:focus-visible,.link:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+textarea,input,select{width:100%;font:inherit;font-size:16px;color:var(--cream);background:var(--field);border:1px solid var(--line);border-radius:12px;padding:14px 15px;-webkit-appearance:none;appearance:none}
+textarea{min-height:92px;resize:vertical;margin-top:12px}
+textarea.hide{display:none}
+textarea.on{display:block;animation:in .2s ease}
+textarea::placeholder,input::placeholder{color:#6F6D64}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:40px}
+select:invalid{color:#6F6D64}
+
+/* buttons */
+.foot{margin-top:auto;padding-top:28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:800;font-size:16px;letter-spacing:-.01em;color:var(--on);background:var(--lime);border:0;border-radius:999px;padding:16px 24px;cursor:pointer;min-width:160px;text-decoration:none;display:inline-block;text-align:center}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.alt{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.alt:hover{box-shadow:inset 0 0 0 1px var(--cream)}
+/* intro: the two buttons stack, primary on top */
+.foot.stack{flex-direction:column;align-items:stretch;gap:10px}
+.foot.stack .btn{width:100%}
+.back{font:inherit;font-size:13px;color:var(--dim);background:none;border:0;padding:10px 0;cursor:pointer}
+.link{font:inherit;font-size:13px;color:var(--dim);background:none;border:0;padding:10px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.link:hover{color:var(--cream)}
+.field{margin-top:14px} .field label{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:14px;font-size:14px;color:var(--dim);line-height:1.4}
+.check input{width:20px;height:20px;margin:1px 0 0;padding:0;border-radius:6px;flex:none;accent-color:var(--lime);-webkit-appearance:checkbox;appearance:checkbox;background:transparent}
+.err{color:var(--pink);font-size:13px;margin:12px 0 0;min-height:1em}
+.hp{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+
+/* verdict: share */
+.share{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+.share .hint{font-size:12px;color:var(--dim);text-align:center;min-height:1em}
+
+/* verdict */
+.card{--tier:var(--lime);border:1px solid var(--tier);border-radius:16px;padding:26px 22px;margin-top:8px;background:#141512;background:linear-gradient(180deg,color-mix(in srgb,var(--tier) 10%,transparent),transparent 70%)}
+.card.t-cs{--tier:var(--slicker)} .card.t-bt{--tier:var(--lime)} .card.t-tr{--tier:var(--cream)} .card.t-to{--tier:var(--pink)}
+.card .lab{font-size:11px;letter-spacing:.22em;color:var(--dim);margin:0 0 18px}
+.card .tier{font-weight:900;text-transform:uppercase;letter-spacing:-.03em;line-height:.9;font-size:clamp(40px,13vw,66px);color:var(--tier);margin:0;display:block;max-width:100%}
+.card .score{font-size:15px;letter-spacing:.08em;color:var(--cream);margin:18px 0 0}
+.card .flavor{font-size:17px;color:var(--cream);margin:16px 0 0;line-height:1.35}
+.after{color:var(--dim);font-size:15px;margin:22px 0 0;line-height:1.5} .after b{color:var(--cream);font-weight:600}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(10,10,12,.35);border-top-color:var(--on);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* rant pages */
+.rant{font-size:18px;line-height:1.5;color:var(--cream);margin:22px 0 0;max-width:36ch}
+.rant p{margin:0 0 16px}
+.thanks{margin-top:18px}
+.thanks h2{font-size:clamp(28px,8vw,40px)}

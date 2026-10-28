@@ -89,26 +89,34 @@ export interface Appeal {
   post?: Post;
 }
 
-/** One "Prove you're a real New Yorker" survey submission (Supabase/00034). */
+/** One quiz submission (Supabase/00034). Answers are keyed by question id. */
+export interface SurveyAnswer { choice?: string; text?: string }
 export interface SurveyResponse {
   id: string;
   created_at: string;
   src: "p1" | "p2" | "p3" | "direct";
-  q1_choice: string | null;
-  q1_text: string | null;
-  q2_choice: string | null;
-  q2_text: string | null;
-  q3_choice: string | null;
-  q4_choice: string | null;
-  q5_choice: string | null;
-  q6_choice: string | null;
-  q7_text: string | null;
+  quiz: "regular" | "purist";
+  answers: Record<string, SurveyAnswer>;
   score: number;
   tier: "CITY SLICKER" | "BLOCKTALKER" | "TRANSPLANT" | "TOURIST";
   email: string;
   neighborhood: string;
   phone: string | null;
   sms_consent: boolean;
+  contacted: boolean;
+  user_agent: string | null;
+}
+
+/** One question row from survey_questions, used to label answers in order. */
+export interface SurveyQuestion { quiz: "regular" | "purist"; q: string; ord: number; prompt: string }
+
+/** One take from a rant tab (who / ai / influencers). */
+export interface RantResponse {
+  id: string;
+  created_at: string;
+  tab: "who" | "ai" | "influencers";
+  body: string;
+  email: string | null;
   contacted: boolean;
   user_agent: string | null;
 }

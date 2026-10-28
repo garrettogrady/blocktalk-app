@@ -69,16 +69,21 @@ handing out a reserved number later from this editor.
 
 ## 5. `00034_prove_it_survey.sql`  (independent of the others; run before stickers go out)
 
-The "Prove you're a real New Yorker" sticker funnel on blocktalk.nyc/prove.
-Two locked-down tables (`survey_responses`, `survey_scans`) and two functions
-the page calls anonymously (`submit_survey_response`, `log_survey_scan`).
-Scoring is recomputed server-side. The admin "Prove It" tab reads these.
+The "Think you're a New Yorker? Prove it." funnel: the quiz on blocktalk.nyc,
+the purist quiz, the three rant tabs, and the sticker scan log. Questions and
+points live in tables (`survey_questions`, `survey_answer_key`), so a question
+edit later is a row change. Pages call four functions anonymously
+(`submit_survey_response`, `log_survey_scan`, `submit_rant`,
+`attach_rant_email`); every table is locked to clients. Scoring is recomputed
+server-side. The admin "Prove It" tab reads all of it.
 
 - Fill in: nothing.
-- Expect: `Prove It survey ready. 0 responses, 0 scans so far.`
+- Expect: `Prove It ready. 19 questions across 2 quizzes. 0 responses, 0 rants, 0 scans so far.`
 - Check: `SELECT to_regclass('public.survey_responses') IS NOT NULL;` is `true`.
-- Until this runs, the survey page still shows people a verdict but their
-  answers are not saved, so run it before any QR code is printed.
+- Until this runs, the quiz still shows people a verdict but nothing is
+  saved (answers, emails, rant takes), so run it before any QR code is printed.
+- Katz's 2005 price is unscored until Matt confirms it; the file says how to
+  flip it (one UPDATE on `survey_answer_key`).
 
 ## Do NOT run
 
