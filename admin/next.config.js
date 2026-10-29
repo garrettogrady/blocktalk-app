@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Framework preset: Next.js
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["pg"],
