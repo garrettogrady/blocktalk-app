@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Vercel redeploy trigger
+// Vercel redeploy
 const nextConfig = {
   webpack: (config) => {
     config.module.rules.push({
