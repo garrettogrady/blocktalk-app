@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
-// Vercel redeploy
 const nextConfig = {
+  serverExternalPackages: ["pg"],
   webpack: (config) => {
     config.module.rules.push({
       test: /\.sql$/,
