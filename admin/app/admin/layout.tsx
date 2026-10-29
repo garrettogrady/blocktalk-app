@@ -1,5 +1,3 @@
-export const runtime = "nodejs";
-
 import Sidebar from "@/components/sidebar";
 
 export default function AdminLayout({
