@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join BlockTalk</title>
+<meta name="description" content="Download BlockTalk and join your neighborhood.">
+<meta property="og:title" content="Join BlockTalk">
+<meta property="og:description" content="Download BlockTalk and join your neighborhood.">
+<meta name="theme-color" content="#0F100E">
+<link rel="stylesheet" href="site.css">
+<style>
+  .join-wrap{max-width:560px;width:100%;margin:0 auto;flex:1;display:flex;flex-direction:column;justify-content:center;gap:32px}
+  .code-box{background:var(--field);border:1px solid var(--line);border-radius:16px;padding:28px 24px;text-align:center}
+  .code-label{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--lime);margin:0 0 12px}
+  .code-value{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:clamp(36px,10vw,52px);font-weight:900;letter-spacing:.15em;color:var(--cream);margin:0}
+  .steps{list-style:none;padding:0;margin:0;counter-reset:s}
+  .steps li{counter-increment:s;display:flex;gap:14px;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--faint)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{content:counter(s);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:700;color:var(--lime);min-width:18px}
+  .steps li span{font-size:16px;line-height:1.4}
+  .steps li span b{color:var(--cream);font-weight:700}
+  .steps li span{color:var(--dim)}
+  .dl-btn{display:block;width:100%;text-align:center;font:inherit;font-size:17px;font-weight:700;color:var(--ink);background:var(--lime);border:none;border-radius:12px;padding:16px;cursor:pointer;text-decoration:none;letter-spacing:-.01em}
+  .dl-btn:hover{opacity:.9}
+  .no-code .sub{text-align:center}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="wordmark" href="/">block<i>.</i>talk</a>
+</div>
+<nav class="tabs">
+  <a href="/who">Who do you think you are?</a>
+  <a href="/ai">AI this and AI that</a>
+  <a href="/influencers">Fuck influencers</a>
+</nav>
+<div class="bar" aria-hidden="true"><i id="bar" style="width:100%"></i></div>
+
+<div class="join-wrap" id="join">
+  <!-- Filled by JS based on ?code= param -->
+</div>
+
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const code = (params.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const el = document.getElementById('join');
+
+  // App Store link placeholder — replace with real link once live
+  const appStoreURL = 'https://apps.apple.com/app/blocktalk/id6743432604';
+
+  if (code) {
+    el.innerHTML = `
+      <div>
+        <h1>You're in.</h1>
+        <p class="sub">You've been invited to <span class="wm">block<i>.</i>talk</span></p>
+      </div>
+      <div class="code-box">
+        <p class="code-label">Your invite code</p>
+        <p class="code-value">${code}</p>
+      </div>
+      <ol class="steps">
+        <li><span><b>Download BlockTalk</b> from the App Store</span></li>
+        <li><span><b>Open the app</b> and tap Sign in with Apple</span></li>
+        <li><span><b>Enter your invite code</b> when prompted</span></li>
+        <li><span><b>Pick your neighborhood</b> and start talking</span></li>
+      </ol>
+      <a href="${appStoreURL}" class="dl-btn">Download BlockTalk</a>
+    `;
+  } else {
+    el.classList.add('no-code');
+    el.innerHTML = `
+      <div>
+        <h1>Join <em>block<i>.</i>talk</em></h1>
+        <p class="sub">The hyper-local social app for NYC neighborhoods. You need an invite code to sign up.</p>
+      </div>
+      <ol class="steps">
+        <li><span><b>Get an invite code</b> from someone already on BlockTalk</span></li>
+        <li><span><b>Download the app</b> from the App Store</span></li>
+        <li><span><b>Sign in with Apple</b> and enter your code</span></li>
+        <li><span><b>Pick your neighborhood</b> and start talking</span></li>
+      </ol>
+      <a href="${appStoreURL}" class="dl-btn">Download BlockTalk</a>
+    `;
+  }
+})();
+</script>
+</body>
+</html>
