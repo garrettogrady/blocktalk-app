@@ -1,5 +1,4 @@
-import CoreImage
-import Vision
+import SensitiveContentAnalysis
 import UIKit
 
 struct ImageSafetyService {
@@ -8,39 +7,20 @@ struct ImageSafetyService {
         case blocked(String)
     }
 
+    private let analyzer = SCSensitivityAnalyzer()
+
     func check(_ image: UIImage) async -> Result {
+        guard analyzer.analysisPolicy != .disabled else { return .safe }
         guard let cgImage = image.cgImage else { return .safe }
 
-        return await withCheckedContinuation { continuation in
-            let request = VNClassifyImageRequest { request, error in
-                guard error == nil,
-                      let observations = request.results as? [VNClassificationObservation] else {
-                    continuation.resume(returning: .safe)
-                    return
-                }
-
-                for obs in observations {
-                    let id = obs.identifier.lowercased()
-                    let isExplicit = id.contains("nsfw") ||
-                                     id.contains("explicit") ||
-                                     id.contains("nude") ||
-                                     id.contains("sexual") ||
-                                     id.contains("porn")
-                    if isExplicit && obs.confidence > 0.7 {
-                        continuation.resume(returning: .blocked(obs.identifier))
-                        return
-                    }
-                }
-
-                continuation.resume(returning: .safe)
+        do {
+            let response = try await analyzer.analyzeImage(cgImage)
+            if response.isSensitive {
+                return .blocked("Sensitive content detected")
             }
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(returning: .safe)
-            }
+            return .safe
+        } catch {
+            return .safe
         }
     }
 }

@@ -12,6 +12,7 @@ import {
   Search,
   FileText,
   ClipboardCheck,
+  Ticket,
 } from "lucide-react";
 
 const links = [
@@ -22,6 +23,7 @@ const links = [
   { href: "/admin/appeals", label: "Appeals", icon: Scale },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/admin/invite-codes", label: "Invite Codes", icon: Ticket },
   { href: "/admin/prove", label: "Prove It", icon: ClipboardCheck },
   { href: "/admin/seed", label: "Seed DB", icon: Database },
 ];
