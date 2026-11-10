@@ -84,8 +84,11 @@ struct InviteCodeView: View {
     }
 
     private func validateCode() {
-        guard let userId = appState.session?.user.id else { return }
-        let trimmed = code.trimmingCharacters(in: .whitespaces)
+        guard let userId = appState.session?.user.id else {
+            error = "Not signed in. Please restart the app."
+            return
+        }
+        let trimmed = code.trimmingCharacters(in: .whitespaces).uppercased()
         guard !trimmed.isEmpty else { return }
 
         isValidating = true
