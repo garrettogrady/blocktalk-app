@@ -38,6 +38,7 @@ struct BlockTalkApp: App {
     @State private var appState = AppState()
     @State private var locationService = LocationService()
     @State private var moderation = ModerationStore()
+    @State private var blockStore = BlockStore()
     @State private var offline = OfflineStore()
     @State private var localContent = LocalContentStore()
     @State private var edits = ContentEditStore()
@@ -75,6 +76,7 @@ struct BlockTalkApp: App {
             .environment(appState)
             .environment(locationService)
             .environment(moderation)
+            .environment(blockStore)
             .environment(offline)
             .environment(localContent)
             .environment(pinStore)
@@ -125,6 +127,7 @@ struct BlockTalkApp: App {
                     .environment(appState)
                     .environment(locationService)
                     .environment(moderation)
+                    .environment(blockStore)
                     .environment(offline)
                     .environment(localContent)
                     .environment(pinStore)
@@ -152,6 +155,7 @@ struct BlockTalkApp: App {
                 .environment(appState)
                 .environment(locationService)
                 .environment(moderation)
+                .environment(blockStore)
                 .environment(offline)
                 .environment(localContent)
                 .environment(pinStore)
@@ -182,6 +186,7 @@ struct BlockTalkApp: App {
                     // Reported and appealed posts, so the flag and Appeal states
                     // survive a relaunch.
                     Task { await moderation.load(userId: userId) }
+                    Task { await blockStore.load(userId: userId) }
                 }
                 // Signed out (or account deleted): every session store must go, or a
                 // second Apple ID on this phone inherits the first one's posts, edits,
@@ -196,6 +201,7 @@ struct BlockTalkApp: App {
                     notifications.reset()
                     enrollments.reset()
                     moderation.reset()
+                    blockStore.reset()
                 }
             }
             .onChange(of: scenePhase) { _, phase in

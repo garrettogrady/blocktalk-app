@@ -179,7 +179,7 @@ struct LocationPreFrameSheet: View {
                     }
                 }
             } label: {
-                Text("Enable Location")
+                Text("Continue")
                     .font(BTFont.bodyBold(size: 15))
                     .tracking(0.2)
                     .foregroundStyle(Color.btOnAccent)
@@ -189,16 +189,6 @@ struct LocationPreFrameSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: BTRadius.lg, style: .continuous))
             }
             .buttonStyle(.plain)
-
-            Button { dismiss() } label: {
-                Text("Not now")
-                    .font(BTFont.bodySemibold(size: 14))
-                    .foregroundStyle(Color.btText3)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-            }
-            .buttonStyle(.plain)
-            .padding(.top, BTSpacing.xs)
         }
         .padding(.horizontal, BTSpacing.xl)
         .padding(.bottom, BTSpacing.lg)

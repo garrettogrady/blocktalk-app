@@ -24,6 +24,12 @@ struct SettingsHubView: View {
                 } label: {
                     settingsRow(icon: "envelope.open", title: "Invite Friends")
                 }
+
+                NavigationLink {
+                    BlockedUsersView()
+                } label: {
+                    settingsRow(icon: "hand.raised", title: "Blocked Users")
+                }
             } header: {
                 Text("ACCOUNT")
                     .font(BTFont.mono(size: 11))

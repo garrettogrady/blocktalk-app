@@ -8,8 +8,10 @@ struct ReplyNode: View {
     @Environment(AppState.self) private var appState
     @Environment(ContentEditStore.self) private var edits
     @Environment(DayOneStore.self) private var dayOne: DayOneStore?
+    @Environment(BlockStore.self) private var blockStore
     @State private var showReport = false
     @State private var reported = false
+    @State private var showBlockConfirm = false
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
     @State private var showHistory = false
@@ -131,6 +133,21 @@ struct ReplyNode: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(reported ? "Reported" : "Report reply")
+
+                            Button { showBlockConfirm = true } label: {
+                                Image(systemName: "hand.raised")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color.btText2)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.btSurface)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: BTRadius.sm)
+                                            .stroke(Color.btLine, lineWidth: 1)
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: BTRadius.sm))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Block user")
                         } else {
                             ownerMenu
                         }
@@ -196,6 +213,15 @@ struct ReplyNode: View {
                 } else {
                     Text("It'll be gone. This can't be undone.")
                 }
+            }
+            .alert("Block this user?", isPresented: $showBlockConfirm) {
+                Button("Block", role: .destructive) {
+                    guard let myId = appState.currentUser?.id else { return }
+                    Task { await blockStore.block(blockerId: myId, blockedId: reply.userId) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You won't see their posts or replies anymore. You can unblock from Settings.")
             }
             .alert("Couldn't delete", isPresented: Binding(
                 get: { deleteError != nil },

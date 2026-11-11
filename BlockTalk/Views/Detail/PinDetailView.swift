@@ -8,6 +8,7 @@ struct PinDetailView: View {
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var location
     @Environment(LocalContentStore.self) private var localContent
+    @Environment(BlockStore.self) private var blockStore
     @State private var viewModel = PostDetailViewModel()
 
     private var replyAuthor: ReplyAuthor {
@@ -46,7 +47,7 @@ struct PinDetailView: View {
 
                     // Threaded replies
                     LazyVStack(spacing: 0) {
-                        ForEach(viewModel.replies) { reply in
+                        ForEach(viewModel.replies.filter { !blockStore.isBlocked($0.userId) }) { reply in
                             ReplyNode(
                                 reply: reply,
                                 onReplyTap: { replyId, username in

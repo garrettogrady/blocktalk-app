@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PinStore.self) private var pinStore
+    @Environment(BlockStore.self) private var blockStore
     @State private var viewModel = SearchViewModel()
     @FocusState private var searchFocused: Bool
 
@@ -135,7 +136,7 @@ struct SearchView: View {
                     .padding(.vertical, 10)
                     .background(Color.btBg)
 
-                    ForEach(viewModel.results) { post in
+                    ForEach(viewModel.results.filter { !blockStore.isBlocked($0.userId) }) { post in
                         NavigationLink(value: post) {
                             PostCard(post: post)
                         }

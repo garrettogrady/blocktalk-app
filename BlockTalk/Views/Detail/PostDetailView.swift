@@ -7,6 +7,7 @@ struct PostDetailView: View {
     @Environment(PinStore.self) private var pinStore
     @Environment(EnrollmentStore.self) private var enrollments
     @Environment(ContentEditStore.self) private var edits
+    @Environment(BlockStore.self) private var blockStore
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = PostDetailViewModel()
     /// The post refetched on open, so its author badge is from the same moment as
@@ -96,7 +97,7 @@ struct PostDetailView: View {
 
                         // Threaded replies
                         LazyVStack(spacing: 0) {
-                            ForEach(viewModel.replies) { reply in
+                            ForEach(viewModel.replies.filter { !blockStore.isBlocked($0.userId) }) { reply in
                                 ReplyNode(
                                     reply: reply,
                                     onReplyTap: { replyId, username in

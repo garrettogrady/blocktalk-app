@@ -7,6 +7,7 @@ struct FeedView: View {
     @Environment(OfflineStore.self) private var offline
     @Environment(LocalContentStore.self) private var localContent
     @Environment(PinStore.self) private var pinStore
+    @Environment(BlockStore.self) private var blockStore
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
@@ -45,7 +46,7 @@ struct FeedView: View {
         // Flushed offline posts are rendered in their own section too, so they
         // must be excluded here or they show twice after the next reload.
         let localIds = Set(localContent.posts.map(\.id) + offline.flushed.map(\.id))
-        return viewModel.posts.filter { !localIds.contains($0.id) }
+        return viewModel.posts.filter { !localIds.contains($0.id) && !blockStore.isBlocked($0.userId) }
     }
 
     var body: some View {

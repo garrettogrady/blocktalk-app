@@ -174,6 +174,32 @@ final class ModerationStore {
     func isHidden(_ postId: UUID) -> Bool { isReported(postId) && !shownAnyway.contains(postId) }
 }
 
+/// Session-scoped user blocks. Loads blocked user IDs on login so posts/replies
+/// from blocked users are hidden from the feed.
+@Observable
+final class BlockStore {
+    private(set) var blockedIds: Set<UUID> = []
+    private let service = BlockService()
+
+    func load(userId: UUID) async {
+        blockedIds = (try? await service.fetchBlockedIds(userId: userId)) ?? []
+    }
+
+    func block(blockerId: UUID, blockedId: UUID) async {
+        try? await service.block(blockerId: blockerId, blockedId: blockedId)
+        blockedIds.insert(blockedId)
+    }
+
+    func unblock(blockerId: UUID, blockedId: UUID) async {
+        try? await service.unblock(blockerId: blockerId, blockedId: blockedId)
+        blockedIds.remove(blockedId)
+    }
+
+    func isBlocked(_ userId: UUID) -> Bool { blockedIds.contains(userId) }
+
+    func reset() { blockedIds = [] }
+}
+
 /// Session-scoped notifications. Fetches from Supabase on load; report and
 /// appeal actions push new ones so they show in the bell + tab badge.
 @Observable

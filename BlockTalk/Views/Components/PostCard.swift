@@ -25,7 +25,9 @@ struct PostCard: View {
     @Environment(ContentEditStore.self) private var edits
     // Optional: previews and tests may host a card without the store.
     @Environment(DayOneStore.self) private var dayOne: DayOneStore?
+    @Environment(BlockStore.self) private var blockStore
     @State private var showReport = false
+    @State private var showBlockConfirm = false
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
     @State private var showHistory = false
@@ -357,6 +359,16 @@ struct PostCard: View {
                                   relatedPostId: post.id)
             }
         }
+        .alert("Block this user?", isPresented: $showBlockConfirm) {
+            Button("Block", role: .destructive) {
+                guard let myId = appState.currentUser?.id else { return }
+                Task { await blockStore.block(blockerId: myId, blockedId: post.userId) }
+                showToast("user blocked", icon: "hand.raised.fill")
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You won't see their posts or replies anymore. You can unblock from Settings.")
+        }
     }
 
     // MARK: - Meta Row
@@ -476,7 +488,7 @@ struct PostCard: View {
                 Analytics.shareTapped()
             }
 
-            // Flag (hidden on your own posts — you can't report yourself; filled+pink once reported)
+            // Flag + Block (hidden on your own posts)
             if !isOwnPost {
                 if moderation.isReported(post.id) {
                     actionButton(systemName: "flag.fill", label: "Reported", active: true, activeColor: .btPink) {}
@@ -484,6 +496,9 @@ struct PostCard: View {
                     actionButton(systemName: "flag", label: "Report") {
                         showReport = true
                     }
+                }
+                actionButton(systemName: "hand.raised", label: "Block") {
+                    showBlockConfirm = true
                 }
             } else if post.status == .live {
                 // Your own post: edit the text, or delete it.

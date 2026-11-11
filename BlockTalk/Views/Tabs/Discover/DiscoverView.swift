@@ -4,10 +4,15 @@ struct DiscoverView: View {
     @Environment(AppState.self) private var appState
     @Environment(NeighborhoodCache.self) private var neighborhoodCache
     @Environment(PinStore.self) private var pinStore
+    @Environment(BlockStore.self) private var blockStore
     @State private var viewModel = DiscoverViewModel()
     @State private var showSearch = false
 
     private let boroughs = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"]
+
+    private var filteredTrending: [Post] {
+        viewModel.trendingPosts.filter { !blockStore.isBlocked($0.userId) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -120,7 +125,7 @@ struct DiscoverView: View {
 
                         // The top post gets the featured treatment only when sorted
                         // by "top" (Most Liked); other sorts read as a flat list.
-                        if viewModel.sort == .mostLiked, let topPost = viewModel.trendingPosts.first {
+                        if viewModel.sort == .mostLiked, let topPost = filteredTrending.first {
                             NavigationLink(value: topPost) {
                                 TrendingCard(post: topPost)
                             }
@@ -128,13 +133,13 @@ struct DiscoverView: View {
                             .padding(.horizontal, BTSpacing.lg)
 
                             LazyVStack(spacing: 0) {
-                                ForEach(Array(viewModel.trendingPosts.dropFirst())) { post in
+                                ForEach(Array(filteredTrending.dropFirst())) { post in
                                     postRow(post)
                                 }
                             }
                         } else {
                             LazyVStack(spacing: 0) {
-                                ForEach(viewModel.trendingPosts) { post in
+                                ForEach(filteredTrending) { post in
                                     postRow(post)
                                 }
                             }
