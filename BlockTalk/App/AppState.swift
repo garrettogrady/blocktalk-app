@@ -435,6 +435,16 @@ final class LocalContentStore {
         posts.insert(post, at: 0)
     }
 
+    /// Replace local copies with fresher server rows (same id), so a post you
+    /// made this session doesn't keep the reply count / score it was born with.
+    func sync(with fresh: [Post]) {
+        guard !posts.isEmpty, !fresh.isEmpty else { return }
+        let byId = Dictionary(fresh.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for i in posts.indices {
+            if let latest = byId[posts[i].id], latest != posts[i] { posts[i] = latest }
+        }
+    }
+
     /// Persist a reply so it survives leaving + reopening the post this session.
     func addReply(_ reply: Reply, toPost postId: UUID) {
         repliesByPost[postId, default: []].append(reply)

@@ -141,6 +141,19 @@ struct PostService {
         return posts.first
     }
 
+    /// Every live post attached to any of these pins, newest first. Used when
+    /// several street comments are tagged to the same business.
+    func fetchPosts(forPinIds pinIds: [UUID]) async throws -> [Post] {
+        guard !pinIds.isEmpty else { return [] }
+        return try await supabase.from("posts")
+            .select(PostService.postSelect)
+            .in("pin_id", values: pinIds.map(\.uuidString))
+            .eq("status", value: "live")
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
+
     /// Activity per pin for the map's live pulse. Weighs a reply 2× a vote and
     /// sums across the pin's live posts. Returns pinId → raw score.
     func fetchPinActivity(pinIds: [UUID]) async throws -> [UUID: Int] {

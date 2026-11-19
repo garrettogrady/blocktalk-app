@@ -183,8 +183,12 @@ struct DiscoverView: View {
             }
             .background(Color.btBg)
             .refreshable {
-                await viewModel.load()
-                await pinStore.ensureLoaded(for: viewModel.trendingPosts)
+                // Own task: SwiftUI cancels the refresh task on re-render, which
+                // would cancel the requests and show a load error.
+                await Task {
+                    await viewModel.load()
+                    await pinStore.ensureLoaded(for: viewModel.trendingPosts)
+                }.value
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSearch) {

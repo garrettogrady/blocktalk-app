@@ -7,7 +7,7 @@
   var ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4d2hsZGJqaXp6ZWVzZXhzdXJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQzOTEsImV4cCI6MjA5NzIzMDM5MX0.gNrKElxIqDFQGE1_NIH2YJb5xtZaPebDJHXFoCk-jt4";
 
   var BANK = {
-    city:      { title:"When you say “the city,” you mean:",
+    city:      { title:"When you say “the city,” what do you mean?",
                  opts:[["The five boroughs",2],["Manhattan",2],["Manhattan, Brooklyn, and the parts of Queens I can reach without a transfer",1],["The five boroughs plus Long Island",0],["Other",1]],
                  textOn:"Other", placeholder:"go on…" },
     geo:       { title:"Does the answer to the previous question change depending on where you are geographically located at the time of answering?",
@@ -22,8 +22,6 @@
                  opts:[["It's snowing very heavily",0],["There is construction on the street",0],["It's cold outside",2]] },
     shsat:     { title:"What is the SHSAT?",
                  opts:[["An STD",0],["South of Houston Street after Thompson",0],["A test",2],["Who cares",1]] },
-    katz:      { title:"Price of a pastrami sandwich from Katz's in 2005:",
-                 opts:[["$9.75",0],["$12.95",0],["$17.50",0]] },
     dimes:     { title:"What is Dimes Square?",
                  opts:[["A place for all the delusional people in the city to congregate",1],["It doesn't exist",1],["A place where people go out, but if you're employed they won't let you into the bars",1],["Other",1]],
                  textOn:"Other", placeholder:"go on…" },
@@ -32,10 +30,10 @@
   };
   var QUIZZES = {
     regular: { keys:["city","geo","metrocard","tokens","brick","dimes","hood_change","nj"], max:11, bands:[10,7,4] },
-    purist:  { keys:["city","geo","metrocard","wsp","tokens","brick","shsat","katz","dimes","hood_change","nj"], max:17, bands:[15,10,6] }
+    purist:  { keys:["city","geo","metrocard","wsp","tokens","brick","shsat","dimes","hood_change","nj"], max:15, bands:[13,9,5] }
   };
   var FLAVOR = {
-    "CITY SLICKER":"Okay, you actually might be native. Check your texts.",
+    "CITY SLICKER":"Okay, you actually might be native. We might hit you up.",
     "BLOCKTALKER":"Cheers, it's not your first day on earth. You do seem to know the city.",
     "TRANSPLANT":"No way, you moved here? Damn, that's crazy.",
     "TOURIST":"Welcome to the city, asshole. Don't walk so slowly, and if you're in a group, don't take up the whole sidewalk."
