@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS survey_quizzes (
 );
 INSERT INTO survey_quizzes (quiz, max_score, slicker_min, blocktalker_min, transplant_min) VALUES
   ('regular', 11, 10, 7, 4),
-  ('purist',  17, 15, 10, 6)
+  ('purist',  15, 13, 9, 5)
 ON CONFLICT (quiz) DO UPDATE SET max_score = EXCLUDED.max_score, slicker_min = EXCLUDED.slicker_min,
   blocktalker_min = EXCLUDED.blocktalker_min, transplant_min = EXCLUDED.transplant_min;
 
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS survey_questions (
 );
 DELETE FROM survey_questions;
 INSERT INTO survey_questions (quiz, q, ord, prompt) VALUES
-  ('regular', 'city',        1, 'When you say "the city," you mean:'),
+  ('regular', 'city',        1, 'When you say "the city," what do you mean?'),
   ('regular', 'geo',         2, 'Does the answer to the previous question change depending on where you are geographically located at the time of answering?'),
   ('regular', 'metrocard',   3, 'A green MetroCard means:'),
   ('regular', 'tokens',      4, 'Before the MetroCard, you paid for the subway with:'),
@@ -49,17 +49,16 @@ INSERT INTO survey_questions (quiz, q, ord, prompt) VALUES
   ('regular', 'dimes',       6, 'What is Dimes Square?'),
   ('regular', 'hood_change', 7, 'If you could change anything about this neighborhood, what would it be?'),
   ('regular', 'nj',          8, 'New Jersey.'),
-  ('purist',  'city',        1, 'When you say "the city," you mean:'),
+  ('purist',  'city',        1, 'When you say "the city," what do you mean?'),
   ('purist',  'geo',         2, 'Does the answer to the previous question change depending on where you are geographically located at the time of answering?'),
   ('purist',  'metrocard',   3, 'A green MetroCard means:'),
   ('purist',  'wsp',         4, 'Washington Square Park is:'),
   ('purist',  'tokens',      5, 'Before the MetroCard, you paid for the subway with:'),
   ('purist',  'brick',       6, 'What does "it''s brick outside" mean?'),
   ('purist',  'shsat',       7, 'What is the SHSAT?'),
-  ('purist',  'katz',        8, 'Price of a pastrami sandwich from Katz''s in 2005:'),
-  ('purist',  'dimes',       9, 'What is Dimes Square?'),
-  ('purist',  'hood_change', 10, 'If you could change anything about this neighborhood, what would it be?'),
-  ('purist',  'nj',          11, 'New Jersey.');
+  ('purist',  'dimes',       8, 'What is Dimes Square?'),
+  ('purist',  'hood_change', 9, 'If you could change anything about this neighborhood, what would it be?'),
+  ('purist',  'nj',          10, 'New Jersey.');
 
 CREATE TABLE IF NOT EXISTS survey_answer_key (
   quiz   TEXT NOT NULL REFERENCES survey_quizzes(quiz),
@@ -106,13 +105,7 @@ INSERT INTO survey_answer_key (quiz, q, option, points) VALUES
   ('purist', 'shsat', 'An STD', 0),
   ('purist', 'shsat', 'South of Houston Street after Thompson', 0),
   ('purist', 'shsat', 'A test', 2),
-  ('purist', 'shsat', 'Who cares', 1),
-  -- KATZ'S: Matt still owes the 2005 price. Until then no option scores; the
-  -- quiz max stays 17 so the bands already account for it. To score it later:
-  --   UPDATE survey_answer_key SET points = 2 WHERE q = 'katz' AND option = '$12.95';
-  ('purist', 'katz', '$9.75', 0),
-  ('purist', 'katz', '$12.95', 0),
-  ('purist', 'katz', '$17.50', 0);
+  ('purist', 'shsat', 'Who cares', 1);
 
 -- ------------------------------------------------------------
 -- Responses, scans, rants

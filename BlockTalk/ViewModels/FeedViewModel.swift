@@ -46,10 +46,18 @@ final class FeedViewModel {
                 sort: sort
             )
         } catch {
-            self.error = error.localizedDescription
+            // A cancelled load (view went away mid-fetch) is not a failure and
+            // must not put up the "Something went wrong" screen.
+            if !Self.isCancellation(error) {
+                self.error = error.localizedDescription
+            }
         }
 
         isLoading = false
+    }
+
+    private static func isCancellation(_ error: Error) -> Bool {
+        error is CancellationError || (error as? URLError)?.code == .cancelled
     }
 
     func createPost(text: String, imageUrl: String? = nil, userId: UUID) async {
@@ -80,7 +88,29 @@ final class FeedViewModel {
         }
     }
 
+    /// Quiet re-fetch: no spinner, and the current list stays on screen until
+    /// the new one arrives. Used by pull-to-refresh, returning from a post, and
+    /// returning to the app, so counts (replies, votes) catch up.
+    ///
+    /// The fetch runs in its own task on purpose. SwiftUI cancels the
+    /// pull-to-refresh task when the view re-renders mid-gesture; that used to
+    /// cancel the request, which surfaced as "Something went wrong" over an
+    /// empty feed. A failed quiet refresh keeps whatever is already showing.
     func refresh() async {
-        await loadPosts()
+        guard let neighborhood = viewingNeighborhood else { return }
+        let sort = self.sort
+        let service = postService
+        let fetch = Task { try await service.fetchPosts(neighborhoodId: neighborhood.id, sort: sort) }
+        do {
+            let fresh = try await fetch.value
+            // Drop the result if the user switched neighborhood or sort meanwhile.
+            guard viewingNeighborhood?.id == neighborhood.id, self.sort == sort else { return }
+            posts = fresh
+            error = nil
+        } catch {
+            if posts.isEmpty && !Self.isCancellation(error) {
+                self.error = error.localizedDescription
+            }
+        }
     }
 }

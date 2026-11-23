@@ -6,7 +6,7 @@ import { setContacted } from "./actions";
 import type { SurveyResponse, SurveyQuestion } from "@/lib/types";
 
 const TIERS = ["CITY SLICKER", "BLOCKTALKER", "TRANSPLANT", "TOURIST"];
-const MAX: Record<string, number> = { regular: 11, purist: 17 };
+const MAX: Record<string, number> = { regular: 11, purist: 15 };
 
 function csvCell(v: unknown): string {
   if (v === null || v === undefined) return "";

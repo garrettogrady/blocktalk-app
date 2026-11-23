@@ -151,6 +151,14 @@ struct PostDetailView: View {
             viewModel.post = post
             viewModel.onReplyCreated = { userId, postId in
                 enrollments.enroll(userId: userId, postId: postId)
+                // The reply is saved: re-read the post so the count on this
+                // screen (and on your own post in the feed) moves right away.
+                Task {
+                    if let latest = try? await PostService().fetchPost(id: postId) {
+                        freshPost = latest
+                        localContent.sync(with: [latest])
+                    }
+                }
             }
             // Resolve this post's pin (corner + map) in case we arrived here
             // directly (deep link / share) without a list preloading it.
