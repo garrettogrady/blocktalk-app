@@ -4,7 +4,11 @@ import SwiftUI
 struct PinDetailView: View {
     let pin: Pin
     let post: Post
+    /// Other posts tagged to the same business, when this thread was opened from
+    /// that business's list. Shows a row that leads back to the list.
+    var morePostsAtPlace: Int = 0
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(AppState.self) private var appState
     @Environment(LocationService.self) private var location
     @Environment(LocalContentStore.self) private var localContent
@@ -62,6 +66,28 @@ struct PinDetailView: View {
                                 }
                             )
                         }
+                    }
+
+                    if morePostsAtPlace > 0, let place = pin.placeName {
+                        Button { dismiss() } label: {
+                            HStack {
+                                Text("\(morePostsAtPlace) more \(morePostsAtPlace == 1 ? "post" : "posts") at \(place)")
+                                    .font(BTFont.bodySemibold(size: 14))
+                                    .lineLimit(1)
+                                Spacer(minLength: BTSpacing.sm)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundStyle(Color.btHouse)
+                            .padding(.horizontal, BTSpacing.md)
+                            .frame(minHeight: 48)
+                            .background(Color.btSurface)
+                            .overlay(RoundedRectangle(cornerRadius: BTRadius.md).stroke(Color.btLine, lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: BTRadius.md))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, BTSpacing.lg)
+                        .padding(.top, BTSpacing.lg)
                     }
 
                     Spacer(minLength: 100)
@@ -234,6 +260,260 @@ struct PinDetailView: View {
         if n >= replyLimit { return .btPink }
         if n >= 450 { return .btWarn }
         return .btText3
+    }
+}
+
+// MARK: - Place group (several street comments tagged to the same business)
+
+/// Business-tagged pins that share a name and sit on the same spot. A tagged
+/// pin snaps to the business's own coordinate, so two people posting about the
+/// same place produce pins stacked exactly on top of each other, and only the
+/// top one could ever be tapped. The map draws ONE marker for the group and
+/// opens a list of everything said there.
+struct PlaceGroup: Identifiable {
+    let id: String
+    let name: String
+    let symbol: String
+    /// Newest first. Never empty.
+    let pins: [Pin]
+
+    var coordinate: CLLocationCoordinate2D { pins[0].coordinate }
+    var neighborhoodId: UUID { pins[0].neighborhoodId }
+    var category: String { pins.compactMap(\.placeCategory).first ?? "" }
+    var cornerName: String? { pins.compactMap(\.cornerName).first }
+
+    /// Same business = same name (case-insensitive) on the same ~10 m spot.
+    /// Nil for a plain corner pin, which never groups.
+    static func key(for pin: Pin) -> String? {
+        guard let name = pin.placeName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !name.isEmpty else { return nil }
+        let lat = Int((pin.latitude * 10_000).rounded())
+        let lng = Int((pin.longitude * 10_000).rounded())
+        return "\(name)|\(lat)|\(lng)"
+    }
+
+    /// Splits pins into businesses with 2+ posts (grouped) and everything else
+    /// (drawn exactly as before).
+    static func partition(_ pins: [Pin]) -> (groups: [PlaceGroup], singles: [Pin]) {
+        var buckets: [String: [Pin]] = [:]
+        var order: [String] = []
+        var singles: [Pin] = []
+        for pin in pins {
+            guard let key = key(for: pin) else { singles.append(pin); continue }
+            if buckets[key] == nil { order.append(key) }
+            buckets[key, default: []].append(pin)
+        }
+        var groups: [PlaceGroup] = []
+        for key in order {
+            let bucket = buckets[key] ?? []
+            if bucket.count < 2 {
+                singles.append(contentsOf: bucket)
+                continue
+            }
+            let sorted = bucket.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            groups.append(PlaceGroup(
+                id: key,
+                name: sorted[0].placeName ?? "",
+                symbol: sorted.compactMap(\.placeSymbol).first ?? "mappin.circle.fill",
+                pins: sorted))
+        }
+        return (groups, singles)
+    }
+}
+
+/// Map marker for a business with several posts: its glyph plus the count.
+struct PlaceGroupMarker: View {
+    let symbol: String
+    let count: Int
+
+    var body: some View {
+        ZStack {
+            // Invisible hit target
+            Color.clear
+                .frame(width: 60, height: 44)
+                .contentShape(Rectangle())
+
+            HStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .bold))
+                Text("\(count)")
+                    .font(BTFont.monoBold(size: 13))
+            }
+            .foregroundStyle(Color.btBg)
+            .padding(.horizontal, 9)
+            .frame(height: 26)
+            .background(Color.btHouse)
+            .clipShape(Capsule())
+            .background(
+                Capsule()
+                    .fill(Color.btHouse.opacity(0.2))
+                    .padding(-6)
+            )
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(count) posts here")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Everything said at one business, newest first. Presented from the map inside
+/// a NavigationStack; a row pushes that post's usual pin thread.
+struct PlacePostsView: View {
+    let group: PlaceGroup
+    /// Nil hides the "Say something" bar (you can only post where you are).
+    var onAddPost: (() -> Void)?
+
+    @Environment(LocalContentStore.self) private var localContent
+    @Environment(BlockStore.self) private var blockStore
+    @Environment(PinStore.self) private var pinStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var posts: [Post] = []
+    @State private var isLoading = true
+    @State private var failed = false
+
+    private var visiblePosts: [Post] {
+        posts.filter { !blockStore.isBlocked($0.userId) }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+
+                Divider().background(Color.btLine)
+
+                if isLoading && posts.isEmpty {
+                    ProgressView()
+                        .tint(Color.btText3)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, BTSpacing.xxxl)
+                } else if failed && posts.isEmpty {
+                    LoadErrorView { Task { await load() } }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, BTSpacing.xxxl)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(visiblePosts) { post in
+                            NavigationLink(value: post) {
+                                // The header already names the place and the map
+                                // is one swipe away, so no per-row mini-map.
+                                PostCard(post: post, showStreetMap: false)
+                            }
+                            .buttonStyle(.plain)
+                            Divider().background(Color.btLine)
+                        }
+                    }
+                }
+
+                Spacer(minLength: onAddPost == nil ? BTSpacing.xxxl : 90)
+            }
+        }
+        .background(Color.btBg)
+        .safeAreaInset(edge: .bottom) {
+            if let onAddPost { addBar(onAddPost) }
+        }
+        .navigationTitle(group.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.btText2)
+                }
+                .accessibilityLabel("Close")
+            }
+        }
+        .navigationDestination(for: Post.self) { post in
+            if let pin = group.pins.first(where: { $0.id == post.pinId }) {
+                PinDetailView(pin: pin, post: post, morePostsAtPlace: max(visiblePosts.count - 1, 0))
+            }
+        }
+        .task { await load() }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: BTSpacing.sm) {
+            HStack(spacing: BTSpacing.md) {
+                Circle()
+                    .fill(Color.btHouse)
+                    .frame(width: 28, height: 28)
+                    .overlay {
+                        Image(systemName: group.symbol)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Color.btBg)
+                    }
+                Text(group.name)
+                    .font(BTFont.display(size: 24))
+                    .foregroundStyle(Color.btText)
+                    .lineLimit(2)
+            }
+            (Text("\(countLabel)").font(BTFont.monoBold(size: 11)).foregroundColor(.btHouse)
+             + Text(subline).font(BTFont.mono(size: 11)).foregroundColor(.btText2))
+        }
+        .padding(.horizontal, BTSpacing.xl)
+        .padding(.top, BTSpacing.lg)
+        .padding(.bottom, BTSpacing.lg)
+    }
+
+    private var countLabel: String {
+        // Until the posts load, the pin count is the best number we have.
+        let n = posts.isEmpty ? group.pins.count : visiblePosts.count
+        return "\(n) \(n == 1 ? "POST" : "POSTS")"
+    }
+
+    private var subline: String {
+        var s = ""
+        if let corner = group.cornerName, !corner.isEmpty { s += " · \(corner.uppercased())" }
+        return s + " · NEWEST FIRST"
+    }
+
+    private func addBar(_ action: @escaping () -> Void) -> some View {
+        VStack(spacing: 0) {
+            Divider().background(Color.btLine)
+            Button(action: action) {
+                HStack(spacing: BTSpacing.md) {
+                    Text("Say something about \(group.name)…")
+                        .font(BTFont.body(size: 15))
+                        .foregroundStyle(Color.btText2)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Color.btHouse)
+                }
+                .padding(.leading, BTSpacing.lg)
+                .padding(.trailing, BTSpacing.sm)
+                .frame(minHeight: 48)
+                .background(Color.btSurface)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.btLine, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, BTSpacing.lg)
+            .padding(.vertical, BTSpacing.sm)
+        }
+        .background(Color.btBg)
+    }
+
+    private func load() async {
+        isLoading = true
+        failed = false
+        // Posts made this session may not be in the fetch yet; start from those.
+        let local = group.pins.compactMap { localContent.post(forPinId: $0.id) }
+        var merged: [UUID: Post] = Dictionary(local.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        do {
+            let fetched = try await PostService().fetchPosts(forPinIds: group.pins.map(\.id))
+            for post in fetched { merged[post.id] = post }
+        } catch {
+            failed = true
+            print("Failed to load posts for place \(group.name): \(error)")
+        }
+        posts = merged.values
+            .filter { $0.status == .live }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        isLoading = false
+        await pinStore.ensureLoaded(for: posts)
     }
 }
 

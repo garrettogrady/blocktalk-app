@@ -8,6 +8,7 @@ struct FeedView: View {
     @Environment(LocalContentStore.self) private var localContent
     @Environment(PinStore.self) private var pinStore
     @Environment(BlockStore.self) private var blockStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = FeedViewModel()
     @State private var showCompose = false
     @State private var showNeighborhoodPicker = false
@@ -238,8 +239,23 @@ struct FeedView: View {
                 await viewModel.loadDailyPrompt()
                 if viewModel.posts.isEmpty {
                     await viewModel.loadPosts()
+                } else {
+                    // Coming back (from a post, another tab): quietly catch up so
+                    // reply counts and scores aren't frozen at the first load.
+                    await viewModel.refresh()
                 }
                 await pinStore.ensureLoaded(for: viewModel.posts)
+            }
+            // Back from the background: same quiet catch-up.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active, !viewModel.posts.isEmpty {
+                    Task { await viewModel.refresh() }
+                }
+            }
+            // Posts you made this session render from a local copy; keep that
+            // copy's counts in step with what the server just returned.
+            .onChange(of: viewModel.posts) { _, fresh in
+                localContent.sync(with: fresh)
             }
             .onChange(of: locationService.currentNeighborhood) { _, newNeighborhood in
                 // GPS resolved — override home fallback if we haven't set by location yet

@@ -109,6 +109,7 @@ final class AppState {
 /// Session-scoped moderation state (mock mechanics — see HANDOFF for the
 /// backend-vs-client seam). Currently drives the reporter-side hide: reporting
 /// a post collapses it to a tombstone for you, with a Show-anyway reveal.
+@MainActor
 @Observable
 final class ModerationStore {
     /// postId → reason short string, for posts the current user reported
@@ -176,6 +177,7 @@ final class ModerationStore {
 
 /// Session-scoped user blocks. Loads blocked user IDs on login so posts/replies
 /// from blocked users are hidden from the feed.
+@MainActor
 @Observable
 final class BlockStore {
     private(set) var blockedIds: Set<UUID> = []
@@ -202,6 +204,7 @@ final class BlockStore {
 
 /// Session-scoped notifications. Fetches from Supabase on load; report and
 /// appeal actions push new ones so they show in the bell + tab badge.
+@MainActor
 @Observable
 final class NotificationStore {
     private(set) var items: [BTNotification] = []
@@ -250,6 +253,7 @@ final class NotificationStore {
 
 /// Session-scoped offline queue. Posts made offline queue locally; when
 /// NWPathMonitor detects connectivity they flush to Supabase for real.
+@MainActor
 @Observable
 final class OfflineStore {
     var isOffline = false
@@ -265,7 +269,9 @@ final class OfflineStore {
     static let graceSeconds: TimeInterval = 3600
     #endif
 
-    private var monitor: NWPathMonitor?
+    /// Not observed by any view, and touched from deinit (which is not on the
+    /// main actor), so it is kept outside the class's main-actor isolation.
+    @ObservationIgnored nonisolated(unsafe) private var monitor: NWPathMonitor?
     private let monitorQueue = DispatchQueue(label: "com.blocktalk.network-monitor")
 
     struct QueuedPost: Identifiable {
@@ -290,7 +296,9 @@ final class OfflineStore {
     }
 
     deinit {
-        stopMonitor()
+        // deinit is not on the main actor, so cancel directly instead of
+        // calling stopMonitor().
+        monitor?.cancel()
     }
 
     // MARK: - Network Monitor
@@ -435,6 +443,16 @@ final class LocalContentStore {
         posts.insert(post, at: 0)
     }
 
+    /// Replace local copies with fresher server rows (same id), so a post you
+    /// made this session doesn't keep the reply count / score it was born with.
+    func sync(with fresh: [Post]) {
+        guard !posts.isEmpty, !fresh.isEmpty else { return }
+        let byId = Dictionary(fresh.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for i in posts.indices {
+            if let latest = byId[posts[i].id], latest != posts[i] { posts[i] = latest }
+        }
+    }
+
     /// Persist a reply so it survives leaving + reopening the post this session.
     func addReply(_ reply: Reply, toPost postId: UUID) {
         repliesByPost[postId, default: []].append(reply)
@@ -548,6 +566,7 @@ final class ContentEditStore {
 /// ELSE's street comments, so any PostCard in any list (feed, search, trending)
 /// can render its corner + map snippet — not just your own. Populated on demand
 /// as post lists load.
+@MainActor
 @Observable
 final class PinStore {
     private(set) var pinsById: [UUID: Pin] = [:]

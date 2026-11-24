@@ -32,6 +32,11 @@ struct MapTabView: View {
     // Item-driven so the sheet only presents once the post is resolved — avoids
     // the blank-first-tap sheet that `.sheet(isPresented:)` + separate state hits.
     @State private var selectedPinDetail: PinDetailItem?
+    /// A business with several posts: tapping its marker lists them all.
+    @State private var selectedPlace: PlaceGroup?
+    /// "Say something about X" was tapped in that list; compose opens once the
+    /// list has finished dismissing (two presentations can't overlap).
+    @State private var pendingPlaceCompose: TaggedPlace?
     @State private var pinLoadFailed = false
     @State private var mapCenter = CLLocationCoordinate2D(latitude: 40.7193, longitude: -73.9911)
     // The geographic coordinate directly under the drop reticle. Range-checking
@@ -110,7 +115,7 @@ struct MapTabView: View {
                 // names the tapped neighborhood.
 
                 // Pin annotations (bundled samples + anything created this session)
-                ForEach(visiblePins) { pin in
+                ForEach(singlePins) { pin in
                     Annotation("", coordinate: pin.coordinate) {
                         // Route 2: business-tagged pins are house-blue with their
                         // category glyph; plain corners stay lime dots.
@@ -125,6 +130,18 @@ struct MapTabView: View {
                         .onTapGesture {
                             openPinDetail(pin)
                         }
+                    }
+                }
+
+                // A business with 2+ posts: ONE marker with a count (the pins sit
+                // on the same coordinate, so separate dots would hide each other).
+                ForEach(groupedPlaces) { group in
+                    Annotation(group.name, coordinate: group.coordinate) {
+                        PlaceGroupMarker(symbol: group.symbol, count: group.pins.count)
+                            .opacity(viewModel.isDropMode ? 0.3 : 1)
+                            .onTapGesture {
+                                selectedPlace = group
+                            }
                     }
                 }
 
@@ -470,6 +487,25 @@ struct MapTabView: View {
                             }
                         }
                     }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $selectedPlace, onDismiss: {
+            // Open compose only after the list is fully gone.
+            if let place = pendingPlaceCompose {
+                pendingPlaceCompose = nil
+                composePlace = place
+                showComposeForPin = true
+            }
+        }) { group in
+            NavigationStack {
+                PlacePostsView(group: group, onAddPost: canPost(at: group) ? {
+                    pendingPlaceCompose = TaggedPlace(
+                        name: group.name, category: group.category, symbol: group.symbol,
+                        latitude: group.coordinate.latitude, longitude: group.coordinate.longitude)
+                    selectedPlace = nil
+                } : nil)
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -1054,6 +1090,18 @@ struct MapTabView: View {
         return (viewModel.pins + localContent.pins).filter { pin in
             !edits.deletedPinIds.contains(pin.id) && seen.insert(pin.id).inserted
         }
+    }
+
+    /// Businesses with 2+ posts, drawn as one counted marker each.
+    private var groupedPlaces: [PlaceGroup] { PlaceGroup.partition(visiblePins).groups }
+    /// Everything else: corner pins and businesses with a single post.
+    private var singlePins: [Pin] { PlaceGroup.partition(visiblePins).singles }
+
+    /// Posting needs presence: only offer "Say something" when the user is
+    /// physically in the business's neighborhood.
+    private func canPost(at group: PlaceGroup) -> Bool {
+        locationService.permissionState == .granted
+            && appState.physicalNeighborhood?.id == group.neighborhoodId
     }
 
     /// True if the tap landed on a map pin (let the pin's own tap handle it).
