@@ -2,6 +2,7 @@ import CoreLocation
 import XCTest
 @testable import BlockTalk
 
+@MainActor
 final class OfflineStoreTests: XCTestCase {
 
     private func makeStore() -> OfflineStore {

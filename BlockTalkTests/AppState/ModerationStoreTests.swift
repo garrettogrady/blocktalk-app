@@ -1,6 +1,7 @@
 import XCTest
 @testable import BlockTalk
 
+@MainActor
 final class ModerationStoreTests: XCTestCase {
 
     func testReportMarksAsReported() {
